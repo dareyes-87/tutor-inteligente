@@ -1,7 +1,5 @@
 """
 Configuración de Alembic (migraciones de base de datos).
-Usa el driver SÍNCRONO (psycopg) solo para migraciones, mientras la app
-usa el asíncrono (asyncpg). Es un patrón estándar y más simple.
 """
 from logging.config import fileConfig
 
@@ -11,9 +9,10 @@ from alembic import context
 from app.config import settings
 from app.database import Base
 
-# Cuando crees modelos en el Sprint 1, impórtalos aquí para que Alembic
-# los detecte automáticamente, por ejemplo:
-# from app.models import usuario, libro, conversacion  # noqa
+# Importar TODOS los modelos para que Alembic los detecte
+from app.models import (  # noqa
+    Grado, Asignatura, Usuario, LibroTexto, Fragmento,
+)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)
