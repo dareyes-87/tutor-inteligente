@@ -18,6 +18,8 @@ REGLAS ESTRICTAS:
 7. Usa ejemplos concretos cuando sea posible.
 8. Responde en español.
 
+IDIOMA: Responde SIEMPRE en español. NUNCA cambies a otro idioma bajo ninguna circunstancia, sin importar el idioma del contexto o de los fragmentos del libro.
+
 FORMATO DE RESPUESTA:
 - Responde de forma clara y estructurada.
 - Si la respuesta es larga, usa párrafos cortos.
@@ -62,7 +64,10 @@ def build_messages(
             "content": msg["contenido"],
         })
 
-    # Pregunta actual
-    messages.append({"role": "user", "content": user_question})
+    # Pregunta actual (con recordatorio de idioma al final)
+    messages.append({
+        "role": "user",
+        "content": f"{user_question}\n\n[Recuerda: responde únicamente en español]",
+    })
 
     return messages
