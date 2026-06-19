@@ -4,8 +4,7 @@ ChromaDB permite filtrar por metadatos (asignatura, grado), lo que es
 clave para que el RAG solo busque en los libros relevantes.
 """
 import logging
-import importlib
-from typing import Any
+import chromadb
 
 from app.config import settings
 
@@ -16,21 +15,10 @@ COLLECTION_NAME = "libros_texto"
 _client = None
 
 
-def _get_chromadb_module() -> Any:
-    """Carga chromadb de forma diferida para evitar errores de resolución en análisis estático."""
-    try:
-        return importlib.import_module("chromadb")
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "No se pudo importar 'chromadb'. Instala la dependencia con: pip install chromadb"
-        ) from exc
-
-
-def get_chroma_client() -> Any:
+def get_chroma_client() -> chromadb.HttpClient:
     """Conexión singleton a ChromaDB."""
     global _client
     if _client is None:
-        chromadb = _get_chromadb_module()
         _client = chromadb.HttpClient(
             host=settings.CHROMA_HOST,
             port=settings.CHROMA_PORT,

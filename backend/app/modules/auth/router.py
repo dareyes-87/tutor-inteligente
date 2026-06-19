@@ -42,9 +42,7 @@ async def registro(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role(RolUsuario.administrador, RolUsuario.docente)),
 ):
-    """
-    Registra un usuario nuevo. Solo administradores y docentes pueden crear usuarios.
-    """
+    """Registra un usuario nuevo. Solo administradores y docentes pueden crear usuarios."""
     existing = await get_user_by_username(db, body.username)
     if existing:
         raise HTTPException(

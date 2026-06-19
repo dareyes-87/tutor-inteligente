@@ -1,38 +1,35 @@
 """
 Procesador de PDF: extracción de texto digital y OCR de páginas escaneadas.
-Optimizado para libros escolares con diseño complejo (tablas, columnas, imágenes).
+Este es el corazón del camino crítico. Maneja ambos tipos de PDF.
 """
 import fitz  # PyMuPDF
 import pytesseract
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageFilter
 import io
 import logging
 
 logger = logging.getLogger(__name__)
 
+# DPI para rasterizar páginas escaneadas (300 = buen balance calidad/velocidad)
 OCR_DPI = 300
+# Umbral mínimo de texto por página para considerar que es "digital"
 MIN_TEXT_CHARS = 50
-# Confianza mínima por palabra para considerarla válida (filtra basura de imágenes)
-MIN_WORD_CONFIDENCE = 30
-# Si una página tiene menos de este % de palabras válidas, se marca como "imagen"
-MIN_VALID_WORDS_RATIO = 0.3
 
 
 def _preprocess_image(pil_img: Image.Image) -> Image.Image:
     """
-    Preprocesamiento de imagen para libros con diseño complejo.
+    Preprocesamiento de imagen antes del OCR para mejorar la precisión.
+    Esto es lo que te lleva al ≥95% CER en escaneados.
     """
     # 1. Escala de grises
     img = pil_img.convert("L")
-    # 2. Aumentar contraste
-    enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(1.5)
-    # 3. Nitidez
+    # 2. Aumentar contraste (binarización con umbral de Otsu lo hace Tesseract,
+    #    pero ayudamos con un filtro de nitidez)
     img = img.filter(ImageFilter.SHARPEN)
-    # 4. Escalar si es muy pequeña
+    # 3. Escalar si es muy pequeña (Tesseract rinde mejor con imágenes grandes)
     w, h = img.size
-    if w < 2000:
-        scale = 2000 / w
+    if w < 1500:
+        scale = 1500 / w
         img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
     return img
 
@@ -51,8 +48,7 @@ def _extract_digital_text(page: fitz.Page) -> str:
 def _extract_ocr_text(page: fitz.Page) -> tuple[str, float]:
     """
     Rasteriza una página, preprocesa y aplica OCR.
-    Usa PSM 3 (segmentación automática) que maneja columnas y tablas.
-    Filtra palabras basura para un cálculo de confianza más realista.
+    Devuelve (texto, confianza_promedio).
     """
     # Rasterizar a imagen
     mat = fitz.Matrix(OCR_DPI / 72, OCR_DPI / 72)
@@ -63,57 +59,20 @@ def _extract_ocr_text(page: fitz.Page) -> tuple[str, float]:
     # Preprocesar
     processed = _preprocess_image(pil_img)
 
-    # OCR con Tesseract: PSM 3 = segmentación automática completa
-    # Mejor para páginas con columnas, tablas y diseño mixto
-    custom_config = r"--psm 3 --oem 3"
-
+    # OCR con Tesseract en español, pidiendo datos detallados para confianza
     data = pytesseract.image_to_data(
-        processed, lang="spa", config=custom_config,
-        output_type=pytesseract.Output.DICT,
+        processed, lang="spa", output_type=pytesseract.Output.DICT
     )
 
-    # Filtrar: solo palabras reales con confianza razonable
-    valid_words = []
-    all_confidences = []
-
-    for conf_str, word in zip(data["conf"], data["text"]):
-        conf = int(conf_str)
-        word_clean = word.strip()
-
-        if conf < 0 or not word_clean:
-            continue  # Tesseract pone -1 en separadores
-
-        all_confidences.append(conf)
-
-        if conf >= MIN_WORD_CONFIDENCE and len(word_clean) >= 1:
-            valid_words.append(word_clean)
-
-    # Calcular ratio de palabras válidas vs total
-    total_words = len(all_confidences)
-    valid_count = len(valid_words)
-
-    if total_words == 0:
-        return "", 0.0
-
-    valid_ratio = valid_count / total_words
-
-    # Si muy pocas palabras son válidas, esta página es probablemente una imagen
-    if valid_ratio < MIN_VALID_WORDS_RATIO:
-        logger.debug(f"Página descartada: solo {valid_ratio:.0%} palabras válidas")
-        return "", 0.0
-
-    # Confianza = promedio SOLO de las palabras válidas (no de la basura)
-    valid_confidences = [
-        c for c in all_confidences if c >= MIN_WORD_CONFIDENCE
+    # Calcular confianza promedio (solo de palabras reales, no espacios)
+    confidences = [
+        int(c) for c, text in zip(data["conf"], data["text"])
+        if int(c) > 0 and text.strip()
     ]
-    avg_confidence = (
-        sum(valid_confidences) / len(valid_confidences) if valid_confidences else 0.0
-    )
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
-    # Extraer texto completo con el mismo config
-    text = pytesseract.image_to_string(
-        processed, lang="spa", config=custom_config
-    ).strip()
+    # Extraer texto limpio
+    text = pytesseract.image_to_string(processed, lang="spa").strip()
 
     return text, avg_confidence
 
@@ -121,8 +80,18 @@ def _extract_ocr_text(page: fitz.Page) -> tuple[str, float]:
 def process_pdf(pdf_path: str) -> list[dict]:
     """
     Procesa un PDF completo página por página.
-    Para cada página decide: digital o escaneada, y extrae el texto.
-    Páginas que son puras imágenes se saltan (confianza 0, texto vacío).
+    Para cada página decide: ¿digital o escaneada? y extrae el texto.
+
+    Devuelve una lista de diccionarios:
+    [
+        {
+            "page_num": 1,
+            "text": "contenido...",
+            "method": "digital" | "ocr",
+            "confidence": 100.0 | 85.3  (100 para digital)
+        },
+        ...
+    ]
     """
     doc = fitz.open(pdf_path)
     results = []
@@ -141,11 +110,6 @@ def process_pdf(pdf_path: str) -> list[dict]:
             logger.info(f"Página {page_num + 1}: digital ({len(text)} chars)")
         else:
             text, confidence = _extract_ocr_text(page)
-
-            if not text or confidence == 0:
-                logger.info(f"Página {page_num + 1}: imagen/sin texto útil (saltada)")
-                continue  # No indexar páginas sin texto útil
-
             results.append({
                 "page_num": page_num + 1,
                 "text": text,

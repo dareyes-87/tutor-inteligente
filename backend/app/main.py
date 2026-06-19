@@ -1,8 +1,8 @@
 """
 Punto de entrada de la API del Tutor Inteligente.
-
 Sprint 0: /health, /llm/hello
 Sprint 1: /auth/*, /ingesta/*
+Sprint 2: /chat/*, /actividades/*
 """
 import logging
 import httpx
@@ -20,8 +20,9 @@ from app.seed import seed_admin
 # Importar routers
 from app.modules.auth.router import router as auth_router
 from app.modules.ingesta.router import router as ingesta_router
+from app.modules.chat.router import router as chat_router
+from app.modules.actividades.router import router as actividades_router
 
-# Configurar logging para ver el progreso de la ingesta
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -30,23 +31,18 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Código que corre al arrancar y al apagar la app."""
-    # --- Arranque ---
-    # Crear admin si no existe
     async with AsyncSessionLocal() as db:
         await seed_admin(db)
     yield
-    # --- Apagado ---
     await engine.dispose()
 
 
 app = FastAPI(
     title="Tutor Inteligente API",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -55,12 +51,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registrar routers
+# Registrar todos los routers
 app.include_router(auth_router)
 app.include_router(ingesta_router)
+app.include_router(chat_router)
+app.include_router(actividades_router)
 
 
-# ---- Endpoints de infraestructura (Sprint 0) ----
+# ---- Endpoints de infraestructura ----
 
 async def _check_postgres() -> str:
     try:
