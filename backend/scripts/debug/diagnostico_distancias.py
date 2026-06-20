@@ -26,21 +26,21 @@ ASIGNATURA = "Ciencias Naturales"
 GRADO = "1ro Basico"
 
 CONSULTAS_LIBRO = [
-    "¿Cuáles son los parásitos más frecuentes?",
     "¿Cuánto mide la Áscaris lumbricoides?",
     "¿Qué es la desnutrición?",
-    "¿Cuáles son los nutrientes que necesita el cuerpo?",
+    "¿Cuáles son los parásitos más frecuentes?",
     "¿Qué son los primeros auxilios?",
-    "¿Cómo afecta el ruido a la audición?",
-    "cuando mide la ascaris",  # error ortográfico intencional (simula a un niño)
-    "que es la piramide alimenticia",
+    "que es la piramide alimenticia",  # sin tildes, simula a un niño
 ]
 CONSULTAS_FUERA = [
-    "¿Cuáles son las partes de una computadora?",
-    "¿Cuál es la capital de Francia?",
+    "¿Qué es la gripe?",
+    "¿Cómo se contagia el COVID?",
+    "¿Qué es la diabetes?",
+    "¿Cómo funciona el corazón?",
+    "¿Cuáles son los planetas del sistema solar?",
 ]
 
-BUCKETS = [0.85, 1.0, 1.1, 1.2]
+BUCKETS = [0.85, 1.0, 1.3, 1.4, 1.5]
 
 
 def top5(query: str) -> list[dict]:
