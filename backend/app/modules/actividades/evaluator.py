@@ -3,6 +3,9 @@ Evaluador de actividades: compara la respuesta del estudiante
 con la respuesta correcta y genera retroalimentación.
 La evaluación se hace en el BACKEND, no en el LLM (más confiable y barato).
 """
+import unicodedata
+from difflib import SequenceMatcher
+
 from app.models.actividad import TipoActividad
 
 
@@ -10,6 +13,34 @@ def _normalize(text: str) -> str:
     """Normaliza texto para comparación flexible."""
     return text.strip().lower().replace("á", "a").replace("é", "e") \
         .replace("í", "i").replace("ó", "o").replace("ú", "u")
+
+
+def normalizar_texto(texto: str) -> str:
+    """Normaliza para comparación: minúsculas, sin tildes, sin espacios extra."""
+    # Quitar tildes: á→a, é→e, etc.
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    # Minúsculas y strip
+    return texto.lower().strip()
+
+
+def generar_feedback_ortografico(respuesta_est: str, respuesta_cor: str) -> str:
+    """Genera retroalimentación específica para errores ortográficos."""
+    est = respuesta_est.strip()
+    cor = respuesta_cor.strip()
+
+    # Detectar si solo faltan/sobran tildes
+    if normalizar_texto(est) == normalizar_texto(cor):
+        return (
+            f"¡Casi perfecto! La respuesta es correcta pero revisa "
+            f"la ortografía: se escribe «{cor}». ¡Muy buen intento! ⭐"
+        )
+
+    # Error ortográfico general
+    return (
+        f"¡Casi lo tienes! La respuesta correcta es «{cor}». "
+        f"Estuviste muy cerca, ¡sigue así! 💪"
+    )
 
 
 def evaluar_actividad(
@@ -95,22 +126,39 @@ def _evaluar_ordenar(resp_est, resp_corr, contenido):
 
 
 def _evaluar_respuesta_corta(resp_est, resp_corr, contenido):
-    respuesta = _normalize(resp_est.get("respuesta", ""))
-    palabras_clave = [_normalize(p) for p in resp_corr.get("palabras_clave", [])]
-    explicacion = resp_corr.get("explicacion", "")
+    """
+    Evalúa respuesta corta con tolerancia ortográfica (pensado para niños de
+    8-12 años: errores de tildes, letras confundidas, escritura fonética).
+    """
+    respuesta_estudiante = str(resp_est.get("respuesta", ""))
+    respuesta_correcta = str(resp_corr.get("respuesta_correcta", ""))
 
-    if not palabras_clave:
-        correcta = _normalize(resp_corr.get("respuesta_correcta", ""))
-        if correcta and correcta in respuesta:
-            return {"puntaje": 100, "retroalimentacion": f"¡Correcto! {explicacion}"}
-        return {"puntaje": 0, "retroalimentacion": f"La respuesta esperada era: {resp_corr.get('respuesta_correcta', '')}. {explicacion}"}
+    # Normalizar ambas (minúsculas, sin tildes, sin espacios extra)
+    est_norm = normalizar_texto(respuesta_estudiante)
+    cor_norm = normalizar_texto(respuesta_correcta)
 
-    # Evaluar por palabras clave encontradas
-    found = sum(1 for kw in palabras_clave if kw in respuesta)
-    puntaje = round((found / len(palabras_clave)) * 100)
+    # Caso 1: Match exacto (normalizado) → 100 puntos
+    if est_norm and est_norm == cor_norm:
+        return {"puntaje": 100, "retroalimentacion": "¡Excelente! ¡Respuesta correcta! 🌟"}
 
-    if puntaje >= 80:
-        return {"puntaje": puntaje, "retroalimentacion": f"¡Muy bien! {explicacion}"}
-    elif puntaje >= 50:
-        return {"puntaje": puntaje, "retroalimentacion": f"Bien, pero incompleto. {explicacion}"}
-    return {"puntaje": puntaje, "retroalimentacion": f"Necesitas repasar. {explicacion}"}
+    # Caso 2: Similitud alta (>= 0.80) → casi correcto, 70 puntos
+    similitud = SequenceMatcher(None, est_norm, cor_norm).ratio()
+    if similitud >= 0.80:
+        feedback = generar_feedback_ortografico(respuesta_estudiante, respuesta_correcta)
+        return {"puntaje": 70, "retroalimentacion": feedback}
+
+    # Caso 3: La respuesta correcta está CONTENIDA en la del estudiante o
+    # viceversa (ej: "el microscopio" vs "microscopio"). La guarda
+    # `est_norm and cor_norm` evita que una respuesta vacía cuele un 85,
+    # porque "" siempre está contenido en cualquier cadena.
+    if est_norm and cor_norm and (cor_norm in est_norm or est_norm in cor_norm):
+        return {
+            "puntaje": 85,
+            "retroalimentacion": f"¡Muy bien! La respuesta es: {respuesta_correcta}. ¡Casi perfecto! ⭐",
+        }
+
+    # Caso 4: Incorrecto → 0 puntos
+    return {
+        "puntaje": 0,
+        "retroalimentacion": f"No es correcto. La respuesta es: {respuesta_correcta}. ¡Sigue intentando, tú puedes! 💪",
+    }
