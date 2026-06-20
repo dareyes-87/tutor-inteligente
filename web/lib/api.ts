@@ -228,3 +228,21 @@ export function responderActividad(
     body: JSON.stringify({ actividad_id: actividadId, respuesta }),
   });
 }
+
+// ----------------------- Perfil de comprensión -----------------------
+
+export type NivelComprension = "domina" | "en_proceso" | "refuerzo";
+
+/** Una entrada del perfil de comprensión del estudiante (por tema). */
+export interface PerfilTema {
+  asignatura: string;
+  tema: string;
+  puntaje_promedio: number; // 0–100
+  nivel: NivelComprension;
+  total_actividades: number;
+}
+
+/** Perfil de comprensión del estudiante autenticado (por asignatura/tema). */
+export function getPerfil(): Promise<PerfilTema[]> {
+  return request<PerfilTema[]>("/actividades/perfil");
+}
