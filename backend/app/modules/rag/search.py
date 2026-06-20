@@ -11,8 +11,11 @@ logger = logging.getLogger(__name__)
 
 # Cuántos fragmentos devolver como contexto al LLM
 TOP_K = 5
-# Distancia máxima (ChromaDB usa distancia, no similitud; menor = más similar)
-MAX_DISTANCE = 1.5
+# Distancia máxima (ChromaDB usa distancia, no similitud; menor = más similar).
+# Umbral estricto de grounding: solo se acepta contexto muy cercano a la pregunta.
+MAX_DISTANCE = 0.85
+# Mínimo de fragmentos relevantes para considerar que SÍ hay contexto en los libros.
+MIN_FRAGMENTOS_RELEVANTES = 2
 
 
 def search_fragments(
@@ -83,3 +86,20 @@ def search_fragments(
         f"RAG: query='{query[:50]}...' -> {len(fragments)} fragmentos encontrados"
     )
     return fragments
+
+
+def is_context_relevant(fragments: list[dict]) -> bool:
+    """
+    Decide si los fragmentos recuperados son contexto suficiente y relevante.
+
+    Grounding estricto: solo es True si hay al menos MIN_FRAGMENTOS_RELEVANTES
+    fragmentos con distancia conocida <= MAX_DISTANCE. Se ignoran los fragmentos
+    sin distancia (None) para no colar ruido. La usan chat y actividades para
+    rechazar de forma determinística las preguntas fuera de los libros.
+    """
+    relevantes = [
+        f
+        for f in fragments
+        if f.get("distance") is not None and f["distance"] <= MAX_DISTANCE
+    ]
+    return len(relevantes) >= MIN_FRAGMENTOS_RELEVANTES

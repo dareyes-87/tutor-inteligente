@@ -12,10 +12,17 @@ from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
 from app.models.usuario import Usuario
 from app.models.grado import Grado
-from app.modules.rag.search import search_fragments
+from app.modules.rag.search import search_fragments, is_context_relevant
 from app.modules.chat.prompts import SYSTEM_PROMPT, build_context_prompt, build_messages
 
 logger = logging.getLogger(__name__)
+
+# Respuesta fija (determinística) cuando la pregunta cae fuera de los libros.
+# No depende de que el LLM obedezca: se devuelve sin llamar al modelo.
+RESPUESTA_FUERA_DE_CONTEXTO = (
+    "No encuentro información sobre eso en tus libros de clase. "
+    "¿Quieres preguntarme sobre los temas que estamos viendo?"
+)
 
 
 async def obtener_o_crear_conversacion(
@@ -101,19 +108,31 @@ async def procesar_pregunta(
         grado=grado_nombre,
     )
 
-    # 3. Construir prompt
-    context = build_context_prompt(fragments)
+    # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
-    messages = build_messages(SYSTEM_PROMPT, context, history, pregunta)
 
-    # 4. Llamar al LLM
-    logger.info(f"[Chat] Enviando pregunta al LLM con {len(fragments)} fragmentos de contexto")
-    respuesta = llm_client.chat(messages)
+    # 3-4. Grounding determinístico: si el contexto NO es relevante, no se
+    # llama al LLM y se devuelve un mensaje fijo de rechazo. Así la garantía
+    # no depende de que el modelo obedezca el prompt.
+    if is_context_relevant(fragments):
+        context = build_context_prompt(fragments)
+        messages = build_messages(SYSTEM_PROMPT, context, history, pregunta)
+        logger.info(
+            f"[Chat] Contexto relevante: enviando al LLM con {len(fragments)} fragmentos"
+        )
+        respuesta = llm_client.chat(messages)
+        fragments_referencia = fragments
+    else:
+        logger.info(
+            "[Chat] Contexto NO relevante: respuesta determinística de rechazo (sin LLM)"
+        )
+        respuesta = RESPUESTA_FUERA_DE_CONTEXTO
+        fragments_referencia = []
 
     # 5. Guardar mensajes
     referencias_json = [
         {"page_num": f.get("page_num"), "libro_id": f.get("libro_id"), "distance": f.get("distance")}
-        for f in fragments
+        for f in fragments_referencia
     ]
 
     msg_usuario = Mensaje(

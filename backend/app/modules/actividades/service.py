@@ -10,7 +10,7 @@ from app.models.perfil_comprension import PerfilComprension
 from app.models.asignatura import Asignatura
 from app.models.grado import Grado
 from app.models.usuario import Usuario
-from app.modules.rag.search import search_fragments
+from app.modules.rag.search import search_fragments, is_context_relevant
 from app.modules.chat.prompts import build_context_prompt
 from app.modules.actividades.generator import generar_actividad
 from app.modules.actividades.evaluator import evaluar_actividad
@@ -45,6 +45,12 @@ async def crear_actividad(
 
     if not fragments:
         logger.warning("No se encontraron fragmentos para generar actividad")
+        return None
+
+    # Grounding estricto: no generar actividades sobre temas que no están
+    # suficientemente cubiertos por los libros indexados.
+    if not is_context_relevant(fragments):
+        logger.warning("Contexto no relevante; no se genera actividad (grounding estricto)")
         return None
 
     context = build_context_prompt(fragments)
