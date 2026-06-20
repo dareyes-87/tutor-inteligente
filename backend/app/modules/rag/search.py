@@ -11,11 +11,23 @@ logger = logging.getLogger(__name__)
 
 # Cuántos fragmentos devolver como contexto al LLM
 TOP_K = 5
-# Distancia máxima (ChromaDB usa distancia, no similitud; menor = más similar).
-# Umbral estricto de grounding: solo se acepta contexto muy cercano a la pregunta.
-MAX_DISTANCE = 0.85
-# Mínimo de fragmentos relevantes para considerar que SÍ hay contexto en los libros.
-MIN_FRAGMENTOS_RELEVANTES = 2
+
+# --- Umbrales de grounding (calibrados con scripts/debug/diagnostico_distancias.py) ---
+# ChromaDB usa distancia (no similitud): menor = más parecido.
+# Dos criterios en OR para decidir si hay contexto suficiente:
+#   - 1 fragmento MUY cercano basta (preguntas puntuales con un buen match), o
+#   - 2+ fragmentos decentes bastan (preguntas amplias o con OCR ruidoso).
+UMBRAL_ESTRICTO = 0.85
+UMBRAL_AMPLIO = 1.5
+MIN_FRAGMENTOS_AMPLIO = 2
+
+# Distancia máxima de los fragmentos que DEVUELVE search_fragments (la ventana de
+# contexto que ve el LLM). Es > UMBRAL_AMPLIO a propósito: la DECISIÓN de relevancia
+# usa UMBRAL_AMPLIO (1.5), pero una vez decidido que SÍ hay contexto conviene pasarle
+# al LLM también los chunks "casi match" (p. ej. 1.51) que a veces contienen el dato
+# exacto. No afecta el rechazo de preguntas fuera del libro: esas ni llegan al LLM
+# porque is_context_relevant() ya devolvió False con el umbral de 1.5.
+MAX_DISTANCE = 1.55
 
 
 def search_fragments(
@@ -82,8 +94,16 @@ def search_fragments(
                 "distance": round(distance, 4) if distance else None,
             })
 
+    best_dist = min(
+        (f["distance"] for f in fragments if f["distance"] is not None),
+        default=None,
+    )
+    relevant = is_context_relevant(fragments)
     logger.info(
-        f"RAG: query='{query[:50]}...' -> {len(fragments)} fragmentos encontrados"
+        f"RAG query='{query[:50]}' "
+        f"best_dist={best_dist:.3f} relevant={relevant} ({len(fragments)} frags)"
+        if best_dist is not None
+        else f"RAG query='{query[:50]}' best_dist=NA relevant={relevant} (0 frags)"
     )
     return fragments
 
@@ -92,14 +112,19 @@ def is_context_relevant(fragments: list[dict]) -> bool:
     """
     Decide si los fragmentos recuperados son contexto suficiente y relevante.
 
-    Grounding estricto: solo es True si hay al menos MIN_FRAGMENTOS_RELEVANTES
-    fragmentos con distancia conocida <= MAX_DISTANCE. Se ignoran los fragmentos
-    sin distancia (None) para no colar ruido. La usan chat y actividades para
-    rechazar de forma determinística las preguntas fuera de los libros.
+    Grounding por dos criterios en OR (se ignoran los fragmentos sin distancia):
+      - hay >= 1 fragmento con distancia <= UMBRAL_ESTRICTO (un match muy bueno), o
+      - hay >= MIN_FRAGMENTOS_AMPLIO fragmentos con distancia <= UMBRAL_AMPLIO
+        (varios matches decentes).
+
+    La usan chat y actividades para rechazar de forma determinística las
+    preguntas fuera de los libros. Se prioriza que las preguntas SÍ cubiertas
+    por el libro pasen: un falso negativo (rechazar algo que sí está) es peor
+    que un falso positivo, porque el prompt del LLM es la segunda red.
     """
-    relevantes = [
-        f
-        for f in fragments
-        if f.get("distance") is not None and f["distance"] <= MAX_DISTANCE
-    ]
-    return len(relevantes) >= MIN_FRAGMENTOS_RELEVANTES
+    distancias = [f["distance"] for f in fragments if f.get("distance") is not None]
+
+    match_fuerte = any(d <= UMBRAL_ESTRICTO for d in distancias)
+    matches_amplios = sum(1 for d in distancias if d <= UMBRAL_AMPLIO)
+
+    return match_fuerte or matches_amplios >= MIN_FRAGMENTOS_AMPLIO
