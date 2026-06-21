@@ -36,14 +36,8 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!user}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="leccion/[id]/estudiar"
-          options={{ headerShown: true, title: "Estudiar", headerTintColor: Colors.navy }}
-        />
-        <Stack.Screen
-          name="leccion/[id]/practicar"
-          options={{ headerShown: true, title: "Practicar", headerTintColor: Colors.navy }}
-        />
+        <Stack.Screen name="leccion/[id]/estudiar" options={{ headerShown: false }} />
+        <Stack.Screen name="leccion/[id]/practicar" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="login" />

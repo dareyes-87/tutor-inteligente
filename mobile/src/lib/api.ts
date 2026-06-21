@@ -184,14 +184,43 @@ export function preguntar(
     body: JSON.stringify({ pregunta, asignatura_id: asignaturaId, conversacion_id: conversacionId }),
   });
 }
-export function generarActividad(asignaturaId: number, tipo: string, tema: string) {
-  return request<unknown>("/actividades/generar", {
+export type TipoActividad =
+  | "opcion_multiple"
+  | "verdadero_falso"
+  | "completar"
+  | "ordenar"
+  | "respuesta_corta";
+
+export interface ActividadResponse {
+  id: number;
+  tipo: TipoActividad;
+  tema: string | null;
+  contenido: Record<string, unknown>;
+  fecha_creacion: string;
+}
+
+export interface ResultadoResponse {
+  actividad_id: number;
+  puntaje: number; // 0-100
+  retroalimentacion: string;
+  respuesta_correcta: Record<string, unknown>;
+}
+
+export function generarActividad(
+  asignaturaId: number,
+  tipo: TipoActividad,
+  tema: string,
+): Promise<ActividadResponse> {
+  return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
     body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema }),
   });
 }
-export function responderActividad(actividadId: number, respuesta: Record<string, unknown>) {
-  return request<unknown>("/actividades/responder", {
+export function responderActividad(
+  actividadId: number,
+  respuesta: Record<string, unknown>,
+): Promise<ResultadoResponse> {
+  return request<ResultadoResponse>("/actividades/responder", {
     method: "POST",
     body: JSON.stringify({ actividad_id: actividadId, respuesta }),
   });
