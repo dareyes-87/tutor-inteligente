@@ -3,16 +3,15 @@
  *
  * ⚠️ TEMPORAL: reemplazar por llamadas a `lib/api.ts` cuando existan los endpoints.
  *
- * Consumidores que QUEDAN tras conectar ruta/ranking/racha (jun 2026):
+ * Consumidores que QUEDAN (jun 2026):
  *   - `ASIGNATURAS_PROGRESO` → grilla "Mis asignaturas" en /inicio (no hay endpoint
  *     de progreso por asignatura todavía; solo existe la ruta del único libro).
  *   - `NIVEL_META` → tokens visuales de nivel (domina/proceso/refuerzo) usados en
  *     /progreso y para mapear el nivel del perfil real; NO son datos, son estilos.
- *   - `ESTUDIANTES_DOCENTE`, `FAQS`, `LIBROS_DOCENTE`, `inicial` → panel /docente
- *     completo (aún sin endpoints de docente).
  *
- * El resto de exports (PODIO, RANKING_RESTO, SEMANA_RACHA, SALON, CAPITULOS, …) ya
- * NO se usan: /ruta, /ranking e /inicio (racha) ahora consumen datos reales.
+ * Ya NO se usa el resto (PODIO, RANKING_RESTO, SEMANA_RACHA, SALON, CAPITULOS, y los
+ * de docente ESTUDIANTES_DOCENTE/FAQS/LIBROS_DOCENTE/inicial): /ruta, /ranking,
+ * /inicio (racha) y /docente ahora consumen datos reales del backend.
  */
 
 export type Nivel = "domina" | "proceso" | "refuerzo";

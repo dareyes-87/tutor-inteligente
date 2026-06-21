@@ -325,3 +325,91 @@ export function obtenerRacha(): Promise<RachaResponse> {
 export function obtenerRanking(): Promise<RankingResponse> {
   return request<RankingResponse>("/gamificacion/ranking");
 }
+
+// ----------------------- Docente -----------------------
+
+export interface LibroDocente {
+  id: number;
+  titulo: string;
+  asignatura: string;
+  grado: string;
+  estado: string; // procesando / completado / error / pendiente
+  total_fragmentos: number;
+  total_lecciones: number;
+  fecha_creacion: string;
+}
+
+export interface EstudianteResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+  grado: string | null;
+  racha_actual: number;
+  puntos_totales: number;
+  lecciones_completadas: number;
+  ultima_actividad: string | null;
+}
+
+export interface PerfilTemaDocente {
+  asignatura: string;
+  tema: string;
+  puntaje_promedio: number;
+  nivel: string;
+  total_actividades: number;
+}
+
+export interface EstudianteDetalle {
+  id: number;
+  nombre: string;
+  apellido: string;
+  grado: string | null;
+  racha_actual: number;
+  puntos_totales: number;
+  ruta: RutaAprendizaje | null;
+  perfil: PerfilTemaDocente[];
+}
+
+export interface TemaPreguntado {
+  tema: string;
+  total: number;
+}
+
+export interface EstadisticasDocente {
+  total_estudiantes: number;
+  total_libros: number;
+  total_lecciones: number;
+  promedio_progreso: number;
+  temas_mas_preguntados: TemaPreguntado[];
+}
+
+export interface LibroSubido {
+  id: number;
+  titulo: string;
+  asignatura_id: number;
+  grado_id: number;
+  estado_indexacion: string;
+}
+
+export function obtenerLibros(): Promise<LibroDocente[]> {
+  return request<LibroDocente[]>("/docente/libros");
+}
+
+export function obtenerEstudiantes(): Promise<EstudianteResumen[]> {
+  return request<EstudianteResumen[]>("/docente/estudiantes");
+}
+
+export function obtenerDetalleEstudiante(id: number): Promise<EstudianteDetalle> {
+  return request<EstudianteDetalle>(`/docente/estudiantes/${id}/detalle`);
+}
+
+export function obtenerEstadisticas(): Promise<EstadisticasDocente> {
+  return request<EstadisticasDocente>("/docente/estadisticas");
+}
+
+/**
+ * Sube un libro PDF (multipart). El helper `request` NO fija Content-Type
+ * cuando el body es FormData, así que el browser pone el boundary correcto.
+ */
+export function subirLibro(formData: FormData): Promise<LibroSubido> {
+  return request<LibroSubido>("/ingesta/libros", { method: "POST", body: formData });
+}
