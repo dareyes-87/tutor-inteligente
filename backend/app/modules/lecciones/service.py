@@ -155,16 +155,20 @@ async def completar_actividad_leccion(
 
     progreso = await _get_or_create_progreso(estudiante_id, leccion, db)
 
-    # Promedio acumulativo sobre las actividades completadas.
-    prev = progreso.actividades_completadas
-    progreso.puntaje_promedio = (progreso.puntaje_promedio * prev + puntaje) / (prev + 1)
-    progreso.actividades_completadas = prev + 1
+    # Opción A: solo cuentan los ACIERTOS (puntaje >= 70). El campo
+    # `actividades_completadas` lleva el conteo de aciertos (no de respuestas
+    # totales), y `puntaje_promedio` es el promedio de esos aciertos. Una
+    # respuesta < 70 NO avanza ni penaliza la lección: el estudiante reintenta.
+    # Esto evita el "promedio histórico pegajoso" del criterio anterior.
+    if puntaje >= PUNTAJE_MINIMO_COMPLETAR:
+        prev = progreso.actividades_completadas
+        progreso.puntaje_promedio = (progreso.puntaje_promedio * prev + puntaje) / (prev + 1)
+        progreso.actividades_completadas = prev + 1
 
     ya_completada = progreso.estado == EstadoLeccion.completada
     if (
         not ya_completada
         and progreso.actividades_completadas >= progreso.actividades_requeridas
-        and progreso.puntaje_promedio >= PUNTAJE_MINIMO_COMPLETAR
     ):
         progreso.estado = EstadoLeccion.completada
         progreso.fecha_completada = datetime.now(timezone.utc)
