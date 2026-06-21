@@ -18,6 +18,10 @@ from app.modules.ingesta.pdf_processor import process_pdf
 from app.modules.ingesta.chunking import chunk_pages
 from app.modules.ingesta.embeddings import generate_embeddings
 from app.modules.ingesta.indexer import index_chunks
+from app.modules.lecciones.generator import (
+    generar_lecciones_desde_libro,
+    libro_tiene_lecciones,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +128,23 @@ async def procesar_libro(libro_id: int) -> None:
                 f"[Libro {libro_id}] ✅ Completado: {len(chunks)} fragmentos, "
                 f"confianza OCR promedio: {avg_conf:.1f}%"
             )
+
+            # === PASO 7: Generar ruta de aprendizaje (lecciones) ===
+            # Aislado en su propio try: si falla, el libro queda indexado igual.
+            try:
+                if await libro_tiene_lecciones(libro.id, db):
+                    logger.info(
+                        f"[Libro {libro_id}] Ya tiene lecciones; se omite la generación"
+                    )
+                else:
+                    logger.info(f"[Libro {libro_id}] Generando lecciones automáticas...")
+                    lecciones = await generar_lecciones_desde_libro(libro.id, db)
+                    logger.info(
+                        f"[Libro {libro_id}] {len(lecciones)} lecciones generadas"
+                    )
+            except Exception as e:
+                logger.error(f"[Libro {libro_id}] No se pudieron generar lecciones: {e}")
+                logger.error(traceback.format_exc())
 
         except Exception as e:
             logger.error(f"[Libro {libro_id}] ❌ Error: {e}")

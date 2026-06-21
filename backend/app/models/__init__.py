@@ -8,6 +8,8 @@ from app.models.conversacion import Conversacion
 from app.models.mensaje import Mensaje, RolMensaje
 from app.models.actividad import Actividad, ResultadoActividad, TipoActividad
 from app.models.perfil_comprension import PerfilComprension
+from app.models.leccion import Leccion
+from app.models.progreso_leccion import ProgresoLeccion, EstadoLeccion
 
 __all__ = [
     "Grado", "Asignatura", "Usuario", "RolUsuario",
@@ -15,4 +17,5 @@ __all__ = [
     "Conversacion", "Mensaje", "RolMensaje",
     "Actividad", "ResultadoActividad", "TipoActividad",
     "PerfilComprension",
+    "Leccion", "ProgresoLeccion", "EstadoLeccion",
 ]

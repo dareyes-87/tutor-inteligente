@@ -46,3 +46,8 @@ class LibroTexto(Base):
     fragmentos: Mapped[list["Fragmento"]] = relationship(
         back_populates="libro", cascade="all, delete-orphan"
     )
+    lecciones: Mapped[list["Leccion"]] = relationship(
+        back_populates="libro",
+        cascade="all, delete-orphan",
+        order_by="Leccion.orden",
+    )

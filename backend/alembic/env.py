@@ -8,6 +8,7 @@ from app.database import Base
 from app.models import (  # noqa - importar todo para que Alembic detecte las tablas
     Grado, Asignatura, Usuario, LibroTexto, Fragmento,
     Conversacion, Mensaje, Actividad, ResultadoActividad, PerfilComprension,
+    Leccion, ProgresoLeccion,
 )
 
 config = context.config

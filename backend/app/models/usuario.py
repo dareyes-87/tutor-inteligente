@@ -39,3 +39,6 @@ class Usuario(Base):
     # Relaciones
     grado: Mapped["Grado | None"] = relationship(back_populates="usuarios")
     libros_subidos: Mapped[list["LibroTexto"]] = relationship(back_populates="subido_por_usuario")
+    progresos_lecciones: Mapped[list["ProgresoLeccion"]] = relationship(
+        back_populates="estudiante"
+    )
