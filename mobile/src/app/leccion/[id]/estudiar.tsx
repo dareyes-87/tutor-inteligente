@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -71,6 +72,14 @@ export default function EstudiarScreen() {
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [mensajes, enviando]);
 
+  // Auto-scroll al último mensaje cuando sube el teclado.
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => sub.remove();
+  }, []);
+
   async function enviar() {
     const t = texto.trim();
     if (!t || enviando) return;
@@ -89,7 +98,10 @@ export default function EstudiarScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <StatusBar style="light" />
       {/* Header navy */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -111,12 +123,7 @@ export default function EstudiarScreen() {
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <ScrollView
+      <ScrollView
           ref={scrollRef}
           style={styles.chat}
           contentContainerStyle={{ padding: 16, gap: 14 }}
@@ -159,8 +166,7 @@ export default function EstudiarScreen() {
             {enviando ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.enviarText}>➤</Text>}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

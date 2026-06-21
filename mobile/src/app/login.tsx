@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -37,8 +38,14 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {/* Mitad superior crema con mascota */}
       <View style={styles.top}>
         <Text style={styles.mascota}>🐯</Text>
@@ -87,6 +94,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -264,7 +266,10 @@ export default function PracticarScreen() {
           : str("pregunta");
 
   return (
-    <View style={styles.ejRoot}>
+    <KeyboardAvoidingView
+      style={styles.ejRoot}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <StatusBar style="light" />
       {/* Header: X + barra de bolitas */}
       <View style={[styles.ejHeader, { paddingTop: insets.top + 8 }]}>
@@ -281,7 +286,7 @@ export default function PracticarScreen() {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         <Text style={styles.tipoLabel}>{act.tipo.replace("_", " ").toUpperCase()}</Text>
         <Text style={styles.pregunta}>{pregunta}</Text>
 
@@ -386,7 +391,7 @@ export default function PracticarScreen() {
 
       {/* Panel de feedback (sube desde abajo) */}
       {feedback && <FeedbackPanel act={act} feedback={feedback} anim={panelAnim} bottomInset={insets.bottom} onContinuar={continuar} />}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -479,7 +484,7 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 2, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
   chipOn: { borderColor: Colors.orange, backgroundColor: "rgba(249,115,22,0.18)" },
   chipText: { color: Colors.white, fontSize: 14.5, fontWeight: "700" },
-  footer: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: Colors.navy, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  footer: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: Colors.navy, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
   confirmar: { backgroundColor: Colors.orange, borderRadius: 18, paddingVertical: 16, alignItems: "center" },
   confirmarText: { color: Colors.white, fontSize: 17, fontWeight: "900" },
 
