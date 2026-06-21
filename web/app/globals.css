@@ -222,6 +222,37 @@
   animation: sparkle 2.5s ease-in-out infinite;
 }
 
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-40px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(540deg);
+    opacity: 0.9;
+  }
+}
+@utility animate-confetti {
+  animation: confettiFall linear infinite;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@utility animate-pop-in {
+  animation: popIn 0.25s ease-out;
+}
+
 /* Botones con relieve (sombra inferior sólida, estilo "juguete") */
 @utility btn-relief {
   box-shadow: 0 6px 0 var(--btn-relief-color, var(--brand-orange-dark));

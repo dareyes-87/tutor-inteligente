@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
@@ -81,6 +82,7 @@ function estiloDe(estado: EstadoLeccion): EstiloEstado {
 
 export default function RutaPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
   const [racha, setRacha] = useState(0);
   const [puntos, setPuntos] = useState(0);
@@ -125,11 +127,9 @@ export default function RutaPage() {
     setActuando(true);
     try {
       await iniciarLeccion(leccionId);
-      toast.success("¡Lección iniciada! 📖");
-      setIntento((n) => n + 1); // recarga vía effect
+      router.push(`/ruta/${leccionId}/estudiar`); // tras iniciar, va a estudiar
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "No se pudo empezar la lección");
-    } finally {
       setActuando(false);
     }
   }
@@ -374,13 +374,13 @@ function LeccionFila({
         {l.estado === "en_progreso" && (
           <div className="flex flex-none flex-col gap-2">
             <Link
-              href="/chat"
+              href={`/ruta/${l.id}/estudiar`}
               className="btn-relief rounded-[14px] bg-brand-orange px-6 py-3 text-center text-[14.5px] font-black text-white"
             >
               Estudiar 📖
             </Link>
             <Link
-              href="/actividades"
+              href={`/ruta/${l.id}/practicar`}
               className="btn-relief rounded-[14px] bg-brand-blue px-6 py-2.5 text-center text-[13px] font-extrabold text-white"
               style={{ ["--btn-relief-color" as string]: "var(--brand-blue-dark)" }}
             >
