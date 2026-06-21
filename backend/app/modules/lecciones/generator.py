@@ -68,7 +68,8 @@ Genera un JSON con esta estructura exacta:
 }}
 
 REGLAS:
-- Genera entre 5 y 15 lecciones dependiendo de la extensión del libro.
+- Genera entre 5 y 10 lecciones. Agrupa temas relacionados en una sola lección (ejemplo: "Ruido y Audición" en vez de dos lecciones separadas para ruido y audífonos). Prefiere lecciones que cubran 2-4 páginas cada una sobre lecciones de 1 sola página.
+- Cubre TODO el contenido del libro de principio a fin: no omitas páginas ni temas. Si hace falta para no exceder 10 lecciones, agrupa más temas en una misma lección, pero nunca dejes contenido fuera de la ruta.
 - Ordénalas pedagógicamente (conceptos básicos primero).
 - El tema_clave debe ser específico para buscar en el contenido del libro.
 - Los nombres deben ser atractivos para niños.
