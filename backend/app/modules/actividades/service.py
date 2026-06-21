@@ -137,12 +137,55 @@ async def responder_actividad(
 
     await db.commit()
 
-    return {
+    # Se arma la respuesta ANTES de la integración: si esta falla y hace
+    # rollback (que expira los objetos), el return no necesita tocar la BD.
+    respuesta = {
         "actividad_id": actividad_id,
         "puntaje": evaluacion["puntaje"],
         "retroalimentacion": evaluacion["retroalimentacion"],
         "respuesta_correcta": actividad.respuesta_correcta,
     }
+    asignatura_id = actividad.asignatura_id
+
+    # --- Integración con la ruta de aprendizaje (mejor esfuerzo) ---
+    # Si el estudiante tiene una lección en_progreso de la misma asignatura,
+    # el puntaje alimenta su avance en esa lección. El resultado de la
+    # actividad ya quedó commiteado arriba; si esto falla, la respuesta de la
+    # actividad sigue funcionando igual.
+    try:
+        from app.models.leccion import Leccion
+        from app.models.libro import LibroTexto
+        from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
+        from app.modules.lecciones.service import completar_actividad_leccion
+
+        progreso_activo = await db.execute(
+            select(ProgresoLeccion)
+            .join(Leccion, ProgresoLeccion.leccion_id == Leccion.id)
+            .join(LibroTexto, Leccion.libro_id == LibroTexto.id)
+            .where(
+                ProgresoLeccion.estudiante_id == estudiante_id,
+                ProgresoLeccion.estado == EstadoLeccion.en_progreso,
+                LibroTexto.asignatura_id == asignatura_id,
+            )
+            .limit(1)
+        )
+        progreso = progreso_activo.scalar_one_or_none()
+        if progreso:
+            await completar_actividad_leccion(
+                estudiante_id=estudiante_id,
+                leccion_id=progreso.leccion_id,
+                puntaje=evaluacion["puntaje"],
+                db=db,
+            )
+            logger.info(
+                f"[Actividades] Puntaje {evaluacion['puntaje']} aplicado a la "
+                f"lección {progreso.leccion_id} (estudiante {estudiante_id})"
+            )
+    except Exception as e:
+        logger.error(f"[Actividades] No se pudo avanzar la ruta de aprendizaje: {e}")
+        await db.rollback()
+
+    return respuesta
 
 
 async def _actualizar_perfil(
