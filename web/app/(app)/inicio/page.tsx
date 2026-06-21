@@ -1,20 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import {
+  obtenerRacha,
+  obtenerRuta,
+  type RachaResponse,
+  type RutaAprendizaje,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Mascota } from "@/components/mascota";
 import { ProgressRing } from "@/components/progress-ring";
-import {
-  ASIGNATURAS_PROGRESO,
-  PODIO,
-  RACHA_DIAS,
-  SEMANA_RACHA,
-} from "@/lib/mock";
+import { ASIGNATURAS_PROGRESO } from "@/lib/mock"; // mock: grilla de asignaturas (ver lib/mock.ts)
 
 export default function InicioPage() {
   const { user } = useAuth();
   const nombre = user?.nombre ?? "Sofía";
+
+  const [racha, setRacha] = useState<RachaResponse | null>(null);
+  const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
+
+  useEffect(() => {
+    let activo = true;
+    Promise.all([obtenerRacha(), obtenerRuta(1)])
+      .then(([rachaResp, rutaResp]) => {
+        if (!activo) return;
+        setRacha(rachaResp);
+        setRuta(rutaResp);
+      })
+      .catch(() => {
+        /* silencioso: el dashboard sigue mostrándose con lo demás */
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const leccionActual = ruta
+    ? Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1)
+    : 0;
 
   return (
     <div className="px-[38px] py-[34px]">
@@ -42,67 +67,65 @@ export default function InicioPage() {
         </Link>
       </div>
 
-      {/* Racha + ranking */}
+      {/* Racha (real) + Mi ruta (real) */}
       <div className="mb-7 flex gap-5">
         {/* Racha */}
         <div className="flex flex-1 items-center gap-[22px] rounded-[22px] bg-gradient-to-br from-[#FB923C] to-brand-orange px-[26px] py-6 text-white shadow-[0_10px_24px_rgba(249,115,22,.28)]">
           <div className="animate-flame text-[62px] leading-none">🔥</div>
           <div className="flex-1">
-            <div className="text-[34px] font-black leading-none">{RACHA_DIAS} días</div>
-            <div className="text-[15px] font-extrabold opacity-95">
-              seguidos · ¡no rompas la racha!
+            <div className="text-[34px] font-black leading-none">
+              {racha?.racha_actual ?? 0} {racha?.racha_actual === 1 ? "día" : "días"}
             </div>
-            <div className="mt-3.5 flex gap-[7px]">
-              {SEMANA_RACHA.map((d, i) => (
-                <div key={i} className="flex-1 text-center">
-                  <div
-                    className="mx-auto grid h-[30px] w-[30px] place-items-center rounded-full text-sm"
-                    style={{ background: d.done ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)" }}
-                  >
-                    {d.done ? "🔥" : ""}
-                  </div>
-                  <div className="mt-1 text-[10px] font-extrabold opacity-90">{d.label}</div>
-                </div>
-              ))}
+            <div className="text-[15px] font-extrabold opacity-95">
+              {racha?.activo_hoy
+                ? "¡Ya practicaste hoy! 🎉"
+                : "seguidos · ¡no rompas la racha!"}
+            </div>
+            <div className="mt-3.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3.5 py-1.5 text-[13px] font-extrabold">
+              🏆 Mejor racha: {racha?.mejor_racha ?? 0}
             </div>
           </div>
         </div>
 
-        {/* Mini ranking */}
+        {/* Mi ruta */}
         <div className="w-[430px] flex-none rounded-[22px] border border-border bg-white px-6 py-[22px] shadow-[0_6px_20px_rgba(30,43,77,.05)]">
           <div className="mb-1.5 flex items-center justify-between">
-            <div className="text-base font-black text-navy">🏆 Tu salón</div>
-            <Link href="/ranking" className="text-[13px] font-extrabold text-brand-blue">
-              Ver ranking →
+            <div className="text-base font-black text-navy">🗺️ Mi ruta</div>
+            <Link href="/ruta" className="text-[13px] font-extrabold text-brand-blue">
+              Continuar →
             </Link>
           </div>
           <div className="mb-3.5 text-sm font-bold text-muted-foreground">
-            Vas en el <span className="font-black text-brand-orange">Puesto #3</span>
+            {ruta ? (
+              <>
+                Vas en la{" "}
+                <span className="font-black text-brand-orange">
+                  Lección {leccionActual} de {ruta.total_lecciones}
+                </span>{" "}
+                · {ruta.asignatura}
+              </>
+            ) : (
+              "Cargando tu progreso…"
+            )}
           </div>
-          <div className="flex h-[120px] items-end justify-center gap-3">
-            {PODIO.map((p) => (
-              <div key={p.pos} className="w-24 text-center">
-                <div className="text-[22px]">{p.medal}</div>
-                <div
-                  className="mx-auto mb-1.5 mt-1 grid h-[46px] w-[46px] place-items-center overflow-hidden rounded-full bg-[#EDE7DD] text-base font-black text-navy"
-                  style={{ boxShadow: `0 0 0 3px ${p.ring}` }}
-                >
-                  {p.initial}
-                </div>
-                <div
-                  className="grid place-items-start justify-center rounded-t-xl pt-2 text-[15px] font-black text-navy"
-                  style={{ background: p.bg, height: p.h }}
-                >
-                  {p.pos}
-                </div>
-                <div className="mt-[5px] text-[11px] font-extrabold text-[#5A6170]">{p.name}</div>
-              </div>
-            ))}
+          <div className="h-3.5 overflow-hidden rounded-full bg-[#ECE7DE]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-orange to-[#FB923C]"
+              style={{ width: `${ruta?.progreso_porcentaje ?? 0}%` }}
+            />
+          </div>
+          <div className="mt-2.5 flex items-center justify-between text-[13px] font-extrabold">
+            <span className="text-muted-foreground">
+              {ruta?.lecciones_completadas ?? 0} de {ruta?.total_lecciones ?? 0} completadas
+            </span>
+            <span className="text-brand-orange">
+              {Math.round(ruta?.progreso_porcentaje ?? 0)}%
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Asignaturas */}
+      {/* Asignaturas (datos mock — ver lib/mock.ts) */}
       <div className="mb-4 flex items-center justify-between">
         <div className="text-xl font-black text-navy">Mis asignaturas</div>
         <Link href="/progreso" className="text-[13px] font-extrabold text-brand-blue">

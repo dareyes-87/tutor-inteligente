@@ -1,9 +1,18 @@
 /**
- * Datos de ejemplo (placeholder) para las pantallas que aún no tienen endpoint
- * en el backend: racha, ranking, progreso por capítulo y panel docente.
+ * Datos de ejemplo (placeholder) para lo que aún NO tiene endpoint en el backend.
  *
- * ⚠️ TEMPORAL: cuando existan los endpoints reales, reemplazar estos datos por
- * llamadas a `lib/api.ts`. Tomados tal cual de la guía de diseño.
+ * ⚠️ TEMPORAL: reemplazar por llamadas a `lib/api.ts` cuando existan los endpoints.
+ *
+ * Consumidores que QUEDAN tras conectar ruta/ranking/racha (jun 2026):
+ *   - `ASIGNATURAS_PROGRESO` → grilla "Mis asignaturas" en /inicio (no hay endpoint
+ *     de progreso por asignatura todavía; solo existe la ruta del único libro).
+ *   - `NIVEL_META` → tokens visuales de nivel (domina/proceso/refuerzo) usados en
+ *     /progreso y para mapear el nivel del perfil real; NO son datos, son estilos.
+ *   - `ESTUDIANTES_DOCENTE`, `FAQS`, `LIBROS_DOCENTE`, `inicial` → panel /docente
+ *     completo (aún sin endpoints de docente).
+ *
+ * El resto de exports (PODIO, RANKING_RESTO, SEMANA_RACHA, SALON, CAPITULOS, …) ya
+ * NO se usan: /ruta, /ranking e /inicio (racha) ahora consumen datos reales.
  */
 
 export type Nivel = "domina" | "proceso" | "refuerzo";

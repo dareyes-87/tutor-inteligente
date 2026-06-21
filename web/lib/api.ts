@@ -246,3 +246,82 @@ export interface PerfilTema {
 export function getPerfil(): Promise<PerfilTema[]> {
   return request<PerfilTema[]>("/actividades/perfil");
 }
+
+// ----------------------- Ruta de aprendizaje -----------------------
+
+export type EstadoLeccion = "bloqueada" | "disponible" | "en_progreso" | "completada";
+
+export interface LeccionEnRuta {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  orden: number;
+  tema_clave: string;
+  paginas: string | null;
+  estado: EstadoLeccion;
+  puntaje_promedio: number;
+  actividades_completadas: number;
+  actividades_requeridas: number;
+}
+
+export interface RutaAprendizaje {
+  libro_id: number;
+  asignatura: string;
+  total_lecciones: number;
+  lecciones_completadas: number;
+  progreso_porcentaje: number; // 0-100
+  lecciones: LeccionEnRuta[];
+}
+
+/** Ruta de aprendizaje del libro con el progreso del estudiante. */
+export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
+  return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);
+}
+
+/** Marca una lección disponible como en progreso. */
+export function iniciarLeccion(leccionId: number): Promise<LeccionEnRuta> {
+  return request<LeccionEnRuta>(`/lecciones/${leccionId}/iniciar`, { method: "POST" });
+}
+
+/** Registra una actividad completada en una lección (puede completarla). */
+export function completarActividadLeccion(
+  leccionId: number,
+  puntaje: number,
+): Promise<LeccionEnRuta> {
+  return request<LeccionEnRuta>(`/lecciones/${leccionId}/completar-actividad`, {
+    method: "POST",
+    body: JSON.stringify({ puntaje }),
+  });
+}
+
+// ----------------------- Gamificación -----------------------
+
+export interface RachaResponse {
+  racha_actual: number;
+  mejor_racha: number;
+  activo_hoy: boolean;
+}
+
+export interface RankingEstudiante {
+  posicion: number;
+  nombre: string;
+  apellido: string;
+  lecciones_completadas: number;
+  puntos_totales: number;
+  racha_actual: number;
+}
+
+export interface RankingResponse {
+  ranking: RankingEstudiante[];
+  mi_posicion: number;
+}
+
+/** Racha del estudiante (actual, mejor, y si ya estuvo activo hoy). */
+export function obtenerRacha(): Promise<RachaResponse> {
+  return request<RachaResponse>("/gamificacion/racha");
+}
+
+/** Ranking de los estudiantes del grado del estudiante actual. */
+export function obtenerRanking(): Promise<RankingResponse> {
+  return request<RankingResponse>("/gamificacion/ranking");
+}

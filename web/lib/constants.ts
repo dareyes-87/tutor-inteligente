@@ -19,6 +19,7 @@ export interface NavItem {
 
 /** Sidebar del estudiante — réplica de StudentNav del diseño. */
 export const STUDENT_NAV: NavItem[] = [
+  { href: "/ruta", key: "ruta", label: "Mi Ruta", icon: "🗺️" },
   { href: "/inicio", key: "inicio", label: "Inicio", icon: "🏠" },
   { href: "/chat", key: "chat", label: "Chat", icon: "💬" },
   { href: "/actividades", key: "actividades", label: "Actividades", icon: "🎯" },
