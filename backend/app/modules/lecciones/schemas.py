@@ -41,6 +41,15 @@ class RutaAprendizaje(BaseModel):
     lecciones: list[LeccionEnRuta]
 
 
+# ----------------------- Libro del estudiante -----------------------
+
+class MiLibroResponse(BaseModel):
+    """Libro activo del estudiante (resuelto por su grado)."""
+    libro_id: int
+    titulo: str
+    total_lecciones: int
+
+
 # ----------------------- Acciones del estudiante -----------------------
 
 class CompletarActividadRequest(BaseModel):

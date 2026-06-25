@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   ApiError,
   iniciarLeccion,
+  obtenerMiLibro,
   obtenerRacha,
   obtenerRanking,
   obtenerRuta,
@@ -17,8 +18,6 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Mascota } from "@/components/mascota";
-
-const LIBRO_ID = 1; // único libro por ahora
 
 // Iconos kid-friendly por lección (el backend no guarda emoji): se ciclan por orden.
 const ICONOS = ["🌿", "💧", "🧪", "⚡", "🪐", "🌻", "🦎", "🫀", "🔬", "🌎", "🧬", "🍎"];
@@ -94,7 +93,11 @@ export default function RutaPage() {
   // El effect solo hace setState dentro de los callbacks de la promesa.
   useEffect(() => {
     let activo = true;
-    Promise.all([obtenerRuta(LIBRO_ID), obtenerRacha(), obtenerRanking()])
+    Promise.all([
+      obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
+      obtenerRacha(),
+      obtenerRanking(),
+    ])
       .then(([r, rachaResp, rankingResp]) => {
         if (!activo) return;
         setRuta(r);

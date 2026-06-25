@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { obtenerRuta, preguntar, type LeccionEnRuta } from "@/lib/api";
+import { obtenerMiLibro, obtenerRuta, preguntar, type LeccionEnRuta } from "@/lib/api";
 import { Colors } from "@/lib/colors";
 
 const ASIGNATURA_ID = 1;
@@ -42,7 +42,8 @@ export default function EstudiarScreen() {
     let activo = true;
     (async () => {
       try {
-        const ruta = await obtenerRuta(1);
+        const mi = await obtenerMiLibro();
+        const ruta = await obtenerRuta(mi.libro_id);
         const l = ruta.lecciones.find((x) => x.id === leccionId) ?? null;
         if (!activo) return;
         setLeccion(l);

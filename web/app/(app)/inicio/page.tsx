@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
+  obtenerMiLibro,
   obtenerRacha,
   obtenerRuta,
   type RachaResponse,
@@ -23,7 +24,10 @@ export default function InicioPage() {
 
   useEffect(() => {
     let activo = true;
-    Promise.all([obtenerRacha(), obtenerRuta(1)])
+    Promise.all([
+      obtenerRacha(),
+      obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
+    ])
       .then(([rachaResp, rutaResp]) => {
         if (!activo) return;
         setRacha(rachaResp);

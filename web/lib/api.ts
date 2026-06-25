@@ -273,6 +273,18 @@ export interface RutaAprendizaje {
   lecciones: LeccionEnRuta[];
 }
 
+/** Libro activo del estudiante, resuelto por su grado en el backend. */
+export interface MiLibro {
+  libro_id: number;
+  titulo: string;
+  total_lecciones: number;
+}
+
+/** Resuelve el libro activo del estudiante (evita hardcodear el libro_id). */
+export function obtenerMiLibro(): Promise<MiLibro> {
+  return request<MiLibro>("/lecciones/mi-libro");
+}
+
 /** Ruta de aprendizaje del libro con el progreso del estudiante. */
 export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);

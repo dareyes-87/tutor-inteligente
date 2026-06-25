@@ -14,11 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asignatura import Asignatura
 from app.models.leccion import Leccion
-from app.models.libro import LibroTexto
+from app.models.libro import EstadoIndexacion, LibroTexto
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.lecciones.schemas import (
     LeccionEnRuta,
+    MiLibroResponse,
     RachaResponse,
     RankingEstudiante,
     RankingResponse,
@@ -116,6 +117,49 @@ async def obtener_ruta(
         lecciones_completadas=completadas,
         progreso_porcentaje=pct,
         lecciones=items,
+    )
+
+
+async def obtener_mi_libro(estudiante: Usuario, db: AsyncSession) -> MiLibroResponse:
+    """
+    Resuelve el libro activo del estudiante a partir de su grado.
+
+    Busca el primer libro (por id) que esté indexado (`completado`), sea del
+    grado del estudiante y tenga al menos una lección generada. Así el frontend
+    no necesita un `libro_id` hardcodeado.
+    """
+    if estudiante.grado_id is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El estudiante no tiene un grado asignado.",
+        )
+
+    total_lecciones = func.count(Leccion.id)
+    fila = (
+        await db.execute(
+            select(LibroTexto, total_lecciones)
+            .join(Leccion, Leccion.libro_id == LibroTexto.id)
+            .where(
+                LibroTexto.grado_id == estudiante.grado_id,
+                LibroTexto.estado_indexacion == EstadoIndexacion.completado,
+            )
+            .group_by(LibroTexto.id)
+            .having(total_lecciones > 0)
+            .order_by(LibroTexto.id)
+            .limit(1)
+        )
+    ).first()
+    if fila is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No hay un libro con lecciones disponible para tu grado.",
+        )
+
+    libro, total = fila
+    return MiLibroResponse(
+        libro_id=libro.id,
+        titulo=libro.titulo,
+        total_lecciones=total,
     )
 
 

@@ -14,6 +14,7 @@ from app.modules.lecciones import service
 from app.modules.lecciones.schemas import (
     CompletarActividadRequest,
     LeccionEnRuta,
+    MiLibroResponse,
     RachaResponse,
     RankingResponse,
     RutaAprendizaje,
@@ -23,6 +24,15 @@ router = APIRouter(tags=["Lecciones y Gamificación"])
 
 # Dependencia: solo estudiantes autenticados.
 _estudiante = require_role(RolUsuario.estudiante)
+
+
+@router.get("/lecciones/mi-libro", response_model=MiLibroResponse)
+async def get_mi_libro(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(_estudiante),
+):
+    """Libro activo del estudiante (resuelto por su grado). 404 si no hay."""
+    return await service.obtener_mi_libro(current_user, db)
 
 
 @router.get("/lecciones/ruta", response_model=RutaAprendizaje)

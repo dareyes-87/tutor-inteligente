@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  obtenerMiLibro,
   obtenerRuta,
   preguntar,
   type LeccionEnRuta,
@@ -38,7 +39,8 @@ export default function EstudiarPage() {
     let activo = true;
     (async () => {
       try {
-        const ruta = await obtenerRuta(1);
+        const mi = await obtenerMiLibro();
+        const ruta = await obtenerRuta(mi.libro_id);
         const l = ruta.lecciones.find((x) => x.id === leccionId) ?? null;
         if (!activo) return;
         setLeccion(l);

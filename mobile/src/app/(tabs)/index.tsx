@@ -15,6 +15,7 @@ import { LeccionCard } from "@/components/LeccionCard";
 import { ProgressBar } from "@/components/ProgressBar";
 import {
   iniciarLeccion,
+  obtenerMiLibro,
   obtenerRacha,
   obtenerRanking,
   obtenerRuta,
@@ -22,8 +23,6 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Colors } from "@/lib/colors";
-
-const LIBRO_ID = 1;
 
 export default function MiRutaScreen() {
   const { user } = useAuth();
@@ -38,7 +37,7 @@ export default function MiRutaScreen() {
   const cargar = useCallback(async () => {
     try {
       const [r, rachaResp, rankingResp] = await Promise.all([
-        obtenerRuta(LIBRO_ID),
+        obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
         obtenerRacha(),
         obtenerRanking(),
       ]);

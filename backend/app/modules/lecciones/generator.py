@@ -2,11 +2,15 @@
 Generador automático de lecciones (ruta de aprendizaje) a partir del
 contenido de un libro ya indexado.
 
-Tras la ingesta, agrupa los fragmentos del libro por página, le pide al LLM
-una lista de lecciones ordenadas pedagógicamente y las persiste en la tabla
-`leccion`. Si el LLM falla, cae a un fallback determinístico por rango de páginas.
+Tras la ingesta, divide el libro en segmentos de páginas CONSECUTIVOS (tantos
+como lecciones queremos, escalado por el tamaño del libro) y le pide al LLM que
+le ponga nombre/descripción/tema a cada segmento. Así la ruta cubre el libro de
+principio a fin de forma determinística (el LLM no puede "olvidar" la mitad
+final): la cobertura la garantiza la segmentación, y el LLM solo aporta los
+nombres atractivos. Si el LLM falla, cada segmento recibe un nombre genérico.
 """
 import logging
+import math
 
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -15,64 +19,104 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm.client import llm_client
 from app.models.fragmento import Fragmento
 from app.models.leccion import Leccion
-from app.modules.lecciones.schemas import LeccionesGeneradas
+from app.modules.lecciones.schemas import LeccionGenerada
 
 logger = logging.getLogger(__name__)
 
-# Cuántos caracteres de cada fragmento se le pasan al LLM (control de tokens).
-MAX_CHARS_POR_FRAGMENTO = 200
-# Tope defensivo del resumen total para no exceder el contexto en libros grandes.
-MAX_CHARS_RESUMEN = 24000
-# Tamaño de los grupos de páginas en el fallback.
-PAGINAS_POR_LECCION_FALLBACK = 5
+# Caracteres del primer fragmento de cada página que se le pasan al LLM como
+# extracto. Solo el INICIO de cada página acota el costo de tokens; si el total
+# excede el contexto, se reduce.
+CHARS_POR_PAGINA = 100
+CHARS_POR_PAGINA_REDUCIDO = 50
+# Tope defensivo del texto total que ve el LLM. Qwen 7B tiene ~32K tokens de
+# contexto (≈48K chars en español); 48000 deja margen para el prompt + la salida.
+MAX_CHARS_CONTEXTO = 48000
+
+# --- Cantidad de lecciones, escalada por el tamaño del libro ---
+# nº lecciones = (páginas con contenido / PAGINAS_POR_LECCION), acotado [MIN, MAX].
+# Un libro corto da pocas lecciones; uno largo (p. ej. 189 págs ≈ 21 lecciones)
+# cubre TODO el contenido en vez de quedarse en el inicio.
+PAGINAS_POR_LECCION = 9
+MIN_LECCIONES = 5
+MAX_LECCIONES = 25
 
 
-def _construir_resumen_paginas(fragmentos: list[Fragmento]) -> str:
-    """Agrupa los fragmentos por página y arma un resumen breve por página."""
-    por_pagina: dict[int, list[str]] = {}
+def _calcular_num_lecciones(fragmentos: list[Fragmento]) -> int:
+    """Cuántas lecciones generar según cuántas páginas de contenido tiene el libro."""
+    num_paginas = len({f.numero_pagina for f in fragmentos})
+    objetivo = math.ceil(num_paginas / PAGINAS_POR_LECCION) if num_paginas else MIN_LECCIONES
+    return max(MIN_LECCIONES, min(MAX_LECCIONES, objetivo))
+
+
+def _snippets_por_pagina(fragmentos: list[Fragmento], chars_por_pagina: int) -> dict[int, str]:
+    """Mapa página -> primeros `chars_por_pagina` de su primer fragmento.
+
+    Los fragmentos llegan ordenados por (numero_pagina, id), así que el primero
+    de cada página es el inicio de esa página.
+    """
+    por_pagina: dict[int, str] = {}
     for f in fragmentos:
+        if f.numero_pagina in por_pagina:
+            continue  # solo el primer fragmento de cada página
         texto = " ".join((f.contenido_texto or "").split())
-        por_pagina.setdefault(f.numero_pagina, []).append(texto[:MAX_CHARS_POR_FRAGMENTO])
+        por_pagina[f.numero_pagina] = texto[:chars_por_pagina]
+    return por_pagina
 
-    partes = []
-    for pagina in sorted(por_pagina):
-        partes.append(f"Página {pagina}: " + " ".join(por_pagina[pagina]))
 
-    resumen = "\n".join(partes)
-    if len(resumen) > MAX_CHARS_RESUMEN:
+def _segmentar(fragmentos: list[Fragmento], num_lecciones: int) -> list[dict]:
+    """Divide las páginas del libro en ~`num_lecciones` segmentos consecutivos.
+
+    Cada segmento = {ini, fin, paginas: "ini-fin", texto: extractos de sus páginas}.
+    Es la unidad de una lección y garantiza cobertura completa del libro.
+    Si el texto total excede el contexto, reduce los extractos por página.
+    """
+    chars = CHARS_POR_PAGINA
+    snippets = _snippets_por_pagina(fragmentos, chars)
+    paginas = sorted(snippets)
+    if not paginas:
+        return []
+    # Si el extracto completo no cabe en el contexto, reduce chars/página.
+    total = sum(len(snippets[p]) for p in paginas)
+    if total > MAX_CHARS_CONTEXTO:
+        chars = CHARS_POR_PAGINA_REDUCIDO
         logger.info(
-            "[Lecciones] Resumen truncado de %d a %d chars",
-            len(resumen), MAX_CHARS_RESUMEN,
+            "[Lecciones] Extractos de %d chars superan %d; reduciendo a %d chars/página",
+            total, MAX_CHARS_CONTEXTO, chars,
         )
-        resumen = resumen[:MAX_CHARS_RESUMEN]
-    return resumen
+        snippets = _snippets_por_pagina(fragmentos, chars)
+
+    grupos = max(1, min(num_lecciones, len(paginas)))
+    tam = math.ceil(len(paginas) / grupos)
+    segmentos: list[dict] = []
+    for i in range(0, len(paginas), tam):
+        grupo = paginas[i:i + tam]
+        ini, fin = grupo[0], grupo[-1]
+        texto = " ".join(f"[p{p}] {snippets[p]}" for p in grupo)
+        segmentos.append({"ini": ini, "fin": fin, "paginas": f"{ini}-{fin}", "texto": texto})
+    return segmentos
 
 
-def _build_messages(resumen_paginas: str, estricto: bool = False) -> list[dict]:
-    """Construye los mensajes para el LLM. `estricto` refuerza el reintento."""
-    prompt = f"""Eres un experto en diseño curricular. Analiza el siguiente contenido de un libro de texto escolar y genera una lista de lecciones ordenadas pedagógicamente (de lo más básico a lo más avanzado).
+def _build_messages_segmento(
+    seg: dict, indice: int, total: int, estricto: bool = False
+) -> list[dict]:
+    """Pide al LLM el nombre/descripción/tema de UN solo segmento.
 
-CONTENIDO DEL LIBRO (resúmenes por página):
-{resumen_paginas}
+    Una llamada por segmento evita que el modelo "arrastre" el tema de las
+    primeras páginas al resto del libro: solo ve el contenido de este segmento.
+    """
+    prompt = f"""Eres un experto en diseño curricular escolar en Guatemala. A continuación tienes el contenido de UNA lección (la {indice} de {total}) de un libro de Ciencias Naturales, correspondiente a las páginas {seg['paginas']}:
 
-Genera un JSON con esta estructura exacta:
+{seg['texto']}
+
+Genera un JSON para ESTA lección, basándote ÚNICAMENTE en el contenido anterior:
 {{
-  "lecciones": [
-    {{
-      "nombre": "Nombre de la lección (corto, claro, para niños de 8-12 años)",
-      "descripcion": "Una oración describiendo qué aprenderá el estudiante",
-      "tema_clave": "palabra o frase clave para buscar en la base de datos (1-3 palabras)",
-      "paginas": "rango de páginas, ej: 1-5"
-    }}
-  ]
+  "nombre": "Nombre corto y atractivo para niños de 8-12 años, sobre el tema REAL de este contenido",
+  "descripcion": "Una oración sobre qué aprenderá el estudiante",
+  "tema_clave": "palabra o frase clave (1-3 palabras) específica de este contenido para buscar en la base de datos"
 }}
 
 REGLAS:
-- Genera entre 5 y 10 lecciones. Agrupa temas relacionados en una sola lección (ejemplo: "Ruido y Audición" en vez de dos lecciones separadas para ruido y audífonos). Prefiere lecciones que cubran 2-4 páginas cada una sobre lecciones de 1 sola página.
-- Cubre TODO el contenido del libro de principio a fin: no omitas páginas ni temas. Si hace falta para no exceder 10 lecciones, agrupa más temas en una misma lección, pero nunca dejes contenido fuera de la ruta.
-- Ordénalas pedagógicamente (conceptos básicos primero).
-- El tema_clave debe ser específico para buscar en el contenido del libro.
-- Los nombres deben ser atractivos para niños.
+- El nombre y el tema_clave deben reflejar el contenido REAL mostrado arriba. NO inventes temas que no aparecen (si habla de plantas, no lo llames del cuerpo humano).
 - Responde SOLO con el JSON, sin texto adicional."""
 
     if estricto:
@@ -87,44 +131,25 @@ REGLAS:
     ]
 
 
-def _parsear(data: dict | None) -> LeccionesGeneradas | None:
-    """Valida la salida del LLM contra el schema. Devuelve None si no sirve."""
+def _parsear(data: dict | None) -> LeccionGenerada | None:
+    """Valida la salida del LLM (una lección) contra el schema; None si no sirve."""
     if not data:
         return None
     try:
-        parsed = LeccionesGeneradas.model_validate(data)
+        return LeccionGenerada.model_validate(data)
     except ValidationError as e:
         logger.warning("[Lecciones] JSON no cumple el schema esperado: %s", e)
         return None
-    if not parsed.lecciones:
-        return None
-    return parsed
-
-
-def _fallback(fragmentos: list[Fragmento]) -> list[dict]:
-    """Lecciones genéricas por rango de páginas cuando el LLM falla."""
-    paginas = sorted({f.numero_pagina for f in fragmentos})
-    lecciones = []
-    for n, i in enumerate(range(0, len(paginas), PAGINAS_POR_LECCION_FALLBACK), start=1):
-        grupo = paginas[i:i + PAGINAS_POR_LECCION_FALLBACK]
-        ini, fin = grupo[0], grupo[-1]
-        lecciones.append({
-            "nombre": f"Lección {n}: Páginas {ini}-{fin}",
-            "descripcion": f"Contenido de las páginas {ini} a {fin} del libro.",
-            "tema_clave": "general",
-            "paginas": f"{ini}-{fin}",
-        })
-    return lecciones
 
 
 async def generar_lecciones_desde_libro(libro_id: int, db: AsyncSession) -> list[Leccion]:
     """
     Genera y persiste la ruta de lecciones de un libro.
 
-    1. Lee los fragmentos del libro y los resume por página.
-    2. Pide al LLM la lista de lecciones (1 intento + 1 reintento estricto).
-    3. Si el LLM falla, usa un fallback por rangos de páginas.
-    4. Crea las filas `Leccion` con el `orden` correcto y las devuelve.
+    1. Lee los fragmentos del libro y divide las páginas en segmentos consecutivos.
+    2. Pide al LLM un nombre por segmento (1 intento + 1 reintento estricto).
+    3. Cada segmento sin nombre del LLM recibe un nombre genérico (cobertura asegurada).
+    4. Crea las filas `Leccion` con el `orden` y el rango de páginas correctos.
     """
     # 1. Fragmentos del libro
     result = await db.execute(
@@ -137,48 +162,58 @@ async def generar_lecciones_desde_libro(libro_id: int, db: AsyncSession) -> list
         logger.warning("[Lecciones] Libro %s sin fragmentos; no se generan lecciones", libro_id)
         return []
 
-    resumen = _construir_resumen_paginas(fragmentos)
+    num_lecciones = _calcular_num_lecciones(fragmentos)
+    segmentos = _segmentar(fragmentos, num_lecciones)
+    n = len(segmentos)
+    logger.info(
+        "[Lecciones] Libro %s: %d segmentos para %d páginas de contenido (%s a %s)",
+        libro_id, n, len({f.numero_pagina for f in fragmentos}),
+        segmentos[0]["ini"], segmentos[-1]["fin"],
+    )
 
-    # 2. LLM: intento + reintento estricto
-    parsed = _parsear(llm_client.generate_json(_build_messages(resumen)))
-    if parsed is None:
-        logger.info("[Lecciones] JSON inválido para libro %s; reintentando…", libro_id)
-        parsed = _parsear(llm_client.generate_json(_build_messages(resumen, estricto=True)))
-
-    # 3. Datos de lecciones (LLM o fallback)
-    if parsed is None:
-        logger.error("[Lecciones] El LLM no produjo lecciones válidas para libro %s; usando fallback", libro_id)
-        lecciones_data = _fallback(fragmentos)
-    else:
-        lecciones_data = [
-            {
-                "nombre": l.nombre,
-                "descripcion": l.descripcion,
-                "tema_clave": l.tema_clave,
-                "paginas": l.paginas,
-            }
-            for l in parsed.lecciones
-        ]
-
-    # 4. Persistir con el orden correcto
+    # 2/3. Nombrar cada segmento con una llamada propia (evita que el LLM arrastre
+    # el tema de las primeras páginas) y persistir. El rango de páginas lo fija la
+    # segmentación; el LLM solo aporta nombre/descripción/tema.
+    sin_nombre = 0
     creadas: list[Leccion] = []
-    for i, ld in enumerate(lecciones_data, start=1):
-        nombre = (ld.get("nombre") or f"Lección {i}").strip()[:300]
-        tema_clave = (ld.get("tema_clave") or "general").strip()[:200] or "general"
-        paginas = ld.get("paginas")
-        paginas = paginas[:50] if paginas else None
+    for i, seg in enumerate(segmentos, start=1):
+        item = _parsear(
+            llm_client.generate_json(_build_messages_segmento(seg, i, n), max_tokens=512)
+        )
+        if item is None:
+            item = _parsear(
+                llm_client.generate_json(
+                    _build_messages_segmento(seg, i, n, estricto=True), max_tokens=512
+                )
+            )
+
+        if item is not None:
+            nombre = (item.nombre or f"Lección {i}").strip()[:300]
+            descripcion = item.descripcion
+            tema_clave = (item.tema_clave or "general").strip()[:200] or "general"
+        else:
+            sin_nombre += 1
+            nombre = f"Lección {i}: Páginas {seg['paginas']}"
+            descripcion = f"Contenido de las páginas {seg['paginas']} del libro."
+            tema_clave = "general"
+
         leccion = Leccion(
             libro_id=libro_id,
             nombre=nombre,
-            descripcion=ld.get("descripcion"),
+            descripcion=descripcion,
             orden=i,
             tema_clave=tema_clave,
-            paginas=paginas,
+            paginas=seg["paginas"][:50],
         )
         db.add(leccion)
         creadas.append(leccion)
 
     await db.commit()
+    if sin_nombre:
+        logger.warning(
+            "[Lecciones] %d de %d segmentos quedaron con nombre genérico (libro %s)",
+            sin_nombre, len(creadas), libro_id,
+        )
     logger.info("[Lecciones] %d lecciones creadas para libro %s", len(creadas), libro_id)
     return creadas
 

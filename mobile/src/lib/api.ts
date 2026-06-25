@@ -156,6 +156,14 @@ export async function logout(): Promise<void> {
 
 // ----------------------- Ruta + gamificación -----------------------
 
+export interface MiLibro {
+  libro_id: number;
+  titulo: string;
+  total_lecciones: number;
+}
+export function obtenerMiLibro(): Promise<MiLibro> {
+  return request<MiLibro>("/lecciones/mi-libro");
+}
 export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);
 }

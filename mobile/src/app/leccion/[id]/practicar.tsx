@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   generarActividad,
   iniciarLeccion,
+  obtenerMiLibro,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
@@ -65,7 +66,8 @@ export default function PracticarScreen() {
     let activo = true;
     (async () => {
       try {
-        const ruta = await obtenerRuta(1);
+        const mi = await obtenerMiLibro();
+        const ruta = await obtenerRuta(mi.libro_id);
         const leccion = ruta.lecciones.find((l) => l.id === leccionId);
         if (!leccion) throw new Error("no encontrada");
         if (leccion.estado === "bloqueada") throw new Error("bloqueada");
@@ -157,7 +159,8 @@ export default function PracticarScreen() {
     }
     setDuracion(Math.round((Date.now() - inicio) / 1000));
     try {
-      const ruta = await obtenerRuta(1);
+      const mi = await obtenerMiLibro();
+      const ruta = await obtenerRuta(mi.libro_id);
       const l = ruta.lecciones.find((x) => x.id === leccionId);
       if (l?.estado === "completada") {
         const sig = ruta.lecciones.find((x) => x.orden === l.orden + 1);

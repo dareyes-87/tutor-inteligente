@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   generarActividad,
   iniciarLeccion,
+  obtenerMiLibro,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
@@ -62,7 +63,8 @@ export default function PracticarPage() {
     let activo = true;
     (async () => {
       try {
-        const ruta = await obtenerRuta(1);
+        const mi = await obtenerMiLibro();
+        const ruta = await obtenerRuta(mi.libro_id);
         const leccion = ruta.lecciones.find((l) => l.id === leccionId);
         if (!leccion) throw new Error("Lección no encontrada");
         if (leccion.estado === "bloqueada") throw new Error("Esta lección está bloqueada");
@@ -135,7 +137,8 @@ export default function PracticarPage() {
     // Terminó: fija la duración y re-consulta la ruta por el desbloqueo.
     setDuracion(Math.round((Date.now() - inicio) / 1000));
     try {
-      const ruta = await obtenerRuta(1);
+      const mi = await obtenerMiLibro();
+      const ruta = await obtenerRuta(mi.libro_id);
       const leccion = ruta.lecciones.find((l) => l.id === leccionId);
       if (leccion?.estado === "completada") {
         const siguiente = ruta.lecciones.find((l) => l.orden === leccion.orden + 1);

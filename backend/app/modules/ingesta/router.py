@@ -13,7 +13,7 @@ from app.workers.ingesta_worker import procesar_libro
 
 router = APIRouter(prefix="/ingesta", tags=["Ingesta de libros"])
 
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
 
 
 @router.post(
@@ -41,7 +41,7 @@ async def subir_libro(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="El archivo excede el tamaño máximo de 50 MB",
+            detail="El archivo excede el tamaño máximo de 500 MB",
         )
 
     mime = magic.from_buffer(content[:2048], mime=True)
