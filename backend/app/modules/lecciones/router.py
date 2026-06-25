@@ -14,6 +14,7 @@ from app.modules.lecciones import service
 from app.modules.lecciones.schemas import (
     CompletarActividadRequest,
     LeccionEnRuta,
+    MicroLeccionResponse,
     MiLibroResponse,
     RachaResponse,
     RankingResponse,
@@ -43,6 +44,16 @@ async def get_ruta(
 ):
     """Ruta de aprendizaje del libro con el progreso del estudiante."""
     return await service.obtener_ruta(current_user.id, libro_id, db)
+
+
+@router.get("/lecciones/{leccion_id}/micro-leccion", response_model=MicroLeccionResponse)
+async def get_micro_leccion(
+    leccion_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(_estudiante),
+):
+    """Micro-lección guiada (tarjetas educativas) generada on-demand."""
+    return await service.generar_micro_leccion(leccion_id, db)
 
 
 @router.post("/lecciones/{leccion_id}/iniciar", response_model=LeccionEnRuta)

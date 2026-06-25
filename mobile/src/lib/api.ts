@@ -167,6 +167,29 @@ export function obtenerMiLibro(): Promise<MiLibro> {
 export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);
 }
+
+export interface PreguntaRapida {
+  texto: string;
+  tipo: string; // verdadero_falso | opcion_multiple
+  opciones: string[];
+  respuesta_correcta: string;
+  explicacion: string;
+}
+export interface TarjetaEducativa {
+  tipo: "introduccion" | "concepto" | "resumen";
+  contenido: string;
+  emoji: string;
+  titulo_concepto: string | null;
+  dato_curioso: string | null;
+  pregunta: PreguntaRapida | null;
+}
+export interface MicroLeccion {
+  titulo: string;
+  tarjetas: TarjetaEducativa[];
+}
+export function obtenerMicroLeccion(leccionId: number): Promise<MicroLeccion> {
+  return request<MicroLeccion>(`/lecciones/${leccionId}/micro-leccion`);
+}
 export function iniciarLeccion(leccionId: number): Promise<LeccionEnRuta> {
   return request<LeccionEnRuta>(`/lecciones/${leccionId}/iniciar`, { method: "POST" });
 }
@@ -218,10 +241,11 @@ export function generarActividad(
   asignaturaId: number,
   tipo: TipoActividad,
   tema: string,
+  leccionId: number | null = null,
 ): Promise<ActividadResponse> {
   return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
-    body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema }),
+    body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema, leccion_id: leccionId }),
   });
 }
 export function responderActividad(

@@ -6,25 +6,31 @@ lecciones, y la capa de gamificación (rachas + ranking) integrada con las
 lecciones. Las funciones son async y son dueñas del commit.
 """
 import logging
+import random
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.llm.client import llm_client
 from app.models.asignatura import Asignatura
+from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.libro import EstadoIndexacion, LibroTexto
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.lecciones.schemas import (
     LeccionEnRuta,
+    MicroLeccionResponse,
     MiLibroResponse,
     RachaResponse,
     RankingEstudiante,
     RankingResponse,
     RutaAprendizaje,
 )
+from app.modules.rag.search import search_fragments
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +167,152 @@ async def obtener_mi_libro(estudiante: Usuario, db: AsyncSession) -> MiLibroResp
         titulo=libro.titulo,
         total_lecciones=total,
     )
+
+
+def _build_micro_leccion_messages(nombre_leccion: str, fragmentos: str) -> list[dict]:
+    """Prompt para generar la micro-lección (tarjetas educativas) de una lección."""
+    user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido de los siguientes fragmentos del libro de texto.
+
+FRAGMENTOS DEL LIBRO:
+{fragmentos}
+
+Genera un JSON con esta estructura exacta:
+{{
+  "titulo": "título atractivo para niños",
+  "tarjetas": [
+    {{
+      "tipo": "introduccion",
+      "contenido": "Texto introductorio breve y amigable (2-3 oraciones)",
+      "emoji": "🔬"
+    }},
+    {{
+      "tipo": "concepto",
+      "titulo_concepto": "Nombre del concepto",
+      "contenido": "Explicación clara y simple del concepto (3-4 oraciones, como si le explicaras a un niño de 10 años)",
+      "dato_curioso": "Un dato interesante relacionado (opcional)",
+      "pregunta": {{
+        "texto": "Pregunta de comprensión sobre lo explicado",
+        "tipo": "verdadero_falso | opcion_multiple",
+        "opciones": ["opción 1", "opción 2", "opción 3", "opción 4"],
+        "respuesta_correcta": "la opción correcta",
+        "explicacion": "Por qué esa es la respuesta correcta"
+      }},
+      "emoji": "🧬"
+    }},
+    {{
+      "tipo": "resumen",
+      "contenido": "Resumen de todo lo aprendido (3-4 oraciones)",
+      "emoji": "⭐"
+    }}
+  ]
+}}
+
+REGLAS:
+- Genera entre 8 y 10 tarjetas (1 intro + 6-8 conceptos + 1 resumen)
+- SIEMPRE en español
+- Lenguaje simple, frases cortas, como si hablaras con un niño
+- Cada concepto debe tener una pregunta de comprensión
+- Las preguntas deben ser respondibles con lo explicado en ESA tarjeta, y la "respuesta_correcta" DEBE ser coherente con el "contenido" de esa misma tarjeta (no te contradigas).
+- "respuesta_correcta" debe ser SIEMPRE uno de los textos EXACTOS de "opciones".
+- Si "tipo" es "verdadero_falso": "texto" DEBE ser una AFIRMACIÓN que el estudiante juzga como verdadera o falsa (ejemplo: "Las células animales tienen pared celular"). NUNCA una pregunta: no empiece con "¿", ni use "¿Qué...?", "¿Cuál...?" ni "¿Cómo...?". "opciones" debe ser exactamente ["Verdadero", "Falso"] y "respuesta_correcta" debe ser "Verdadero" o "Falso".
+- Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles.
+- Si necesitas hacer una pregunta abierta ("¿Qué...?", "¿Cuál...?"), usa SIEMPRE "tipo": "opcion_multiple" con 4 opciones, NUNCA "verdadero_falso".
+- NO uses información que no esté en los fragmentos
+- Incluye emojis relevantes para cada tarjeta
+- Responde SOLO con el JSON, sin texto adicional"""
+    return [
+        {
+            "role": "system",
+            "content": "Eres un tutor educativo en Guatemala para niños. Respondes SIEMPRE en español y SOLO con JSON válido.",
+        },
+        {"role": "user", "content": user},
+    ]
+
+
+def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
+    """Safety net: arregla preguntas mal tipadas por el LLM (muta `micro`).
+
+    Si una pregunta está marcada como 'verdadero_falso' pero su texto es una
+    pregunta abierta (empieza con '¿'), es incoherente mostrar botones V/F.
+    - Si ya trae 3+ opciones reales, solo se reetiqueta a 'opcion_multiple'.
+    - Si trae menos de 3 opciones (típicamente solo V/F), no se pueden fabricar
+      distractores válidos en Python sin inventar respuestas, así que se quita
+      la pregunta (la tarjeta queda solo con la explicación). Es preferible a
+      mostrar una pregunta abierta con opciones Verdadero/Falso.
+    """
+    for tarjeta in micro.tarjetas:
+        p = tarjeta.pregunta
+        if p is None:
+            continue
+        if p.tipo == "verdadero_falso" and p.texto.lstrip().startswith("¿"):
+            opciones_validas = [o for o in p.opciones if o.strip()]
+            if len(opciones_validas) >= 3 and p.respuesta_correcta in opciones_validas:
+                p.tipo = "opcion_multiple"
+            else:
+                tarjeta.pregunta = None
+                continue
+        # Mezclar las opciones: el LLM tiende a poner la correcta de primera.
+        # respuesta_correcta guarda el TEXTO (no el índice), así que es seguro;
+        # el frontend compara texto contra texto. No se mezcla V/F (Verdadero/Falso
+        # debe quedar en ese orden).
+        if tarjeta.pregunta.tipo == "opcion_multiple":
+            random.shuffle(tarjeta.pregunta.opciones)
+
+
+async def generar_micro_leccion(leccion_id: int, db: AsyncSession) -> MicroLeccionResponse:
+    """
+    Genera on-demand una micro-lección (secuencia de tarjetas) para una lección.
+
+    Usa los fragmentos del libro (RAG por tema_clave + asignatura/grado del libro)
+    y el LLM base (Qwen 7B). No se cachea.
+    """
+    fila = (
+        await db.execute(
+            select(Leccion, Asignatura.nombre, Grado.nombre)
+            .join(LibroTexto, Leccion.libro_id == LibroTexto.id)
+            .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
+            .join(Grado, LibroTexto.grado_id == Grado.id)
+            .where(Leccion.id == leccion_id)
+        )
+    ).first()
+    if fila is None:
+        raise HTTPException(status_code=404, detail="Lección no encontrada")
+    leccion, asignatura_nombre, grado_nombre = fila
+
+    fragments = search_fragments(
+        query=leccion.tema_clave or leccion.nombre,
+        asignatura=asignatura_nombre,
+        grado=grado_nombre,
+    )
+    if not fragments:
+        raise HTTPException(
+            status_code=502,
+            detail="No se encontró contenido del libro para esta lección.",
+        )
+
+    contexto = "\n\n".join(
+        f"--- Fragmento {i} (página {f.get('page_num', '?')}) ---\n{f['text']}"
+        for i, f in enumerate(fragments, start=1)
+    )
+    messages = _build_micro_leccion_messages(leccion.nombre, contexto)
+
+    # Más tokens que antes: ahora pedimos 8-10 tarjetas, cada una con pregunta.
+    data = llm_client.generate_json(messages, max_tokens=4096)
+    if data is None:
+        messages[-1]["content"] += "\n\nIMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones."
+        data = llm_client.generate_json(messages, max_tokens=4096)
+
+    if data is None:
+        raise HTTPException(status_code=502, detail="No se pudo generar la micro-lección.")
+    try:
+        micro = MicroLeccionResponse.model_validate(data)
+    except ValidationError as e:
+        logger.warning("[MicroLeccion] JSON no cumple el schema (lección %s): %s", leccion_id, e)
+        raise HTTPException(status_code=502, detail="La micro-lección generada no es válida.")
+    if not micro.tarjetas:
+        raise HTTPException(status_code=502, detail="La micro-lección generada está vacía.")
+    _corregir_preguntas(micro)
+    return micro
 
 
 async def iniciar_leccion(

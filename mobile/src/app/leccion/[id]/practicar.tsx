@@ -74,7 +74,7 @@ export default function PracticarScreen() {
         if (leccion.estado === "disponible") await iniciarLeccion(leccionId);
         const tema = leccion.tema_clave || leccion.nombre;
         const settled = await Promise.allSettled(
-          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema)),
+          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId)),
         );
         if (!activo) return;
         const generadas = settled

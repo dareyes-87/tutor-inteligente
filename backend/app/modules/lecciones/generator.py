@@ -34,11 +34,22 @@ MAX_CHARS_CONTEXTO = 48000
 
 # --- Cantidad de lecciones, escalada por el tamaño del libro ---
 # nº lecciones = (páginas con contenido / PAGINAS_POR_LECCION), acotado [MIN, MAX].
-# Un libro corto da pocas lecciones; uno largo (p. ej. 189 págs ≈ 21 lecciones)
-# cubre TODO el contenido en vez de quedarse en el inicio.
-PAGINAS_POR_LECCION = 9
+# Un libro corto da pocas lecciones; uno largo cubre TODO el contenido sin
+# quedarse en el inicio. Con ~5 págs/lección un libro de 189 págs ≈ 38 lecciones
+# (antes 9 págs/lección daba 21), para que cada lección sea más granular y el
+# tutor pueda profundizar en subtemas.
+#
+# IMPORTANTE (regenerar lecciones existentes): cambiar estos parámetros NO
+# actualiza las lecciones ya guardadas en la BD. Para aplicarlo a un libro ya
+# indexado, el admin debe:
+#   1. Borrar las lecciones (y su progreso) del libro, por ejemplo:
+#      DELETE FROM progreso_leccion; DELETE FROM leccion WHERE libro_id = <id>;
+#      (o vía script con delete(ProgresoLeccion) + delete(Leccion).where(...))
+#   2. Re-disparar la generación llamando a generar_lecciones_desde_libro(<id>, db).
+# NO se borran datos automáticamente.
+PAGINAS_POR_LECCION = 5
 MIN_LECCIONES = 5
-MAX_LECCIONES = 25
+MAX_LECCIONES = 50
 
 # La ruta se genera UNA sola vez por libro, así que aquí sí conviene un modelo más
 # potente que el 7B por defecto: nombra mejor los segmentos y respeta el contenido.

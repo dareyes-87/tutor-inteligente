@@ -9,6 +9,7 @@ from app.models.actividad import Actividad, ResultadoActividad, TipoActividad
 from app.models.perfil_comprension import PerfilComprension
 from app.models.asignatura import Asignatura
 from app.models.grado import Grado
+from app.models.leccion import Leccion
 from app.models.usuario import Usuario
 from app.modules.rag.search import search_fragments, is_context_relevant
 from app.modules.chat.prompts import build_context_prompt
@@ -18,14 +19,34 @@ from app.modules.actividades.evaluator import evaluar_actividad
 logger = logging.getLogger(__name__)
 
 
+def _parsear_rango_paginas(paginas: str | None) -> tuple[int, int] | None:
+    """Convierte un rango de páginas tipo '18-22' (o '18') a (ini, fin)."""
+    if not paginas:
+        return None
+    partes = paginas.replace(" ", "").split("-")
+    try:
+        nums = [int(p) for p in partes if p]
+    except ValueError:
+        return None
+    if not nums:
+        return None
+    return (min(nums), max(nums))
+
+
 async def crear_actividad(
     db: AsyncSession,
     asignatura_id: int,
     tipo: TipoActividad,
     estudiante: Usuario,
     tema: str | None = None,
+    leccion_id: int | None = None,
 ) -> Actividad | None:
-    """Genera una actividad nueva usando RAG + LLM."""
+    """Genera una actividad nueva usando RAG + LLM.
+
+    Si se pasa `leccion_id`, la actividad se enfoca en esa lección: usa su
+    `tema_clave` como tema y prioriza los fragmentos dentro de su rango de
+    páginas, para que /practicar solo evalúe lo que el estudiante estudió.
+    """
     # Obtener nombres para filtrar RAG
     asig = await db.execute(select(Asignatura).where(Asignatura.id == asignatura_id))
     asignatura = asig.scalar_one_or_none()
@@ -39,6 +60,16 @@ async def crear_actividad(
         grado = gr.scalar_one_or_none()
         grado_nombre = grado.nombre if grado else None
 
+    # Si viene una lección, enfocar el tema y el rango de páginas en ella.
+    rango_paginas: tuple[int, int] | None = None
+    if leccion_id is not None:
+        leccion = (
+            await db.execute(select(Leccion).where(Leccion.id == leccion_id))
+        ).scalar_one_or_none()
+        if leccion is not None:
+            tema = tema or leccion.tema_clave or leccion.nombre
+            rango_paginas = _parsear_rango_paginas(leccion.paginas)
+
     # Buscar contexto relevante
     query = tema or asignatura.nombre
     fragments = search_fragments(query=query, asignatura=asignatura.nombre, grado=grado_nombre)
@@ -46,6 +77,17 @@ async def crear_actividad(
     if not fragments:
         logger.warning("No se encontraron fragmentos para generar actividad")
         return None
+
+    # Si hay rango de páginas de la lección, priorizar los fragmentos dentro
+    # de ese rango (con fallback a todos si el filtro deja el contexto vacío).
+    if rango_paginas is not None:
+        ini, fin = rango_paginas
+        en_rango = [
+            f for f in fragments
+            if isinstance(f.get("page_num"), int) and ini <= f["page_num"] <= fin
+        ]
+        if en_rango:
+            fragments = en_rango
 
     # Grounding estricto: no generar actividades sobre temas que no están
     # suficientemente cubiertos por los libros indexados.

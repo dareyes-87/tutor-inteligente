@@ -211,10 +211,11 @@ export function generarActividad(
   asignaturaId: number,
   tipo: TipoActividad,
   tema: string | null,
+  leccionId: number | null = null,
 ): Promise<ActividadResponse> {
   return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
-    body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema }),
+    body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema, leccion_id: leccionId }),
   });
 }
 
@@ -288,6 +289,35 @@ export function obtenerMiLibro(): Promise<MiLibro> {
 /** Ruta de aprendizaje del libro con el progreso del estudiante. */
 export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);
+}
+
+// ----------------------- Micro-lección guiada -----------------------
+
+export interface PreguntaRapida {
+  texto: string;
+  tipo: string; // verdadero_falso | opcion_multiple
+  opciones: string[];
+  respuesta_correcta: string;
+  explicacion: string;
+}
+
+export interface TarjetaEducativa {
+  tipo: "introduccion" | "concepto" | "resumen";
+  contenido: string;
+  emoji: string;
+  titulo_concepto: string | null;
+  dato_curioso: string | null;
+  pregunta: PreguntaRapida | null;
+}
+
+export interface MicroLeccion {
+  titulo: string;
+  tarjetas: TarjetaEducativa[];
+}
+
+/** Micro-lección guiada (tarjetas) de una lección; se genera on-demand. */
+export function obtenerMicroLeccion(leccionId: number): Promise<MicroLeccion> {
+  return request<MicroLeccion>(`/lecciones/${leccionId}/micro-leccion`);
 }
 
 /** Marca una lección disponible como en progreso. */

@@ -50,6 +50,30 @@ class MiLibroResponse(BaseModel):
     total_lecciones: int
 
 
+# ----------------------- Micro-lección guiada -----------------------
+
+class PreguntaRapida(BaseModel):
+    texto: str
+    tipo: str  # verdadero_falso | opcion_multiple
+    opciones: list[str]
+    respuesta_correcta: str
+    explicacion: str
+
+
+class TarjetaEducativa(BaseModel):
+    tipo: str  # introduccion | concepto | resumen
+    contenido: str
+    emoji: str = "📚"
+    titulo_concepto: str | None = None
+    dato_curioso: str | None = None
+    pregunta: PreguntaRapida | None = None
+
+
+class MicroLeccionResponse(BaseModel):
+    titulo: str
+    tarjetas: list[TarjetaEducativa]
+
+
 # ----------------------- Acciones del estudiante -----------------------
 
 class CompletarActividadRequest(BaseModel):

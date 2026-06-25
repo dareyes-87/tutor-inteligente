@@ -141,23 +141,29 @@ def _evaluar_respuesta_corta(resp_est, resp_corr, contenido):
     if est_norm and est_norm == cor_norm:
         return {"puntaje": 100, "retroalimentacion": "¡Excelente! ¡Respuesta correcta! 🌟"}
 
-    # Caso 2: Similitud alta (>= 0.80) → casi correcto, 70 puntos
+    # Caso 2: La respuesta correcta está CONTENIDA en la del estudiante → 100.
+    # Cubre cuando el niño responde con una frase ("el cráneo protege al cerebro")
+    # y el término esperado ("cráneo") aparece en ella. Se evalúa ANTES que
+    # SequenceMatcher para no penalizar respuestas largas pero correctas.
+    # La guarda `cor_norm` (siempre no vacío) evita que "" cuele un 100.
+    if est_norm and cor_norm and cor_norm in est_norm:
+        return {"puntaje": 100, "retroalimentacion": "¡Excelente! ¡Respuesta correcta! 🌟"}
+
+    # Caso 3: Similitud alta (>= 0.80) → casi correcto (ortografía), 70 puntos
     similitud = SequenceMatcher(None, est_norm, cor_norm).ratio()
     if similitud >= 0.80:
         feedback = generar_feedback_ortografico(respuesta_estudiante, respuesta_correcta)
         return {"puntaje": 70, "retroalimentacion": feedback}
 
-    # Caso 3: La respuesta correcta está CONTENIDA en la del estudiante o
-    # viceversa (ej: "el microscopio" vs "microscopio"). La guarda
-    # `est_norm and cor_norm` evita que una respuesta vacía cuele un 85,
-    # porque "" siempre está contenido en cualquier cadena.
-    if est_norm and cor_norm and (cor_norm in est_norm or est_norm in cor_norm):
+    # Caso 4: La respuesta del estudiante está contenida en la correcta
+    # (ej: dio solo parte del término). Crédito parcial alto.
+    if est_norm and cor_norm and est_norm in cor_norm:
         return {
             "puntaje": 85,
             "retroalimentacion": f"¡Muy bien! La respuesta es: {respuesta_correcta}. ¡Casi perfecto! ⭐",
         }
 
-    # Caso 4: Incorrecto → 0 puntos
+    # Caso 5: Incorrecto → 0 puntos
     return {
         "puntaje": 0,
         "retroalimentacion": f"No es correcto. La respuesta es: {respuesta_correcta}. ¡Sigue intentando, tú puedes! 💪",

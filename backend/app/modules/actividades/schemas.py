@@ -9,6 +9,11 @@ class GenerarActividadRequest(BaseModel):
     asignatura_id: int
     tipo: TipoActividad
     tema: str | None = Field(None, description="Tema específico (opcional, si no se da, se elige del contexto)")
+    leccion_id: int | None = Field(
+        None,
+        description="Lección que se acaba de estudiar (opcional). Si se da, la actividad "
+        "se enfoca en el tema y las páginas de esa lección.",
+    )
 
 
 class ResponderActividadRequest(BaseModel):

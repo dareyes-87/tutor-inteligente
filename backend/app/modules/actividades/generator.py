@@ -3,6 +3,7 @@ Generador de actividades: usa el LLM para crear ejercicios
 basados en el contenido de los libros (fragmentos RAG).
 """
 import logging
+import random
 
 from app.llm.client import llm_client
 from app.models.actividad import TipoActividad
@@ -32,10 +33,13 @@ Responde SOLO con JSON válido, sin texto adicional:
 }""",
 
     TipoActividad.completar: """Genera UNA oración para completar. La oración debe salir TEXTUALMENTE del contexto (toma una frase real de los fragmentos y reemplaza por ___ la palabra o término clave que el estudiante debe recordar). Usa ___ donde va la palabra faltante.
+El espacio en blanco (___) DEBE reemplazar un TÉRMINO CLAVE del tema (nombre de estructura, órgano, proceso, concepto científico). NUNCA pongas el blank en verbos comunes (significa, tiene, es, son), artículos, preposiciones o conectores.
+Ejemplo CORRECTO: "La ___ es la unidad básica de los seres vivos" (respuesta: célula).
+Ejemplo INCORRECTO: "La célula ___ la unidad básica" (respuesta: es).
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
-    "oracion": "<una oración tomada del contexto con ___ en la palabra clave>",
-    "respuesta_correcta": "<la palabra exacta que va en ___, tal como aparece en el contexto>",
+    "oracion": "<una oración tomada del contexto con ___ en el TÉRMINO CLAVE>",
+    "respuesta_correcta": "<el término clave exacto que va en ___, tal como aparece en el contexto>",
     "pista": "una pista para ayudar al estudiante"
 }""",
 
@@ -49,10 +53,11 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
 }""",
 
     TipoActividad.respuesta_corta: """Genera UNA pregunta de respuesta corta basada en el contexto.
+La pregunta DEBE pedir UN SOLO TÉRMINO o CONCEPTO específico. Formúlala como: "¿Cómo se llama el hueso que protege al cerebro?" (respuesta: cráneo). NUNCA preguntes dos cosas en una ("¿qué parte Y cuál es su función?"). La respuesta esperada debe ser de 1 a 3 palabras como máximo.
 Responde SOLO con JSON válido, sin texto adicional:
 {
-    "pregunta": "la pregunta",
-    "respuesta_correcta": "la respuesta esperada (breve)",
+    "pregunta": "la pregunta (pide un solo término)",
+    "respuesta_correcta": "la respuesta esperada (1-3 palabras)",
     "palabras_clave": ["palabra1", "palabra2", "palabra3"],
     "explicacion": "respuesta completa para retroalimentación"
 }""",
@@ -75,7 +80,10 @@ def generar_actividad(tipo: TipoActividad, context: str, tema: str | None = None
                 f"primaria/secundaria en Guatemala. Crea ejercicios claros, en español.{tema_str} "
                 "Genera la actividad EXCLUSIVAMENTE con el contenido de los fragmentos del libro "
                 "que se te dan. NO uses tu conocimiento propio. NO inventes información ni ejemplos "
-                "que no estén en los fragmentos."
+                "que no estén en los fragmentos. "
+                "SIEMPRE genera todo el contenido en ESPAÑOL. Nunca uses términos en inglés. "
+                "Los términos científicos deben estar en español (ejemplo: profase, no prophase; "
+                "célula, no cell)."
             ),
         },
         {
@@ -97,6 +105,11 @@ def generar_actividad(tipo: TipoActividad, context: str, tema: str | None = None
         result = llm_client.generate_json(messages)
 
     if result:
+        # Mezclar las opciones: el LLM tiende a poner la correcta de primera.
+        # respuesta_correcta guarda el TEXTO (no el índice), y el evaluador
+        # compara por texto, así que el shuffle no rompe la evaluación.
+        if tipo == TipoActividad.opcion_multiple and isinstance(result.get("opciones"), list):
+            random.shuffle(result["opciones"])
         logger.info(f"Actividad {tipo.value} generada exitosamente")
     else:
         logger.warning(f"Fallo al generar actividad {tipo.value}")
