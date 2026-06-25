@@ -43,13 +43,19 @@ class LLMClient:
         )
         return resp.choices[0].message.content
 
-    def generate_json(self, messages: list[dict], max_tokens: int = 2048) -> dict | None:
+    def generate_json(
+        self, messages: list[dict], max_tokens: int = 2048, model: str | None = None
+    ) -> dict | None:
         """
         Pide al LLM que genere JSON estricto. Usado para crear actividades.
         Devuelve el dict parseado, o None si falla el parseo.
+
+        `model` permite usar un modelo distinto al por defecto (p. ej. uno más
+        potente para la generación de la ruta de lecciones, que ocurre una sola
+        vez por libro). Si es None, usa el modelo por defecto (`self.model`).
         """
         resp = self._client.chat.completions.create(
-            model=self.model,
+            model=model or self.model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=0.3,  # Baja temperatura para JSON más consistente

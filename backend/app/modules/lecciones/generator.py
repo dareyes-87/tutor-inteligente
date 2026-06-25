@@ -40,6 +40,13 @@ PAGINAS_POR_LECCION = 9
 MIN_LECCIONES = 5
 MAX_LECCIONES = 25
 
+# La ruta se genera UNA sola vez por libro, así que aquí sí conviene un modelo más
+# potente que el 7B por defecto: nombra mejor los segmentos y respeta el contenido.
+# Solo lo usa este generador; el chat y las actividades siguen con el modelo base.
+# Nota: Qwen2.5-72B-Instruct-Turbo NO está disponible serverless en esta cuenta de
+# Together (requiere endpoint dedicado), así que se usa el 70B de Llama, que sí lo está.
+MODELO_RUTA = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+
 
 def _calcular_num_lecciones(fragmentos: list[Fragmento]) -> int:
     """Cuántas lecciones generar según cuántas páginas de contenido tiene el libro."""
@@ -178,12 +185,16 @@ async def generar_lecciones_desde_libro(libro_id: int, db: AsyncSession) -> list
     creadas: list[Leccion] = []
     for i, seg in enumerate(segmentos, start=1):
         item = _parsear(
-            llm_client.generate_json(_build_messages_segmento(seg, i, n), max_tokens=512)
+            llm_client.generate_json(
+                _build_messages_segmento(seg, i, n), max_tokens=512, model=MODELO_RUTA
+            )
         )
         if item is None:
             item = _parsear(
                 llm_client.generate_json(
-                    _build_messages_segmento(seg, i, n, estricto=True), max_tokens=512
+                    _build_messages_segmento(seg, i, n, estricto=True),
+                    max_tokens=512,
+                    model=MODELO_RUTA,
                 )
             )
 
