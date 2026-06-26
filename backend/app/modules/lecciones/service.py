@@ -309,11 +309,12 @@ REGLAS:
 - Genera entre 8 y 10 tarjetas (1 intro + 6-8 conceptos + 1 resumen)
 - SIEMPRE en español
 - Lenguaje simple, frases cortas, como si hablaras con un niño
+- Usa analogías relacionadas con la naturaleza, los animales, el cuerpo humano o la vida cotidiana de un niño (juegos, comida, escuela). NUNCA uses analogías con tecnología (teléfonos, computadoras, robots).
 - Cada concepto debe tener una pregunta de comprensión
 - Las preguntas deben ser respondibles con lo explicado en ESA tarjeta, y la "respuesta_correcta" DEBE ser coherente con el "contenido" de esa misma tarjeta (no te contradigas).
 - "respuesta_correcta" debe ser SIEMPRE uno de los textos EXACTOS de "opciones".
 - Si "tipo" es "verdadero_falso": "texto" DEBE ser una AFIRMACIÓN que el estudiante juzga como verdadera o falsa (ejemplo: "Las células animales tienen pared celular"). NUNCA una pregunta: no empiece con "¿", ni use "¿Qué...?", "¿Cuál...?" ni "¿Cómo...?". "opciones" debe ser exactamente ["Verdadero", "Falso"] y "respuesta_correcta" debe ser "Verdadero" o "Falso".
-- Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles.
+- Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles. Las opciones incorrectas (distractores) deben ser CLARAMENTE diferentes a la respuesta correcta: no uses sinónimos ni frases que signifiquen lo mismo con otras palabras. Cada distractor debe referirse a un concepto diferente.
 - Si necesitas hacer una pregunta abierta ("¿Qué...?", "¿Cuál...?"), usa SIEMPRE "tipo": "opcion_multiple" con 4 opciones, NUNCA "verdadero_falso".
 - NO uses información que no esté en los fragmentos
 - Incluye emojis relevantes para cada tarjeta

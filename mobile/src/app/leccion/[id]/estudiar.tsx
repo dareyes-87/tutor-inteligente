@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Speech from "expo-speech";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -76,13 +77,34 @@ export default function EstudiarScreen() {
     };
   }, [leccionId]);
 
-  // Reinicia estado de pregunta y anima la entrada al cambiar de tarjeta.
+  // Lee un texto en voz alta (TTS). Detiene cualquier lectura previa.
+  function hablar(texto: string) {
+    Speech.stop();
+    Speech.speak(texto, { language: "es-MX", rate: 0.85, pitch: 1.1 });
+  }
+
+  // Reinicia estado de pregunta, anima la entrada y, en tarjetas de CONCEPTO,
+  // lee automáticamente la explicación. (El campo de explicación de la tarjeta
+  // es `contenido`; las tarjetas no tienen un campo `explicacion` propio.)
   useEffect(() => {
     setMostrarPregunta(false);
     setSeleccion(null);
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 320, useNativeDriver: true }).start();
-  }, [idx, fade]);
+
+    Speech.stop();
+    const t = micro?.tarjetas[idx];
+    if (t && t.tipo === "concepto" && t.contenido) {
+      hablar(t.contenido);
+    }
+  }, [idx, fade, micro]);
+
+  // Detener la lectura al salir de la pantalla.
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
 
   const tarjetas = micro?.tarjetas ?? [];
   const total = tarjetas.length;
@@ -90,6 +112,7 @@ export default function EstudiarScreen() {
   const esUltima = idx >= total - 1;
 
   function avanzar() {
+    Speech.stop();
     if (esUltima) {
       // Pasar los fragmentos usados para que /practicar genere actividades con
       // la MISMA teoría explicada aquí.
@@ -162,6 +185,16 @@ export default function EstudiarScreen() {
       {/* Tarjeta */}
       <ScrollView contentContainerStyle={styles.scroll}>
         <Animated.View style={[styles.tarjeta, { opacity: fade }]}>
+          {esConcepto && (
+            <Pressable
+              onPress={() => tarjeta.contenido && hablar(tarjeta.contenido)}
+              style={styles.ttsBtn}
+              hitSlop={8}
+              accessibilityLabel="Escuchar la explicación"
+            >
+              <Text style={styles.ttsIcon}>🔊</Text>
+            </Pressable>
+          )}
           <Text style={styles.emoji}>{tarjeta.emoji}</Text>
 
           {tarjeta.tipo === "introduccion" && <Text style={styles.titulo}>¡Empecemos!</Text>}
@@ -399,6 +432,8 @@ const styles = StyleSheet.create({
 
   scroll: { flexGrow: 1, justifyContent: "center", padding: 18 },
   tarjeta: { backgroundColor: Colors.cream, borderRadius: 26, borderWidth: 1, borderColor: Colors.border, padding: 24, alignItems: "center" },
+  ttsBtn: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(30,43,77,0.06)", alignItems: "center", justifyContent: "center", zIndex: 2 },
+  ttsIcon: { fontSize: 18 },
   emoji: { fontSize: 54, marginBottom: 10 },
   titulo: { fontSize: 20, fontWeight: "900", color: Colors.navy, marginBottom: 10, textAlign: "center" },
   contenido: { fontSize: 16, fontWeight: "600", lineHeight: 24, color: "#3B4252", textAlign: "center" },
