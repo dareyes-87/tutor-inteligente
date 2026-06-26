@@ -8,6 +8,7 @@
  */
 import * as SecureStore from "expo-secure-store";
 
+// DEMO: el servidor debe correr en esta IP durante la defensa (misma red WiFi)
 export const API_URL = "http://192.168.100.12:8000";
 
 const TOKEN_KEY = "auth_token";
