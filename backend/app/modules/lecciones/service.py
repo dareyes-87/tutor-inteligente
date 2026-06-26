@@ -7,6 +7,7 @@ lecciones. Las funciones son async y son dueñas del commit.
 """
 import logging
 import random
+import re
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException
@@ -65,6 +66,55 @@ def _seleccionar_fragmentos_nivel(
         seed = leccion_id * 100 + nivel + date.today().timetuple().tm_yday
         seleccion = random.Random(seed).sample(fragments, k)
     return sorted(seleccion, key=lambda f: (f.get("page_num") is None, f.get("page_num") or 0))
+
+
+def _parsear_rango_paginas(paginas: str | None) -> tuple[int, int] | None:
+    """Convierte un rango de páginas tipo '3-7' (o '3') a (ini, fin)."""
+    if not paginas:
+        return None
+    partes = paginas.replace(" ", "").split("-")
+    try:
+        nums = [int(p) for p in partes if p]
+    except ValueError:
+        return None
+    if not nums:
+        return None
+    return (min(nums), max(nums))
+
+
+# Umbral mínimo de cobertura: una tarjeta cuyo texto comparte menos de este
+# porcentaje de palabras (>5 letras) con los fragmentos del libro se descarta
+# (capa de seguridad contra contenido que no viene de la lección).
+COBERTURA_MINIMA = 0.3
+MIN_TARJETAS_VALIDAS = 4
+
+
+def _filtrar_tarjetas_por_cobertura(tarjetas: list, fragmentos_texto: str) -> list:
+    """Descarta tarjetas cuyo contenido no se apoya en los fragmentos usados.
+
+    Para cada tarjeta toma las palabras de >5 letras de su `contenido` y mide
+    cuántas aparecen (como subcadena) en el texto de los fragmentos. Si la
+    cobertura < COBERTURA_MINIMA, la tarjeta se descarta.
+    """
+    conservadas = []
+    for t in tarjetas:
+        palabras = [
+            w for w in re.findall(r"[^\W\d_]+", (t.contenido or "").lower(), re.UNICODE)
+            if len(w) > 5
+        ]
+        if not palabras:
+            conservadas.append(t)
+            continue
+        en_fragmento = sum(1 for w in palabras if w in fragmentos_texto)
+        cobertura = en_fragmento / len(palabras)
+        if cobertura < COBERTURA_MINIMA:
+            logger.warning(
+                "[MicroLeccion] Tarjeta descartada por baja cobertura (%.0f%%): %s",
+                cobertura * 100, t.titulo_concepto or t.tipo,
+            )
+            continue
+        conservadas.append(t)
+    return conservadas
 
 
 async def _get_or_create_progreso(
@@ -333,24 +383,52 @@ async def generar_micro_leccion(
         raise HTTPException(status_code=404, detail="Lección no encontrada")
     leccion, asignatura_nombre, grado_nombre = fila
 
-    # Pool amplio de candidatos; del pool se muestrea Top-K según el nivel.
-    pool = search_fragments(
-        query=leccion.tema_clave or leccion.nombre,
-        asignatura=asignatura_nombre,
-        grado=grado_nombre,
-        top_k=POOL_CANDIDATOS_FRAGMENTOS,
-    )
+    # Pool de fragmentos: PRIMERO por el rango de páginas de la lección (0% de
+    # leak de otras secciones del libro). La búsqueda semántica en ChromaDB queda
+    # solo como FALLBACK si el rango no tiene fragmentos (caso raro).
+    rango = _parsear_rango_paginas(leccion.paginas)
+    pool: list[dict] = []
+    if rango is not None:
+        ini, fin = rango
+        rows = (
+            await db.execute(
+                select(Fragmento)
+                .where(
+                    Fragmento.libro_id == leccion.libro_id,
+                    Fragmento.numero_pagina >= ini,
+                    Fragmento.numero_pagina <= fin,
+                )
+                .order_by(Fragmento.numero_pagina, Fragmento.id)
+            )
+        ).scalars().all()
+        pool = [
+            {"text": r.contenido_texto, "page_num": r.numero_pagina, "chunk_id": r.chunk_id_vectordb}
+            for r in rows
+        ]
+    if not pool:
+        logger.info(
+            "[MicroLeccion] Lección %s sin fragmentos en el rango %s; usando búsqueda semántica (fallback)",
+            leccion_id, leccion.paginas,
+        )
+        pool = search_fragments(
+            query=leccion.tema_clave or leccion.nombre,
+            asignatura=asignatura_nombre,
+            grado=grado_nombre,
+            top_k=POOL_CANDIDATOS_FRAGMENTOS,
+        )
     if not pool:
         raise HTTPException(
             status_code=502,
             detail="No se encontró contenido del libro para esta lección.",
         )
+    # Muestreo Top-K por nivel (usa todos si hay menos fragmentos que Top-K).
     fragments = _seleccionar_fragmentos_nivel(pool, leccion_id, nivel)
 
     contexto = "\n\n".join(
         f"--- Fragmento {i} (página {f.get('page_num', '?')}) ---\n{f['text']}"
         for i, f in enumerate(fragments, start=1)
     )
+    fragmentos_texto = " ".join((f["text"] or "").lower() for f in fragments)
 
     # IDs de los fragmentos usados, para que /practicar use el MISMO contenido.
     chunk_ids = [f["chunk_id"] for f in fragments if f.get("chunk_id")]
@@ -364,24 +442,37 @@ async def generar_micro_leccion(
             ).scalars().all()
         )
 
-    messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel)
-
-    # Más tokens que antes: ahora pedimos 8-10 tarjetas, cada una con pregunta.
-    data = llm_client.generate_json(messages, max_tokens=4096)
-    if data is None:
-        messages[-1]["content"] += "\n\nIMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones."
+    # Generación con verificación de cobertura: 1 intento + 1 reintento si quedan
+    # pocas tarjetas válidas tras descartar las que no se apoyan en los fragmentos.
+    micro: MicroLeccionResponse | None = None
+    for intento in range(2):
+        messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel)
+        if intento > 0:
+            messages[-1]["content"] += "\n\nIMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones."
         data = llm_client.generate_json(messages, max_tokens=4096)
+        if data is None:
+            continue
+        try:
+            candidato = MicroLeccionResponse.model_validate(data)
+        except ValidationError as e:
+            logger.warning("[MicroLeccion] JSON no cumple el schema (lección %s): %s", leccion_id, e)
+            continue
+        if not candidato.tarjetas:
+            continue
+        _corregir_preguntas(candidato)
+        candidato.tarjetas = _filtrar_tarjetas_por_cobertura(candidato.tarjetas, fragmentos_texto)
+        # Nos quedamos con el mejor candidato visto hasta ahora.
+        if micro is None or len(candidato.tarjetas) > len(micro.tarjetas):
+            micro = candidato
+        if len(candidato.tarjetas) >= MIN_TARJETAS_VALIDAS:
+            break
+        logger.info(
+            "[MicroLeccion] Lección %s: solo %d tarjetas válidas tras cobertura; reintentando…",
+            leccion_id, len(candidato.tarjetas),
+        )
 
-    if data is None:
+    if micro is None or not micro.tarjetas:
         raise HTTPException(status_code=502, detail="No se pudo generar la micro-lección.")
-    try:
-        micro = MicroLeccionResponse.model_validate(data)
-    except ValidationError as e:
-        logger.warning("[MicroLeccion] JSON no cumple el schema (lección %s): %s", leccion_id, e)
-        raise HTTPException(status_code=502, detail="La micro-lección generada no es válida.")
-    if not micro.tarjetas:
-        raise HTTPException(status_code=502, detail="La micro-lección generada está vacía.")
-    _corregir_preguntas(micro)
     micro.fragment_ids = fragment_ids
     micro.nivel_actual = nivel
     micro.es_ultimo_nivel = nivel >= max(NIVEL_TOPK)
