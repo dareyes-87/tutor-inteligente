@@ -92,7 +92,12 @@ def generar_actividad(tipo: TipoActividad, context: str, tema: str | None = None
                 f"Basándote ÚNICAMENTE en el siguiente contenido del libro:\n\n{context}\n\n"
                 f"{activity_prompt}\n\n"
                 "Recuerda: la actividad debe tratar sobre lo que dicen los fragmentos de arriba, "
-                "no sobre otros temas."
+                "no sobre otros temas. "
+                + (
+                    f"Si el contexto es insuficiente para generar una actividad de calidad, "
+                    f"genera una pregunta conceptual básica sobre el tema: {tema}."
+                    if tema else ""
+                )
             ),
         },
     ]

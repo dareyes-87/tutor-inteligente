@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.actividad import Actividad, ResultadoActividad, TipoActividad
 from app.models.perfil_comprension import PerfilComprension
 from app.models.asignatura import Asignatura
+from app.models.fragmento import Fragmento
 from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.usuario import Usuario
@@ -40,12 +41,19 @@ async def crear_actividad(
     estudiante: Usuario,
     tema: str | None = None,
     leccion_id: int | None = None,
+    fragment_ids: list[int] | None = None,
 ) -> Actividad | None:
     """Genera una actividad nueva usando RAG + LLM.
 
-    Si se pasa `leccion_id`, la actividad se enfoca en esa lección: usa su
-    `tema_clave` como tema y prioriza los fragmentos dentro de su rango de
-    páginas, para que /practicar solo evalúe lo que el estudiante estudió.
+    Tres modos de obtener el contexto (en orden de prioridad):
+      1. `fragment_ids`: usa EXACTAMENTE esos fragmentos (los que el tutor explicó
+         en la micro-lección). Alinea teoría y práctica.
+      2. `leccion_id`: usa los fragmentos del rango de páginas de la lección.
+      3. ninguno: búsqueda semántica por tema + grounding estricto.
+
+    En los modos 1 y 2 NO se aplica el grounding estricto: el contenido proviene
+    de una lección del libro, así que ya está garantizado que es "del libro"
+    (era la causa de los 500 "contexto no relevante" en /practicar).
     """
     # Obtener nombres para filtrar RAG
     asig = await db.execute(select(Asignatura).where(Asignatura.id == asignatura_id))
@@ -60,38 +68,68 @@ async def crear_actividad(
         grado = gr.scalar_one_or_none()
         grado_nombre = grado.nombre if grado else None
 
-    # Si viene una lección, enfocar el tema y el rango de páginas en ella.
-    rango_paginas: tuple[int, int] | None = None
+    # Si viene una lección, resolverla para fijar el tema (perfil de comprensión)
+    # y tener su rango de páginas disponible como fallback.
+    leccion = None
     if leccion_id is not None:
         leccion = (
             await db.execute(select(Leccion).where(Leccion.id == leccion_id))
         ).scalar_one_or_none()
         if leccion is not None:
             tema = tema or leccion.tema_clave or leccion.nombre
-            rango_paginas = _parsear_rango_paginas(leccion.paginas)
 
-    # Buscar contexto relevante
-    query = tema or asignatura.nombre
-    fragments = search_fragments(query=query, asignatura=asignatura.nombre, grado=grado_nombre)
+    fragments: list[dict] = []
+    usar_grounding = True
+
+    # Modo 1: fragmentos explícitos de la micro-lección.
+    if fragment_ids:
+        rows = (
+            await db.execute(
+                select(Fragmento)
+                .where(Fragmento.id.in_(fragment_ids))
+                .order_by(Fragmento.numero_pagina, Fragmento.id)
+            )
+        ).scalars().all()
+        fragments = [{"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows]
+        if fragments:
+            usar_grounding = False
+
+    # Modo 2: fragmentos del rango de páginas de la lección (fallback si no hubo
+    # fragment_ids o quedaron vacíos).
+    if not fragments and leccion is not None:
+        rango = _parsear_rango_paginas(leccion.paginas)
+        if rango is not None:
+            ini, fin = rango
+            rows = (
+                await db.execute(
+                    select(Fragmento)
+                    .where(
+                        Fragmento.libro_id == leccion.libro_id,
+                        Fragmento.numero_pagina >= ini,
+                        Fragmento.numero_pagina <= fin,
+                    )
+                    .order_by(Fragmento.numero_pagina, Fragmento.id)
+                )
+            ).scalars().all()
+            fragments = [
+                {"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows
+            ]
+            if fragments:
+                usar_grounding = False
+
+    # Modo 3: búsqueda semántica (sin lección / sin fragmentos).
+    if not fragments:
+        query = tema or asignatura.nombre
+        fragments = search_fragments(
+            query=query, asignatura=asignatura.nombre, grado=grado_nombre
+        )
 
     if not fragments:
         logger.warning("No se encontraron fragmentos para generar actividad")
         return None
 
-    # Si hay rango de páginas de la lección, priorizar los fragmentos dentro
-    # de ese rango (con fallback a todos si el filtro deja el contexto vacío).
-    if rango_paginas is not None:
-        ini, fin = rango_paginas
-        en_rango = [
-            f for f in fragments
-            if isinstance(f.get("page_num"), int) and ini <= f["page_num"] <= fin
-        ]
-        if en_rango:
-            fragments = en_rango
-
-    # Grounding estricto: no generar actividades sobre temas que no están
-    # suficientemente cubiertos por los libros indexados.
-    if not is_context_relevant(fragments):
+    # Grounding estricto SOLO para búsqueda semántica libre (modo 3).
+    if usar_grounding and not is_context_relevant(fragments):
         logger.warning("Contexto no relevante; no se genera actividad (grounding estricto)")
         return None
 
@@ -187,46 +225,13 @@ async def responder_actividad(
         "retroalimentacion": evaluacion["retroalimentacion"],
         "respuesta_correcta": actividad.respuesta_correcta,
     }
-    asignatura_id = actividad.asignatura_id
 
-    # --- Integración con la ruta de aprendizaje (mejor esfuerzo) ---
-    # Si el estudiante tiene una lección en_progreso de la misma asignatura,
-    # el puntaje alimenta su avance en esa lección. El resultado de la
-    # actividad ya quedó commiteado arriba; si esto falla, la respuesta de la
-    # actividad sigue funcionando igual.
-    try:
-        from app.models.leccion import Leccion
-        from app.models.libro import LibroTexto
-        from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
-        from app.modules.lecciones.service import completar_actividad_leccion
-
-        progreso_activo = await db.execute(
-            select(ProgresoLeccion)
-            .join(Leccion, ProgresoLeccion.leccion_id == Leccion.id)
-            .join(LibroTexto, Leccion.libro_id == LibroTexto.id)
-            .where(
-                ProgresoLeccion.estudiante_id == estudiante_id,
-                ProgresoLeccion.estado == EstadoLeccion.en_progreso,
-                LibroTexto.asignatura_id == asignatura_id,
-            )
-            .limit(1)
-        )
-        progreso = progreso_activo.scalar_one_or_none()
-        if progreso:
-            await completar_actividad_leccion(
-                estudiante_id=estudiante_id,
-                leccion_id=progreso.leccion_id,
-                puntaje=evaluacion["puntaje"],
-                db=db,
-            )
-            logger.info(
-                f"[Actividades] Puntaje {evaluacion['puntaje']} aplicado a la "
-                f"lección {progreso.leccion_id} (estudiante {estudiante_id})"
-            )
-    except Exception as e:
-        logger.error(f"[Actividades] No se pudo avanzar la ruta de aprendizaje: {e}")
-        await db.rollback()
-
+    # NOTA (sistema de 3 niveles): la progresión de la lección, la racha y los
+    # puntos YA NO se actualizan por cada actividad respondida. Eso lo decide
+    # ahora el endpoint POST /lecciones/{id}/completar-actividad (service
+    # completar_nivel), que se llama UNA vez al final de la práctica con el nivel
+    # y cuántas actividades se aprobaron. Aquí solo se califica la actividad y se
+    # actualiza el perfil de comprensión (que lee GET /actividades/perfil).
     return respuesta
 
 

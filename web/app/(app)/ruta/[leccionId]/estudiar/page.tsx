@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  obtenerMiLibro,
   obtenerMicroLeccion,
+  obtenerRuta,
   preguntar,
   type MicroLeccion,
   type TarjetaEducativa,
@@ -26,6 +28,7 @@ export default function EstudiarPage() {
   const leccionId = Number(params.leccionId);
 
   const [micro, setMicro] = useState<MicroLeccion | null>(null);
+  const [nivel, setNivel] = useState(1);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
@@ -42,10 +45,31 @@ export default function EstudiarPage() {
     let activo = true;
     (async () => {
       try {
-        const m = await obtenerMicroLeccion(leccionId);
+        // Resolver el nivel actual del estudiante en esta lección (viene en /ruta).
+        let nivelActual = 1;
+        try {
+          const mi = await obtenerMiLibro();
+          const ruta = await obtenerRuta(mi.libro_id);
+          const lec = ruta.lecciones.find((l) => l.id === leccionId);
+          if (lec) nivelActual = lec.nivel_actual || 1;
+        } catch {
+          /* si falla, asumimos nivel 1 */
+        }
+        const m = await obtenerMicroLeccion(leccionId, nivelActual);
         if (!activo) return;
         setMicro(m);
+        setNivel(nivelActual);
         setError(false);
+        // Guardar fragmentos + nivel para que /practicar use la MISMA teoría y nivel.
+        try {
+          sessionStorage.setItem(
+            `fragments_${leccionId}`,
+            JSON.stringify(m.fragment_ids ?? []),
+          );
+          sessionStorage.setItem(`nivel_${leccionId}`, String(nivelActual));
+        } catch {
+          /* sessionStorage no disponible: practicar caerá al rango de páginas */
+        }
       } catch (err) {
         if (!activo) return;
         setError(true);
@@ -130,8 +154,11 @@ export default function EstudiarPage() {
           ✕
         </button>
         <div className="flex-1">
-          <div className="mb-1.5 truncate text-[13px] font-black text-white">
-            📖 {micro.titulo}
+          <div className="mb-1 flex items-center gap-2">
+            <span className="truncate text-[13px] font-black text-white">📖 {micro.titulo}</span>
+            <span className="flex-none rounded-full bg-white/12 px-2 py-0.5 text-[10.5px] font-extrabold text-brand-orange">
+              {"⭐".repeat(nivel)} Nivel {nivel} de 3
+            </span>
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/12">
             <div

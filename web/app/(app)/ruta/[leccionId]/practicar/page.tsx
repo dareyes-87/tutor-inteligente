@@ -5,12 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  completarNivel,
   generarActividad,
   iniciarLeccion,
   obtenerMiLibro,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
+  type CompletarNivelResponse,
   type ResultadoResponse,
   type TipoActividad,
 } from "@/lib/api";
@@ -55,8 +57,9 @@ export default function PracticarPage() {
   const [enviando, setEnviando] = useState(false);
   const [inicio, setInicio] = useState(0);
   const [duracion, setDuracion] = useState(0); // segundos, fijado al terminar
-  const [desbloqueo, setDesbloqueo] = useState(false);
   const [intento, setIntento] = useState(0);
+  const [nivel, setNivel] = useState(1);
+  const [resultadoNivel, setResultadoNivel] = useState<CompletarNivelResponse | null>(null);
 
   // Carga: asegura en_progreso y genera las 5 actividades.
   useEffect(() => {
@@ -72,8 +75,18 @@ export default function PracticarPage() {
           await iniciarLeccion(leccionId); // queda en_progreso → el backend cuenta los puntajes
         }
         const tema = leccion.tema_clave || leccion.nombre;
+        // Reusar los fragmentos + nivel que vio la micro-lección (si el alumno pasó
+        // por /estudiar). Así la práctica cubre exactamente lo explicado.
+        let fragmentIds: number[] = [];
+        try {
+          fragmentIds = JSON.parse(sessionStorage.getItem(`fragments_${leccionId}`) || "[]");
+        } catch {
+          fragmentIds = [];
+        }
+        const nivelGuardado = Number(sessionStorage.getItem(`nivel_${leccionId}`)) || leccion.nivel_actual || 1;
+        if (activo) setNivel(nivelGuardado);
         const settled = await Promise.allSettled(
-          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId)),
+          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId, fragmentIds)),
         );
         if (!activo) return;
         const generadas = settled
@@ -134,18 +147,15 @@ export default function PracticarPage() {
       setResp(initRespuesta(acts[next]));
       return;
     }
-    // Terminó: fija la duración y re-consulta la ruta por el desbloqueo.
+    // Terminó: fija la duración y evalúa el NIVEL completo (sistema de 3 niveles).
     setDuracion(Math.round((Date.now() - inicio) / 1000));
+    const aprobadas = resultados.filter((r) => r.puntaje >= 70).length;
+    const ultimoPuntaje = resultados.length ? resultados[resultados.length - 1].puntaje : 0;
     try {
-      const mi = await obtenerMiLibro();
-      const ruta = await obtenerRuta(mi.libro_id);
-      const leccion = ruta.lecciones.find((l) => l.id === leccionId);
-      if (leccion?.estado === "completada") {
-        const siguiente = ruta.lecciones.find((l) => l.orden === leccion.orden + 1);
-        if (siguiente && siguiente.estado === "disponible") setDesbloqueo(true);
-      }
+      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas);
+      setResultadoNivel(res);
     } catch {
-      /* el resumen se muestra igual */
+      /* el resumen se muestra igual sin avance de nivel */
     }
     setFase("resultado");
   }
@@ -206,8 +216,14 @@ export default function PracticarPage() {
     const total = resultados.length;
     const aciertos = resultados.filter((r) => r.puntaje >= 70).length;
     const promedio = total ? Math.round(resultados.reduce((s, r) => s + r.puntaje, 0) / total) : 0;
-    const perfecta = total > 0 && resultados.every((r) => r.puntaje === 100);
     const tiempo = `${Math.floor(duracion / 60)}:${String(duracion % 60).padStart(2, "0")}`;
+    const aprobado = resultadoNivel?.aprobado ?? false;
+    const domino = aprobado && resultadoNivel?.nivel_completado === 3;
+    const titulo = domino
+      ? "¡Lección Dominada! 👑"
+      : aprobado
+        ? `¡Nivel ${nivel} completado! 🎉`
+        : "¡Sigue intentando! 💪";
     return (
       <Overlay>
         {/* confetti */}
@@ -228,12 +244,16 @@ export default function PracticarPage() {
         </div>
 
         <div className="animate-pop-in relative z-10 flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <div className="h-[130px] w-[130px] overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange">
+          <div className="relative h-[130px] w-[130px] overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange">
             <Mascota size={130} />
+            {domino && <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-4xl">👑</span>}
           </div>
-          <div className="text-[34px] font-black text-white">
-            {perfecta ? "¡Lección perfecta! 🌟" : "¡Práctica completada! 🎉"}
-          </div>
+          <div className="text-[34px] font-black text-white">{titulo}</div>
+          {resultadoNivel?.mensaje_feedback && (
+            <div className="max-w-md text-sm font-bold text-white/70">
+              {resultadoNivel.mensaje_feedback}
+            </div>
+          )}
 
           <div className="mt-2 flex gap-4">
             {[
@@ -250,18 +270,31 @@ export default function PracticarPage() {
             ))}
           </div>
 
-          {desbloqueo && (
-            <div className="mt-3 rounded-full bg-brand-green/20 px-6 py-3 text-base font-black text-brand-green">
-              🎉 ¡Desbloqueaste la siguiente lección!
-            </div>
-          )}
-
-          <button
-            onClick={() => router.push("/ruta")}
-            className="btn-relief mt-6 rounded-2xl bg-brand-orange px-10 py-4 text-lg font-black text-white"
-          >
-            Volver a Mi Ruta
-          </button>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            {aprobado && !domino && (
+              <button
+                onClick={() => router.push(`/ruta/${leccionId}/estudiar`)}
+                className="btn-relief rounded-2xl bg-brand-green px-10 py-4 text-lg font-black text-white"
+                style={{ ["--btn-relief-color" as string]: "#15803D" }}
+              >
+                Continuar al Nivel {nivel + 1} →
+              </button>
+            )}
+            {!aprobado && (
+              <button
+                onClick={() => router.push(`/ruta/${leccionId}/estudiar`)}
+                className="btn-relief rounded-2xl bg-brand-orange px-10 py-4 text-lg font-black text-white"
+              >
+                Intentar de nuevo 🔄
+              </button>
+            )}
+            <button
+              onClick={() => router.push("/ruta")}
+              className="rounded-2xl border-2 border-white/20 px-10 py-3 text-base font-extrabold text-white"
+            >
+              Volver a Mi Ruta
+            </button>
+          </div>
         </div>
       </Overlay>
     );

@@ -82,6 +82,11 @@ export function LeccionCard({
             )}
           </View>
           <Text style={[styles.nombre, { color: s.textColor }]} numberOfLines={2}>{l.nombre}</Text>
+          <Text style={styles.nivelStars}>
+            {l.tiene_corona
+              ? "👑 ⭐⭐⭐"
+              : "⭐".repeat(l.nivel_completado) + "☆".repeat(3 - l.nivel_completado)}
+          </Text>
           {!!l.descripcion && (
             <Text style={[styles.desc, { color: l.estado === "bloqueada" ? "#C4BFB6" : Colors.textLight }]} numberOfLines={2}>
               {l.descripcion}
@@ -144,6 +149,7 @@ const styles = StyleSheet.create({
   chip: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   chipText: { fontSize: 10.5, fontWeight: "800" },
   nombre: { fontSize: 16, fontWeight: "900", lineHeight: 20 },
+  nivelStars: { fontSize: 12, marginTop: 3, letterSpacing: 1 },
   desc: { fontSize: 12.5, fontWeight: "600", marginTop: 2 },
   barRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 9 },
   barLabel: { fontSize: 12, fontWeight: "900" },

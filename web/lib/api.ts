@@ -212,10 +212,17 @@ export function generarActividad(
   tipo: TipoActividad,
   tema: string | null,
   leccionId: number | null = null,
+  fragmentIds: number[] = [],
 ): Promise<ActividadResponse> {
   return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
-    body: JSON.stringify({ asignatura_id: asignaturaId, tipo, tema, leccion_id: leccionId }),
+    body: JSON.stringify({
+      asignatura_id: asignaturaId,
+      tipo,
+      tema,
+      leccion_id: leccionId,
+      fragment_ids: fragmentIds,
+    }),
   });
 }
 
@@ -263,6 +270,9 @@ export interface LeccionEnRuta {
   puntaje_promedio: number;
   actividades_completadas: number;
   actividades_requeridas: number;
+  nivel_actual: number;
+  nivel_completado: number;
+  tiene_corona: boolean;
 }
 
 export interface RutaAprendizaje {
@@ -313,11 +323,34 @@ export interface TarjetaEducativa {
 export interface MicroLeccion {
   titulo: string;
   tarjetas: TarjetaEducativa[];
+  fragment_ids: number[];
+  nivel_actual: number;
+  es_ultimo_nivel: boolean;
 }
 
-/** Micro-lección guiada (tarjetas) de una lección; se genera on-demand. */
-export function obtenerMicroLeccion(leccionId: number): Promise<MicroLeccion> {
-  return request<MicroLeccion>(`/lecciones/${leccionId}/micro-leccion`);
+/** Micro-lección guiada (tarjetas) de una lección y nivel; se genera on-demand. */
+export function obtenerMicroLeccion(leccionId: number, nivel = 1): Promise<MicroLeccion> {
+  return request<MicroLeccion>(`/lecciones/${leccionId}/micro-leccion?nivel=${nivel}`);
+}
+
+export interface CompletarNivelResponse {
+  nivel_completado: number;
+  nivel_actual: number;
+  aprobado: boolean;
+  mensaje_feedback: string;
+}
+
+/** Envía el resultado de practicar un nivel (cuántas actividades se aprobaron). */
+export function completarNivel(
+  leccionId: number,
+  puntaje: number,
+  nivel: number,
+  actividadesAprobadas: number,
+): Promise<CompletarNivelResponse> {
+  return request<CompletarNivelResponse>(`/lecciones/${leccionId}/completar-actividad`, {
+    method: "POST",
+    body: JSON.stringify({ puntaje, nivel, actividades_aprobadas: actividadesAprobadas }),
+  });
 }
 
 /** Marca una lección disponible como en progreso. */

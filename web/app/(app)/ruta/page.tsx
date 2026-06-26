@@ -344,6 +344,12 @@ function LeccionFila({
           >
             {l.nombre}
           </div>
+          {/* Estrellas de nivel (sistema de 3 niveles) */}
+          <div className="mt-1 text-[13px] tracking-wide" title={`Nivel ${l.nivel_completado} de 3`}>
+            {l.tiene_corona
+              ? "👑 ⭐⭐⭐"
+              : "⭐".repeat(l.nivel_completado) + "☆".repeat(3 - l.nivel_completado)}
+          </div>
           {l.descripcion && (
             <div className="mt-1 text-[13px] font-bold" style={{ color: s.descColor }}>
               {l.descripcion}

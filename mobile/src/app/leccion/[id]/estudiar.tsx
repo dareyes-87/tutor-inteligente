@@ -17,7 +17,9 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
+  obtenerMiLibro,
   obtenerMicroLeccion,
+  obtenerRuta,
   preguntar,
   type MicroLeccion,
   type TarjetaEducativa,
@@ -33,6 +35,7 @@ export default function EstudiarScreen() {
   const insets = useSafeAreaInsets();
 
   const [micro, setMicro] = useState<MicroLeccion | null>(null);
+  const [nivel, setNivel] = useState(1);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
@@ -47,9 +50,20 @@ export default function EstudiarScreen() {
     let activo = true;
     (async () => {
       try {
-        const m = await obtenerMicroLeccion(leccionId);
+        // Resolver el nivel actual del estudiante en esta lección (viene en /ruta).
+        let nivelActual = 1;
+        try {
+          const mi = await obtenerMiLibro();
+          const ruta = await obtenerRuta(mi.libro_id);
+          const lec = ruta.lecciones.find((l) => l.id === leccionId);
+          if (lec) nivelActual = lec.nivel_actual || 1;
+        } catch {
+          /* nivel 1 por defecto */
+        }
+        const m = await obtenerMicroLeccion(leccionId, nivelActual);
         if (!activo) return;
         setMicro(m);
+        setNivel(nivelActual);
         setError(false);
       } catch {
         if (activo) setError(true);
@@ -77,7 +91,16 @@ export default function EstudiarScreen() {
 
   function avanzar() {
     if (esUltima) {
-      router.push({ pathname: "/leccion/[id]/practicar", params: { id: String(leccionId) } });
+      // Pasar los fragmentos usados para que /practicar genere actividades con
+      // la MISMA teoría explicada aquí.
+      router.push({
+        pathname: "/leccion/[id]/practicar",
+        params: {
+          id: String(leccionId),
+          fragmentIds: JSON.stringify(micro?.fragment_ids ?? []),
+          nivel: String(nivel),
+        },
+      });
       return;
     }
     setIdx((i) => i + 1);
@@ -123,6 +146,9 @@ export default function EstudiarScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitulo} numberOfLines={1}>
             📖 {micro.titulo}
+          </Text>
+          <Text style={styles.headerNivel}>
+            {"⭐".repeat(nivel)} Nivel {nivel} de 3
           </Text>
           <View style={styles.barraBg}>
             <View style={[styles.barraFill, { width: `${((idx + 1) / total) * 100}%` }]} />
@@ -365,7 +391,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
   x: { width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
   xText: { color: "rgba(255,255,255,0.85)", fontSize: 16, fontWeight: "900" },
-  headerTitulo: { color: Colors.white, fontSize: 13, fontWeight: "900", marginBottom: 6 },
+  headerTitulo: { color: Colors.white, fontSize: 13, fontWeight: "900", marginBottom: 2 },
+  headerNivel: { color: Colors.orange, fontSize: 11, fontWeight: "800", marginBottom: 6 },
   barraBg: { height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.12)", overflow: "hidden" },
   barraFill: { height: "100%", borderRadius: 5, backgroundColor: Colors.green },
   contador: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "800" },

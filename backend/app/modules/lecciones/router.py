@@ -13,6 +13,7 @@ from app.modules.auth.dependencies import require_role
 from app.modules.lecciones import service
 from app.modules.lecciones.schemas import (
     CompletarActividadRequest,
+    CompletarNivelResponse,
     LeccionEnRuta,
     MicroLeccionResponse,
     MiLibroResponse,
@@ -49,11 +50,12 @@ async def get_ruta(
 @router.get("/lecciones/{leccion_id}/micro-leccion", response_model=MicroLeccionResponse)
 async def get_micro_leccion(
     leccion_id: int,
+    nivel: int = 1,
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(_estudiante),
 ):
-    """Micro-lección guiada (tarjetas educativas) generada on-demand."""
-    return await service.generar_micro_leccion(leccion_id, db)
+    """Micro-lección guiada (tarjetas educativas) generada on-demand para un nivel (1-3)."""
+    return await service.generar_micro_leccion(leccion_id, db, nivel=nivel)
 
 
 @router.post("/lecciones/{leccion_id}/iniciar", response_model=LeccionEnRuta)
@@ -67,7 +69,8 @@ async def post_iniciar(
 
 
 @router.post(
-    "/lecciones/{leccion_id}/completar-actividad", response_model=LeccionEnRuta
+    "/lecciones/{leccion_id}/completar-actividad",
+    response_model=LeccionEnRuta | CompletarNivelResponse,
 )
 async def post_completar_actividad(
     leccion_id: int,
@@ -75,7 +78,21 @@ async def post_completar_actividad(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(_estudiante),
 ):
-    """Registra una actividad completada en la lección (puede completarla)."""
+    """Registra el resultado de práctica de una lección.
+
+    - Si vienen `nivel` y `actividades_aprobadas` → evalúa el NIVEL (sistema de
+      3 niveles) y devuelve CompletarNivelResponse.
+    - Si no → comportamiento anterior por actividad (devuelve LeccionEnRuta).
+    """
+    if body.nivel is not None and body.actividades_aprobadas is not None:
+        return await service.completar_nivel(
+            current_user.id,
+            leccion_id,
+            body.nivel,
+            body.actividades_aprobadas,
+            body.puntaje,
+            db,
+        )
     return await service.completar_actividad_leccion(
         current_user.id, leccion_id, body.puntaje, db
     )

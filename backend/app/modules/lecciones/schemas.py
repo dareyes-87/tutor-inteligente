@@ -30,6 +30,10 @@ class LeccionEnRuta(BaseModel):
     puntaje_promedio: float
     actividades_completadas: int
     actividades_requeridas: int
+    # Sistema de 3 niveles
+    nivel_actual: int = 1
+    nivel_completado: int = 0
+    tiene_corona: bool = False
 
 
 class RutaAprendizaje(BaseModel):
@@ -72,12 +76,32 @@ class TarjetaEducativa(BaseModel):
 class MicroLeccionResponse(BaseModel):
     titulo: str
     tarjetas: list[TarjetaEducativa]
+    # IDs de los fragmentos del libro usados para generar la lección. El frontend
+    # los reenvía a /actividades/generar para que la práctica use el MISMO contenido
+    # que el tutor explicó (no una búsqueda semántica distinta).
+    fragment_ids: list[int] = []
+    # Nivel de esta micro-lección (1, 2 o 3) y si es el último.
+    nivel_actual: int = 1
+    es_ultimo_nivel: bool = False
 
 
 # ----------------------- Acciones del estudiante -----------------------
 
 class CompletarActividadRequest(BaseModel):
-    puntaje: int = Field(ge=0, le=100, description="Puntaje obtenido en la actividad (0-100)")
+    puntaje: int = Field(ge=0, le=100, description="Puntaje obtenido (0-100)")
+    # Campos del sistema de niveles (opcionales para compatibilidad). Si vienen
+    # ambos, se evalúa el nivel completo; si no, se usa el comportamiento viejo.
+    nivel: int | None = Field(None, ge=1, le=3, description="Nivel practicado (1-3)")
+    actividades_aprobadas: int | None = Field(
+        None, ge=0, description="Cuántas de las 5 actividades superaron el umbral (>=70)"
+    )
+
+
+class CompletarNivelResponse(BaseModel):
+    nivel_completado: int
+    nivel_actual: int
+    aprobado: bool
+    mensaje_feedback: str
 
 
 # ----------------------- Gamificación -----------------------

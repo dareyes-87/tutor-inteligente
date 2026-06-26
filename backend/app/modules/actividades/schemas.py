@@ -14,6 +14,12 @@ class GenerarActividadRequest(BaseModel):
         description="Lección que se acaba de estudiar (opcional). Si se da, la actividad "
         "se enfoca en el tema y las páginas de esa lección.",
     )
+    fragment_ids: list[int] = Field(
+        default_factory=list,
+        description="IDs de los fragmentos que usó la micro-lección (opcional). Si se dan, "
+        "la actividad se genera con EXACTAMENTE esos fragmentos (la teoría que el "
+        "tutor explicó), en vez de una nueva búsqueda semántica.",
+    )
 
 
 class ResponderActividadRequest(BaseModel):

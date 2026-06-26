@@ -76,6 +76,7 @@ def search_fragments(
     # Procesar resultados
     fragments = []
     if results and results["documents"] and results["documents"][0]:
+        ids = results.get("ids", [[]])
         for i, doc in enumerate(results["documents"][0]):
             distance = results["distances"][0][i] if results["distances"] else None
             metadata = results["metadatas"][0][i] if results["metadatas"] else {}
@@ -86,6 +87,9 @@ def search_fragments(
 
             fragments.append({
                 "text": doc,
+                # chunk_id de ChromaDB (= Fragmento.chunk_id_vectordb); permite
+                # mapear el resultado de vuelta a la fila Fragmento en Postgres.
+                "chunk_id": ids[0][i] if ids and ids[0] else None,
                 "page_num": metadata.get("page_num"),
                 "libro_id": metadata.get("libro_id"),
                 "asignatura": metadata.get("asignatura"),

@@ -16,12 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.client import llm_client
 from app.models.asignatura import Asignatura
+from app.models.fragmento import Fragmento
 from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.libro import EstadoIndexacion, LibroTexto
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.lecciones.schemas import (
+    CompletarNivelResponse,
     LeccionEnRuta,
     MicroLeccionResponse,
     MiLibroResponse,
@@ -36,6 +38,33 @@ logger = logging.getLogger(__name__)
 
 # Puntaje mínimo (promedio) para dar una lección por completada.
 PUNTAJE_MINIMO_COMPLETAR = 70
+
+# --- Sistema de 3 niveles tipo Duolingo ---
+# Cuántos fragmentos (Top-K) usa la micro-lección en cada nivel.
+NIVEL_TOPK = {1: 5, 2: 8, 3: 10}
+# Cuántas de las 5 actividades de práctica hay que aprobar (>=70) para superar el nivel.
+NIVEL_APROBADAS_REQUERIDAS = {1: 3, 2: 4, 3: 4}
+# Tamaño del pool de candidatos del que se muestrea Top-K (da variedad por intento).
+POOL_CANDIDATOS_FRAGMENTOS = 15
+
+
+def _seleccionar_fragmentos_nivel(
+    fragments: list[dict], leccion_id: int, nivel: int
+) -> list[dict]:
+    """Muestrea Top-K fragmentos del pool según el nivel, con semilla por día.
+
+    La semilla (leccion_id, nivel, día del año) hace que el muestreo sea estable
+    dentro del mismo día pero cambie al día siguiente: cada intento/día trae
+    tarjetas con énfasis distintos. Se mantiene el orden por página para que el
+    contexto que ve el LLM sea coherente.
+    """
+    k = NIVEL_TOPK.get(nivel, 5)
+    if len(fragments) <= k:
+        seleccion = list(fragments)
+    else:
+        seed = leccion_id * 100 + nivel + date.today().timetuple().tm_yday
+        seleccion = random.Random(seed).sample(fragments, k)
+    return sorted(seleccion, key=lambda f: (f.get("page_num") is None, f.get("page_num") or 0))
 
 
 async def _get_or_create_progreso(
@@ -78,6 +107,9 @@ def _to_leccion_en_ruta(leccion: Leccion, progreso: ProgresoLeccion) -> LeccionE
         puntaje_promedio=round(progreso.puntaje_promedio, 1),
         actividades_completadas=progreso.actividades_completadas,
         actividades_requeridas=progreso.actividades_requeridas,
+        nivel_actual=progreso.nivel_actual,
+        nivel_completado=progreso.nivel_completado,
+        tiene_corona=progreso.nivel_completado >= 3,
     )
 
 
@@ -169,9 +201,25 @@ async def obtener_mi_libro(estudiante: Usuario, db: AsyncSession) -> MiLibroResp
     )
 
 
-def _build_micro_leccion_messages(nombre_leccion: str, fragmentos: str) -> list[dict]:
-    """Prompt para generar la micro-lección (tarjetas educativas) de una lección."""
+# Enfoque pedagógico de cada nivel (se inyecta en el prompt de la micro-lección).
+_ENFOQUE_NIVEL = {
+    1: "Explica los conceptos fundamentales de forma introductoria. Usa lenguaje simple para niños de 8-12 años.",
+    2: "El estudiante ya conoce los conceptos base. Ahora profundiza con ejemplos concretos, aplicaciones en la vida real y relaciones entre los conceptos del tema.",
+    3: "El estudiante domina el tema. Presenta síntesis, conexiones entre subtemas, casos especiales y detalles avanzados del contenido del libro.",
+}
+
+
+def _build_micro_leccion_messages(
+    nombre_leccion: str, fragmentos: str, nivel: int = 1
+) -> list[dict]:
+    """Prompt para generar la micro-lección (tarjetas educativas) de una lección.
+
+    `nivel` (1-3) cambia el enfoque pedagógico (base / profundización / síntesis).
+    """
+    enfoque = _ENFOQUE_NIVEL.get(nivel, _ENFOQUE_NIVEL[1])
     user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido de los siguientes fragmentos del libro de texto.
+
+ENFOQUE DE ESTA LECCIÓN (NIVEL {nivel} de 3): {enfoque}
 
 FRAGMENTOS DEL LIBRO:
 {fragmentos}
@@ -259,13 +307,19 @@ def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
             random.shuffle(tarjeta.pregunta.opciones)
 
 
-async def generar_micro_leccion(leccion_id: int, db: AsyncSession) -> MicroLeccionResponse:
+async def generar_micro_leccion(
+    leccion_id: int, db: AsyncSession, nivel: int = 1
+) -> MicroLeccionResponse:
     """
     Genera on-demand una micro-lección (secuencia de tarjetas) para una lección.
 
     Usa los fragmentos del libro (RAG por tema_clave + asignatura/grado del libro)
     y el LLM base (Qwen 7B). No se cachea.
+
+    `nivel` (1-3) ajusta Top-K (5/8/10), el enfoque del prompt, y muestrea los
+    fragmentos con semilla por día para variar el énfasis entre intentos.
     """
+    nivel = nivel if nivel in NIVEL_TOPK else 1
     fila = (
         await db.execute(
             select(Leccion, Asignatura.nombre, Grado.nombre)
@@ -279,22 +333,38 @@ async def generar_micro_leccion(leccion_id: int, db: AsyncSession) -> MicroLecci
         raise HTTPException(status_code=404, detail="Lección no encontrada")
     leccion, asignatura_nombre, grado_nombre = fila
 
-    fragments = search_fragments(
+    # Pool amplio de candidatos; del pool se muestrea Top-K según el nivel.
+    pool = search_fragments(
         query=leccion.tema_clave or leccion.nombre,
         asignatura=asignatura_nombre,
         grado=grado_nombre,
+        top_k=POOL_CANDIDATOS_FRAGMENTOS,
     )
-    if not fragments:
+    if not pool:
         raise HTTPException(
             status_code=502,
             detail="No se encontró contenido del libro para esta lección.",
         )
+    fragments = _seleccionar_fragmentos_nivel(pool, leccion_id, nivel)
 
     contexto = "\n\n".join(
         f"--- Fragmento {i} (página {f.get('page_num', '?')}) ---\n{f['text']}"
         for i, f in enumerate(fragments, start=1)
     )
-    messages = _build_micro_leccion_messages(leccion.nombre, contexto)
+
+    # IDs de los fragmentos usados, para que /practicar use el MISMO contenido.
+    chunk_ids = [f["chunk_id"] for f in fragments if f.get("chunk_id")]
+    fragment_ids: list[int] = []
+    if chunk_ids:
+        fragment_ids = list(
+            (
+                await db.execute(
+                    select(Fragmento.id).where(Fragmento.chunk_id_vectordb.in_(chunk_ids))
+                )
+            ).scalars().all()
+        )
+
+    messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel)
 
     # Más tokens que antes: ahora pedimos 8-10 tarjetas, cada una con pregunta.
     data = llm_client.generate_json(messages, max_tokens=4096)
@@ -312,6 +382,9 @@ async def generar_micro_leccion(leccion_id: int, db: AsyncSession) -> MicroLecci
     if not micro.tarjetas:
         raise HTTPException(status_code=502, detail="La micro-lección generada está vacía.")
     _corregir_preguntas(micro)
+    micro.fragment_ids = fragment_ids
+    micro.nivel_actual = nivel
+    micro.es_ultimo_nivel = nivel >= max(NIVEL_TOPK)
     return micro
 
 
@@ -392,6 +465,92 @@ async def completar_actividad_leccion(
 
     await db.commit()
     return _to_leccion_en_ruta(leccion, progreso)
+
+
+async def completar_nivel(
+    estudiante_id: int,
+    leccion_id: int,
+    nivel: int,
+    actividades_aprobadas: int,
+    puntaje: int,
+    db: AsyncSession,
+) -> CompletarNivelResponse:
+    """Evalúa el resultado de practicar un NIVEL y avanza/repite según el umbral.
+
+    - Aprueba el nivel si `actividades_aprobadas >= NIVEL_APROBADAS_REQUERIDAS[nivel]`.
+    - Niveles 1/2 aprobados: sube `nivel_actual`, la lección sigue en_progreso.
+    - Nivel 3 aprobado: lección `completada` (corona 👑), desbloquea la siguiente y
+      otorga racha + puntos (la gamificación solo avanza al dominar).
+    - No aprobado: `intentos_nivel += 1`, sin avanzar de nivel.
+    """
+    leccion = (
+        await db.execute(select(Leccion).where(Leccion.id == leccion_id))
+    ).scalar_one_or_none()
+    if leccion is None:
+        raise HTTPException(status_code=404, detail="Lección no encontrada")
+
+    nivel = nivel if nivel in NIVEL_APROBADAS_REQUERIDAS else 1
+    progreso = await _get_or_create_progreso(estudiante_id, leccion, db)
+
+    requeridas = NIVEL_APROBADAS_REQUERIDAS[nivel]
+    tema = leccion.tema_clave or leccion.nombre
+
+    if actividades_aprobadas < requeridas:
+        progreso.intentos_nivel += 1
+        await db.commit()
+        return CompletarNivelResponse(
+            nivel_completado=progreso.nivel_completado,
+            nivel_actual=progreso.nivel_actual,
+            aprobado=False,
+            mensaje_feedback=(
+                f"¡Casi! Necesitas {requeridas} correctas para avanzar. "
+                "¡Inténtalo de nuevo! 💪"
+            ),
+        )
+
+    # Aprobado: registrar el nivel superado (sin regresar si ya iba más adelante).
+    progreso.nivel_completado = max(progreso.nivel_completado, nivel)
+    progreso.intentos_nivel = 0
+
+    if nivel >= max(NIVEL_APROBADAS_REQUERIDAS):  # nivel 3 → dominada
+        progreso.nivel_actual = nivel
+        if progreso.estado != EstadoLeccion.completada:
+            progreso.estado = EstadoLeccion.completada
+            progreso.fecha_completada = datetime.now(timezone.utc)
+            progreso.puntaje_promedio = 100.0
+
+            siguiente = (
+                await db.execute(
+                    select(Leccion).where(
+                        Leccion.libro_id == leccion.libro_id,
+                        Leccion.orden == leccion.orden + 1,
+                    )
+                )
+            ).scalar_one_or_none()
+            if siguiente is not None:
+                prog_sig = await _get_or_create_progreso(estudiante_id, siguiente, db)
+                if prog_sig.estado == EstadoLeccion.bloqueada:
+                    prog_sig.estado = EstadoLeccion.disponible
+
+            await actualizar_racha(estudiante_id, db)
+            usuario = (
+                await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
+            ).scalar_one()
+            usuario.puntos_totales += puntaje
+        mensaje = f"¡Lección dominada! Eres un experto en {tema} 👑"
+    else:
+        progreso.nivel_actual = max(progreso.nivel_actual, nivel + 1)
+        if progreso.estado in (EstadoLeccion.disponible, EstadoLeccion.bloqueada):
+            progreso.estado = EstadoLeccion.en_progreso
+        mensaje = f"¡Nivel {nivel} completado! Ahora profundizaremos más 🚀"
+
+    await db.commit()
+    return CompletarNivelResponse(
+        nivel_completado=progreso.nivel_completado,
+        nivel_actual=progreso.nivel_actual,
+        aprobado=True,
+        mensaje_feedback=mensaje,
+    )
 
 
 async def actualizar_racha(estudiante_id: int, db: AsyncSession) -> None:

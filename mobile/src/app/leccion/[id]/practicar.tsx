@@ -17,12 +17,14 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
+  completarNivel,
   generarActividad,
   iniciarLeccion,
   obtenerMiLibro,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
+  type CompletarNivelResponse,
   type ResultadoResponse,
   type TipoActividad,
 } from "@/lib/api";
@@ -40,8 +42,13 @@ const TIPOS: TipoActividad[] = [
 type Fase = "cargando" | "error" | "ejercicio" | "resultado";
 
 export default function PracticarScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fragmentIds: fragmentIdsParam, nivel: nivelParam } = useLocalSearchParams<{
+    id: string;
+    fragmentIds?: string;
+    nivel?: string;
+  }>();
   const leccionId = Number(id);
+  const nivel = Number(nivelParam) || 1;
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -55,7 +62,7 @@ export default function PracticarScreen() {
   const [enviando, setEnviando] = useState(false);
   const [inicio, setInicio] = useState(0);
   const [duracion, setDuracion] = useState(0);
-  const [desbloqueo, setDesbloqueo] = useState(false);
+  const [resultadoNivel, setResultadoNivel] = useState<CompletarNivelResponse | null>(null);
   const [intento, setIntento] = useState(0);
 
   const panelAnim = useRef(new Animated.Value(0)).current;
@@ -73,8 +80,15 @@ export default function PracticarScreen() {
         if (leccion.estado === "bloqueada") throw new Error("bloqueada");
         if (leccion.estado === "disponible") await iniciarLeccion(leccionId);
         const tema = leccion.tema_clave || leccion.nombre;
+        // Reusar los fragmentos que vio la micro-lección (vienen por params).
+        let fragmentIds: number[] = [];
+        try {
+          fragmentIds = fragmentIdsParam ? JSON.parse(fragmentIdsParam) : [];
+        } catch {
+          fragmentIds = [];
+        }
         const settled = await Promise.allSettled(
-          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId)),
+          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId, fragmentIds)),
         );
         if (!activo) return;
         const generadas = settled
@@ -158,16 +172,13 @@ export default function PracticarScreen() {
       return;
     }
     setDuracion(Math.round((Date.now() - inicio) / 1000));
+    const aprobadas = resultados.filter((r) => r.puntaje >= 70).length;
+    const ultimoPuntaje = resultados.length ? resultados[resultados.length - 1].puntaje : 0;
     try {
-      const mi = await obtenerMiLibro();
-      const ruta = await obtenerRuta(mi.libro_id);
-      const l = ruta.lecciones.find((x) => x.id === leccionId);
-      if (l?.estado === "completada") {
-        const sig = ruta.lecciones.find((x) => x.orden === l.orden + 1);
-        if (sig && sig.estado === "disponible") setDesbloqueo(true);
-      }
+      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas);
+      setResultadoNivel(res);
     } catch {
-      /* el resumen se muestra igual */
+      /* el resumen se muestra igual sin avance de nivel */
     }
     setFase("resultado");
   }
@@ -221,14 +232,27 @@ export default function PracticarScreen() {
     const total = resultados.length;
     const aciertos = resultados.filter((r) => r.puntaje >= 70).length;
     const promedio = total ? Math.round(resultados.reduce((s, r) => s + r.puntaje, 0) / total) : 0;
-    const perfecta = total > 0 && resultados.every((r) => r.puntaje === 100);
     const tiempo = `${Math.floor(duracion / 60)}:${String(duracion % 60).padStart(2, "0")}`;
     const scale = starAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] });
+    const aprobado = resultadoNivel?.aprobado ?? false;
+    const domino = aprobado && resultadoNivel?.nivel_completado === 3;
+    const titulo = domino
+      ? "¡Lección Dominada! 👑"
+      : aprobado
+        ? `¡Nivel ${nivel} completado! 🎉`
+        : "¡Sigue intentando! 💪";
+    const irEstudiar = () =>
+      router.replace({ pathname: "/leccion/[id]/estudiar", params: { id: String(leccionId) } });
     return (
       <View style={[styles.centro, { paddingHorizontal: 28 }]}>
         <StatusBar style="light" />
-        <Animated.Text style={[styles.starsRow, { transform: [{ scale }] }]}>⭐ 🎉 ⭐</Animated.Text>
-        <Text style={styles.resultTitulo}>{perfecta ? "¡Perfecto! 🌟" : "¡Práctica completada! 🎉"}</Text>
+        <Animated.Text style={[styles.starsRow, { transform: [{ scale }] }]}>
+          {domino ? "👑 ⭐⭐⭐" : "⭐ 🎉 ⭐"}
+        </Animated.Text>
+        <Text style={styles.resultTitulo}>{titulo}</Text>
+        {!!resultadoNivel?.mensaje_feedback && (
+          <Text style={styles.resultMensaje}>{resultadoNivel.mensaje_feedback}</Text>
+        )}
 
         <View style={styles.statsRow}>
           {[
@@ -243,14 +267,19 @@ export default function PracticarScreen() {
           ))}
         </View>
 
-        {desbloqueo && (
-          <View style={styles.desbloqueo}>
-            <Text style={styles.desbloqueoText}>🎉 ¡Desbloqueaste la siguiente lección!</Text>
-          </View>
+        {aprobado && !domino && (
+          <Pressable onPress={irEstudiar} style={[styles.botonGrande, { backgroundColor: Colors.green, marginTop: 24, paddingHorizontal: 32 }]}>
+            <Text style={[styles.botonGrandeText, { fontSize: 16 }]}>Continuar al Nivel {nivel + 1} →</Text>
+          </Pressable>
+        )}
+        {!aprobado && (
+          <Pressable onPress={irEstudiar} style={[styles.botonGrande, { backgroundColor: Colors.orange, marginTop: 24, paddingHorizontal: 32 }]}>
+            <Text style={[styles.botonGrandeText, { fontSize: 16 }]}>Intentar de nuevo 🔄</Text>
+          </Pressable>
         )}
 
-        <Pressable onPress={() => router.dismissAll()} style={[styles.botonGrande, { backgroundColor: Colors.orange, marginTop: 28, paddingHorizontal: 36 }]}>
-          <Text style={[styles.botonGrandeText, { fontSize: 17 }]}>Volver a Mi Ruta</Text>
+        <Pressable onPress={() => router.dismissAll()} style={{ marginTop: 14, paddingVertical: 10 }}>
+          <Text style={{ color: Colors.white, fontWeight: "800", fontSize: 14 }}>Volver a Mi Ruta</Text>
         </Pressable>
       </View>
     );
@@ -457,6 +486,7 @@ const styles = StyleSheet.create({
   // resultados
   starsRow: { fontSize: 40, marginBottom: 8 },
   resultTitulo: { fontSize: 30, fontWeight: "900", color: Colors.white, textAlign: "center" },
+  resultMensaje: { fontSize: 14, fontWeight: "700", color: "rgba(255,255,255,0.7)", textAlign: "center", marginTop: 8 },
   statsRow: { flexDirection: "row", gap: 12, marginTop: 22 },
   statBox: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 16, paddingHorizontal: 22, paddingVertical: 14, alignItems: "center" },
   statVal: { fontSize: 26, fontWeight: "900" },
