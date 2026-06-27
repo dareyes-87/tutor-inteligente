@@ -22,6 +22,7 @@ from app.modules.docente.schemas import (
     EstudianteResumen,
     LibroDocente,
     PerfilTemaDocente,
+    PreguntaFrecuente,
     TemaPreguntado,
 )
 
@@ -192,10 +193,35 @@ async def estadisticas(db: AsyncSession) -> EstadisticasDocente:
         ).scalar_one_or_none()
         temas.append(TemaPreguntado(tema=nombre, total=total, ejemplo=ejemplo))
 
+    # Desglose por pregunta concreta: agrupa los mensajes de usuario por su texto
+    # normalizado (sin distinguir mayúsculas/espacios) y cuenta repeticiones. Así el
+    # docente ve QUÉ se pregunta, no solo "Ciencias Naturales: 82".
+    texto_norm = func.lower(func.trim(Mensaje.contenido))
+    preguntas_rows = (
+        await db.execute(
+            select(
+                func.max(Mensaje.contenido),
+                func.count(Mensaje.id),
+                Asignatura.nombre,
+            )
+            .join(Conversacion, Mensaje.conversacion_id == Conversacion.id)
+            .join(Asignatura, Conversacion.asignatura_id == Asignatura.id)
+            .where(Mensaje.rol == RolMensaje.usuario)
+            .group_by(texto_norm, Asignatura.nombre)
+            .order_by(func.count(Mensaje.id).desc(), func.max(Mensaje.id).desc())
+            .limit(10)
+        )
+    ).all()
+    preguntas_frecuentes = [
+        PreguntaFrecuente(pregunta=pregunta, total=total, asignatura=asig)
+        for pregunta, total, asig in preguntas_rows
+    ]
+
     return EstadisticasDocente(
         total_estudiantes=total_estudiantes,
         total_libros=total_libros,
         total_lecciones=total_lecciones,
         promedio_progreso=promedio_progreso,
         temas_mas_preguntados=temas,
+        preguntas_frecuentes=preguntas_frecuentes,
     )

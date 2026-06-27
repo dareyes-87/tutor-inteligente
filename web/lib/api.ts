@@ -450,12 +450,19 @@ export interface TemaPreguntado {
   ejemplo?: string | null;
 }
 
+export interface PreguntaFrecuente {
+  pregunta: string;
+  total: number;
+  asignatura: string;
+}
+
 export interface EstadisticasDocente {
   total_estudiantes: number;
   total_libros: number;
   total_lecciones: number;
   promedio_progreso: number;
   temas_mas_preguntados: TemaPreguntado[];
+  preguntas_frecuentes: PreguntaFrecuente[];
 }
 
 export interface LibroSubido {

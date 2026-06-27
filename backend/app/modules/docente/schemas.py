@@ -53,9 +53,19 @@ class TemaPreguntado(BaseModel):
     ejemplo: str | None = None  # pregunta reciente de ejemplo (si existe)
 
 
+class PreguntaFrecuente(BaseModel):
+    """Una pregunta real del chat, agrupada por su texto, con cuántas veces se hizo."""
+    pregunta: str
+    total: int
+    asignatura: str
+
+
 class EstadisticasDocente(BaseModel):
     total_estudiantes: int
     total_libros: int
     total_lecciones: int
     promedio_progreso: float  # 0-100
+    # Total de consultas (mensajes de usuario) por asignatura — visión de alto nivel.
     temas_mas_preguntados: list[TemaPreguntado]
+    # Desglose por pregunta concreta (lo más útil para el docente).
+    preguntas_frecuentes: list[PreguntaFrecuente]

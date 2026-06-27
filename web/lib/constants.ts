@@ -27,12 +27,12 @@ export const STUDENT_NAV: NavItem[] = [
   { href: "/ranking", key: "ranking", label: "Ranking", icon: "🏆" },
 ];
 
-/** Sidebar del docente — más sobrio, misma paleta. */
-export const TEACHER_NAV: { key: string; label: string; icon: string }[] = [
-  { key: "resumen", label: "Resumen", icon: "📊" },
-  { key: "libros", label: "Libros", icon: "📚" },
-  { key: "estudiantes", label: "Estudiantes", icon: "👩‍🎓" },
-  { key: "preguntas", label: "Preguntas", icon: "❓" },
+/** Sidebar del docente — más sobrio, misma paleta. Cada item navega a su página. */
+export const TEACHER_NAV: NavItem[] = [
+  { href: "/docente", key: "resumen", label: "Resumen", icon: "📊" },
+  { href: "/docente/libros", key: "libros", label: "Libros", icon: "📚" },
+  { href: "/docente/estudiantes", key: "estudiantes", label: "Estudiantes", icon: "👩‍🎓" },
+  { href: "/docente/preguntas", key: "preguntas", label: "Preguntas", icon: "❓" },
 ];
 
 /** Ruta de inicio según el rol del usuario. */

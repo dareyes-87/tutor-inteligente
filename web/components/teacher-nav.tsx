@@ -2,13 +2,17 @@
 
 /**
  * Sidebar del docente — versión sobria (navy) de la navegación.
- * Single-page por ahora: "Resumen" queda activo.
+ * Cada item navega a su página; el activo se resalta según la ruta actual.
  */
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import { useAuth } from "@/lib/auth";
 import { TEACHER_NAV } from "@/lib/constants";
 
 export function TeacherNav() {
   const { user, logout } = useAuth();
+  const pathname = usePathname();
 
   const nombre = user ? `Prof. ${user.apellido || user.nombre}` : "Docente";
   const iniciales = user
@@ -34,13 +38,19 @@ export function TeacherNav() {
       </div>
 
       {/* Items */}
-      {TEACHER_NAV.map((n, i) => {
-        const active = i === 0;
+      {TEACHER_NAV.map((n) => {
+        // "/docente" (Resumen) sólo se marca activo en la ruta exacta; el resto
+        // también con sub-rutas (p. ej. /docente/estudiantes/3).
+        const active =
+          n.href === "/docente"
+            ? pathname === "/docente"
+            : pathname === n.href || pathname.startsWith(`${n.href}/`);
         return (
-          <div
+          <Link
             key={n.key}
-            className={`flex items-center gap-[13px] rounded-xl px-[15px] py-[13px] ${
-              active ? "bg-brand-blue" : ""
+            href={n.href}
+            className={`flex items-center gap-[13px] rounded-xl px-[15px] py-[13px] transition-colors ${
+              active ? "bg-brand-blue" : "hover:bg-white/[0.06]"
             }`}
           >
             <span className="text-lg">{n.icon}</span>
@@ -51,7 +61,7 @@ export function TeacherNav() {
             >
               {n.label}
             </span>
-          </div>
+          </Link>
         );
       })}
 

@@ -8,6 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Everything runs in Docker: a FastAPI backend, PostgreSQL 16 (relational data), and ChromaDB (vector store). The LLM is served remotely by **Together AI** (default model `Qwen/Qwen2.5-7B-Instruct-Turbo`); embeddings run locally on CPU via sentence-transformers.
 
+There are **three top-level apps**:
+- `backend/` — the FastAPI RAG backend (the core; everything above).
+- `web/` — a Next.js web client. ⚠️ Lee `web/AGENTS.md`: es una versión de Next.js con breaking changes; consulta `node_modules/next/dist/docs/` antes de escribir código nuevo ahí. Tiene dos áreas: la del **estudiante** (`app/(app)/...`, ruta/inicio/chat/actividades/progreso/ranking) y el **panel docente** (`app/docente/...`).
+- `mobile/` — una app **Expo / React Native** (estudiante) con el mismo backend; usa `expo-speech` (TTS) en la micro-lección y está configurada para generar APK con **EAS Build** (`mobile/eas.json`).
+
 ## Commands
 
 All commands run through Docker Compose from the repo root. The backend mounts `./backend` as a volume with `--reload`, so Python changes hot-reload without rebuilding.
@@ -34,7 +39,12 @@ docker compose exec backend alembic current
 
 ### Tests
 
-There is **no test suite** in this repo yet. Verification is manual via `/docs` and `/health`.
+Hay **11 pruebas de integración** Pytest en `backend/tests/test_endpoints.py` (async, `httpx`). **Corren contra el servidor real** (`http://localhost:8000`), así que el backend debe estar levantado (`docker compose up`) antes de ejecutarlas. Fixtures en `backend/tests/conftest.py` (login OAuth2 form-data → token); config en `backend/tests/pytest.ini` (`asyncio_mode = strict`).
+
+```bash
+docker compose exec backend pytest tests/        # desde dentro del contenedor
+# o, con el backend levantado y deps locales: cd backend && pytest tests/
+```
 
 ## Configuration
 
@@ -42,7 +52,7 @@ All config flows through `app/config.py` (`pydantic-settings`, reads `.env`). Co
 
 ## Architecture
 
-The backend is a modular FastAPI app. `app/main.py` wires four routers (`auth`, `ingesta`, `chat`, `actividades`) plus infra endpoints, and CORS is locked to `http://localhost:3000` (the intended frontend origin).
+The backend is a modular FastAPI app. `app/main.py` wires **six** routers (`auth`, `ingesta`, `chat`, `actividades`, `lecciones`, `docente`) plus infra endpoints, and CORS is locked to `http://localhost:3000` (the intended frontend origin).
 
 ### Module convention
 
@@ -66,6 +76,26 @@ Uploading a book (`POST /ingesta/libros`, teacher/admin only) saves the PDF to d
 ### Activities flow
 
 `actividades/generator.py` asks the LLM (via `llm_client.generate_json`, low temperature, strips ```json fences) for one of five activity types (`opcion_multiple`, `verdadero_falso`, `completar`, `ordenar`, `respuesta_corta`), grounded in RAG context. The service **splits** the LLM output into `contenido` (shown to the student) and `respuesta_correcta` (hidden) before storing. On answer (`POST /actividades/responder`), `evaluator.py` grades it and `_actualizar_perfil` updates the student's running `PerfilComprension` average per (asignatura, tema) — this is the adaptive/comprehension-tracking layer.
+
+### Lecciones y ruta de aprendizaje (sistema de 3 niveles)
+
+`app/modules/lecciones/` genera y sirve la **ruta de aprendizaje** del estudiante. Al indexar un libro se generan automáticamente las lecciones (`generator.py::generar_lecciones_desde_libro`): el nº de lecciones = `ceil(páginas_con_contenido / PAGINAS_POR_LECCION)` acotado a `[MIN_LECCIONES=5, MAX_LECCIONES=50]` (`PAGINAS_POR_LECCION=5`; con el libro actual son ≈38). Esta generación usa un modelo más potente (`MODELO_RUTA = meta-llama/Llama-3.3-70B-Instruct-Turbo`) solo para nombrar y segmentar; el chat/actividades siguen con el modelo base. **Cambiar estos parámetros NO regenera lecciones ya guardadas** — hay que borrar `progreso_leccion` + `leccion` del libro y re-disparar la generación (ver comentario en `generator.py`).
+
+Cada lección tiene un **sistema de 3 niveles tipo Duolingo** en `ProgresoLeccion`: `nivel_actual` (1–3, en el que está el estudiante), `nivel_completado` (0–3, último nivel aprobado; `==3` ⇒ lección **dominada**, corona 👑) e `intentos_nivel`. El estudiante avanza de nivel al aprobar (≥70 en suficientes de las 5 actividades) vía `POST /lecciones/{id}/completar-actividad` (`CompletarActividadRequest` con `nivel` + `actividades_aprobadas`). La ruta (`GET` → `RutaAprendizaje`) expone por lección: `estado` (bloqueada/disponible/en_progreso/completada), `nivel_actual`, `nivel_completado`, `tiene_corona`.
+
+### Micro-lección guiada (scope por páginas + verificación de cobertura)
+
+`POST /lecciones/{id}/micro-leccion?nivel=N` arma una micro-lección de tarjetas (introducción, conceptos con pregunta rápida, resumen). El retrieval está **scopeado al rango de páginas de la lección** (NO búsqueda semántica global), y tras generar se hace una **verificación de cobertura**: si las tarjetas no cubren el contenido del rango, se corrige/regenera. La respuesta incluye `fragment_ids` (los fragmentos del libro que usó esa teoría) y `nivel_actual`/`es_ultimo_nivel`.
+
+**`fragment_ids` compartidos entre Estudiar y Practicar**: el cliente guarda `fragment_ids` + `nivel` (p. ej. en `sessionStorage`) al ver la micro-lección y los **reenvía** a `/actividades/generar`, para que las 5 actividades de práctica cubran exactamente lo que el tutor explicó (mismo contenido y mismo nivel, no una búsqueda distinta).
+
+### Panel docente
+
+`app/modules/docente/` es **solo lectura**: agrega datos de otros módulos reusando `obtener_ruta` y `obtener_perfil_estudiante`. Endpoints: `GET /docente/{libros,estudiantes,estudiantes/{id}/detalle,estadisticas}`. `estadisticas` calcula el **progreso promedio sobre los 3 niveles**: `SUM(nivel_completado de todas las lecciones de todos los estudiantes) / (total_lecciones × 3 × total_estudiantes) × 100`. También devuelve `temas_mas_preguntados` (total de mensajes de **usuario** por asignatura — filtra `RolMensaje.usuario`, no cuenta respuestas del bot) y `preguntas_frecuentes` (top preguntas reales agrupadas por texto del mensaje, con su conteo). En el web (`web/app/docente/`), el panel son **4 páginas reales** con sidebar que navega (`TeacherNav` + `Link`): `page.tsx` (Resumen: 4 stats + actividad reciente + último libro), `libros/`, `estudiantes/` (+ `estudiantes/[id]/` detalle con estrellas de nivel ⭐/⭐⭐/⭐⭐⭐/👑) y `preguntas/`.
+
+### Web responsive del estudiante (tab bar móvil)
+
+En `web`, las pantallas del estudiante son responsive a ~375px (iPhone). El `StudentNav` (sidebar) se oculta en `<768px` (`hidden md:flex`) y aparece una **barra de pestañas inferior** fija (`components/student-tabbar.tsx`, `md:hidden`): Inicio · Mi Ruta · Progreso · Ranking · Chat. El `<main>` lleva `pb-16 md:pb-0` para reservar el alto de la tab bar; el chat usa `h-[calc(100dvh-4rem)]` para no quedar tapado. Las pantallas de Estudiar/Practicar son overlays `fixed inset-0 z-50` que cubren la tab bar a propósito (modo enfoque). El panel docente **no** es responsive a móvil (uso desktop/tablet).
 
 ### LLM client
 
