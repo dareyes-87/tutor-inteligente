@@ -255,13 +255,13 @@ export default function PracticarPage() {
             </div>
           )}
 
-          <div className="mt-2 flex gap-4">
+          <div className="mt-2 flex flex-wrap justify-center gap-3 sm:gap-4">
             {[
               { v: `${aciertos}/${total}`, l: "correctas", c: "#22C55E" },
               { v: `${promedio}`, l: "promedio", c: "#F97316" },
               { v: tiempo, l: "tiempo", c: "#2563EB" },
             ].map((s) => (
-              <div key={s.l} className="rounded-2xl bg-white/10 px-7 py-4 backdrop-blur-sm">
+              <div key={s.l} className="rounded-2xl bg-white/10 px-5 py-3 backdrop-blur-sm sm:px-7 sm:py-4">
                 <div className="text-[28px] font-black" style={{ color: s.c }}>
                   {s.v}
                 </div>

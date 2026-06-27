@@ -165,10 +165,10 @@ export default function RutaPage() {
   const nombre = user?.nombre ?? "estudiante";
 
   return (
-    <div className="max-w-[1192px] px-[42px] py-9">
+    <div className="max-w-[1192px] px-4 py-6 sm:px-6 md:px-[42px] md:py-9">
       {/* === HERO === */}
       <div
-        className="relative mb-8 flex items-center gap-6 overflow-hidden rounded-[24px] px-[34px] py-7"
+        className="relative mb-8 flex flex-col gap-4 overflow-hidden rounded-[24px] px-5 py-6 md:flex-row md:items-center md:gap-6 md:px-[34px] md:py-7"
         style={{ background: "linear-gradient(135deg,#1E2B4D 0%,#2D3F6B 100%)" }}
       >
         <div
@@ -206,14 +206,14 @@ export default function RutaPage() {
             </div>
           </div>
         </div>
-        <div className="relative flex flex-col gap-2.5">
+        <div className="relative flex w-full flex-row gap-2.5 md:w-auto md:flex-col">
           {[
             { icon: "⭐", val: puntos, label: "puntos" },
             { icon: "🔥", val: racha, label: "racha" },
           ].map((s) => (
             <div
               key={s.label}
-              className="flex items-center gap-2 rounded-[14px] bg-white/10 px-4 py-2.5 backdrop-blur-sm"
+              className="flex flex-1 items-center gap-2 rounded-[14px] bg-white/10 px-4 py-2.5 backdrop-blur-sm md:flex-none"
             >
               <span className="text-xl">{s.icon}</span>
               <div>
@@ -226,9 +226,9 @@ export default function RutaPage() {
       </div>
 
       {/* === LEYENDA === */}
-      <div className="mb-[22px] flex items-center gap-5 px-1">
+      <div className="mb-[22px] flex flex-wrap items-center gap-x-5 gap-y-2 px-1">
         <div className="text-lg font-black text-navy">Tu ruta de aprendizaje</div>
-        <div className="flex-1" />
+        <div className="hidden flex-1 sm:block" />
         <div className="flex gap-4 text-xs font-extrabold text-muted-foreground">
           {[
             { c: "#22C55E", t: "Completada" },
@@ -306,7 +306,7 @@ function LeccionFila({
 
       {/* tarjeta */}
       <div
-        className="flex flex-1 items-center gap-[18px] rounded-[22px] px-[22px] py-5"
+        className="flex flex-1 flex-wrap items-center gap-x-[18px] gap-y-3 rounded-[22px] px-4 py-4 sm:flex-nowrap sm:px-[22px] sm:py-5"
         style={{
           background: s.cardBg,
           border: s.cardBorder,
@@ -375,13 +375,13 @@ function LeccionFila({
           <button
             onClick={() => onEmpezar(l.id)}
             disabled={actuando}
-            className="btn-relief flex-none rounded-[14px] bg-brand-orange px-6 py-3 text-[14.5px] font-black text-white disabled:opacity-60"
+            className="btn-relief w-full flex-none rounded-[14px] bg-brand-orange px-6 py-3 text-[14.5px] font-black text-white disabled:opacity-60 sm:w-auto"
           >
             Empezar 🚀
           </button>
         )}
         {l.estado === "en_progreso" && (
-          <div className="flex flex-none flex-col gap-2">
+          <div className="flex w-full flex-none flex-col gap-2 sm:w-auto">
             <Link
               href={`/ruta/${l.id}/estudiar`}
               className="btn-relief rounded-[14px] bg-brand-orange px-6 py-3 text-center text-[14.5px] font-black text-white"

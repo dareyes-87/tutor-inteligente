@@ -43,7 +43,7 @@ export default function RankingPage() {
   };
 
   return (
-    <div className="px-[38px] py-[34px]">
+    <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
       <div className="mb-[22px] text-2xl font-black text-navy">Tabla de posiciones 🏆</div>
 
       {cargando && (
@@ -81,7 +81,7 @@ export default function RankingPage() {
             return (
               <div
                 key={r.posicion}
-                className="flex items-center gap-[18px] rounded-2xl border px-[22px] py-3.5 shadow-[0_4px_12px_rgba(30,43,77,.04)]"
+                className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-[0_4px_12px_rgba(30,43,77,.04)] sm:gap-[18px] sm:px-[22px]"
                 style={{
                   background: yo ? "#FFF1E7" : "#fff",
                   borderColor: yo ? "#F97316" : "var(--border)",
@@ -111,7 +111,7 @@ export default function RankingPage() {
                     {r.lecciones_completadas === 1 ? "lección" : "lecciones"} · 🔥 {r.racha_actual}
                   </div>
                 </div>
-                <div className="w-[110px] text-right text-base font-black text-navy">
+                <div className="w-auto flex-none text-right text-base font-black text-navy sm:w-[110px]">
                   {r.puntos_totales} <span className="text-xs text-muted-foreground">pts</span>
                 </div>
               </div>

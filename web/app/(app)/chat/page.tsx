@@ -80,9 +80,9 @@ export default function ChatPage() {
   const asignatura = ASIGNATURAS.find((a) => a.id === asignaturaId);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col md:h-screen">
       {/* Cabecera */}
-      <header className="flex items-center justify-between border-b border-border bg-white px-8 py-[22px]">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-4 sm:px-8 sm:py-[22px]">
         <div className="flex items-center gap-[13px]">
           <div className="h-[50px] w-[50px] overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
             <Mascota size={50} />
@@ -122,7 +122,7 @@ export default function ChatPage() {
       {/* Mensajes */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-8 py-7"
+        className="flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-7"
         style={{
           backgroundImage: "radial-gradient(#F3E9DA 1.4px,transparent 1.4px)",
           backgroundSize: "24px 24px",
@@ -135,7 +135,7 @@ export default function ChatPage() {
               <div className="h-10 w-10 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
                 <Mascota size={40} />
               </div>
-              <div className="max-w-[60%] rounded-[6px_18px_18px_18px] border border-border bg-white px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed text-[#1F2433] shadow-[0_3px_10px_rgba(30,43,77,.06)]">
+              <div className="max-w-[85%] rounded-[6px_18px_18px_18px] border border-border bg-white px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed text-[#1F2433] shadow-[0_3px_10px_rgba(30,43,77,.06)] sm:max-w-[60%]">
                 ¡Hola! 🐯 Soy tu tutor. Pregúntame lo que quieras sobre{" "}
                 {asignatura?.nombre ?? "tu libro"} y te responderé con la página del libro.
               </div>
@@ -154,7 +154,7 @@ export default function ChatPage() {
                     <Mascota size={40} />
                   </div>
                 )}
-                <div className="max-w-[60%]">
+                <div className="max-w-[85%] sm:max-w-[60%]">
                   <div
                     className={`whitespace-pre-wrap px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed shadow-[0_3px_10px_rgba(30,43,77,.06)] ${
                       tutor
@@ -186,7 +186,7 @@ export default function ChatPage() {
       {/* Input */}
       <form
         onSubmit={enviar}
-        className="flex items-center gap-3 border-t border-border bg-white px-8 py-[18px]"
+        className="flex items-center gap-3 border-t border-border bg-white px-4 py-3 sm:px-8 sm:py-[18px]"
       >
         <input
           value={pregunta}

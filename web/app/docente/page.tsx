@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import {
   ApiError,
-  obtenerDetalleEstudiante,
   obtenerEstadisticas,
   obtenerEstudiantes,
   obtenerLibros,
   subirLibro,
   type EstadisticasDocente,
-  type EstudianteDetalle,
   type EstudianteResumen,
   type LibroDocente,
 } from "@/lib/api";
@@ -31,12 +30,6 @@ const ESTADO_LIBRO: Record<string, { bg: string; color: string; label: string }>
   error: { bg: "#FDECEC", color: "#DC2626", label: "Error" },
 };
 
-const NIVEL_COLOR: Record<string, string> = {
-  domina: "#22C55E",
-  en_proceso: "#F59E0B",
-  refuerzo: "#EF4444",
-};
-
 export default function DocentePage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<EstadisticasDocente | null>(null);
@@ -45,7 +38,6 @@ export default function DocentePage() {
   const [refresh, setRefresh] = useState(0);
 
   const [showUpload, setShowUpload] = useState(false);
-  const [detalleId, setDetalleId] = useState<number | null>(null);
 
   // Carga principal (se re-dispara con `refresh`).
   useEffect(() => {
@@ -179,9 +171,9 @@ export default function DocentePage() {
           {estudiantes.map((e) => {
             const pct = pctEstudiante(e);
             return (
-              <button
+              <Link
                 key={e.id}
-                onClick={() => setDetalleId(e.id)}
+                href={`/docente/estudiantes/${e.id}`}
                 className="flex w-full items-center border-b border-[#F4F6FA] px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-[#F7F9FC]"
               >
                 <div className="flex flex-1 items-center gap-3">
@@ -213,28 +205,48 @@ export default function DocentePage() {
                 <div className="w-[120px] text-right text-xs font-bold text-muted-foreground">
                   {e.ultima_actividad ?? "—"}
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>
       </section>
 
-      {/* Temas más preguntados */}
-      {stats && stats.temas_mas_preguntados.length > 0 && (
-        <section className="mt-8">
-          <div className="mb-4 text-lg font-black text-navy">❓ Temas más consultados</div>
-          <div className="flex flex-wrap gap-3">
+      {/* Preguntas: temas más consultados al chat */}
+      <section className="mt-8">
+        <div className="mb-1 text-lg font-black text-navy">❓ Preguntas</div>
+        <div className="mb-4 text-sm font-bold text-[#7B8194]">
+          Los estudiantes preguntan más sobre estos temas
+        </div>
+        {stats && stats.temas_mas_preguntados.length > 0 ? (
+          <div className="overflow-hidden rounded-[16px] border border-[#E6E9F0] bg-white shadow-[0_5px_16px_rgba(30,43,77,.05)]">
             {stats.temas_mas_preguntados.map((t) => (
               <div
                 key={t.tema}
-                className="rounded-full border border-[#E6E9F0] bg-white px-4 py-2 text-sm font-extrabold text-navy shadow-[0_3px_10px_rgba(30,43,77,.04)]"
+                className="flex items-center gap-4 border-b border-[#F4F6FA] px-5 py-4 last:border-0"
               >
-                {t.tema} <span className="text-brand-blue">· {t.total}</span>
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[#EAF1FF] text-lg">
+                  💬
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-extrabold text-navy">{t.tema}</div>
+                  {t.ejemplo && (
+                    <div className="truncate text-xs font-bold text-muted-foreground">
+                      “{t.ejemplo}”
+                    </div>
+                  )}
+                </div>
+                <span className="flex-none rounded-full bg-[#F1F4FA] px-3 py-1.5 text-xs font-extrabold text-brand-blue">
+                  {t.total} consulta{t.total === 1 ? "" : "s"}
+                </span>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="rounded-[16px] border border-dashed border-[#D8DEE9] bg-white px-6 py-8 text-center text-sm font-bold text-muted-foreground">
+            Aún no hay preguntas registradas en el chat.
+          </div>
+        )}
+      </section>
 
       {showUpload && (
         <UploadModal
@@ -244,9 +256,6 @@ export default function DocentePage() {
             setRefresh((n) => n + 1);
           }}
         />
-      )}
-      {detalleId !== null && (
-        <DetalleModal estudianteId={detalleId} onClose={() => setDetalleId(null)} />
       )}
     </div>
   );
@@ -332,108 +341,6 @@ function UploadModal({ onClose, onSubido }: { onClose: () => void; onSubido: () 
           </button>
         </div>
       </form>
-    </ModalShell>
-  );
-}
-
-/* ---------------- Modal de detalle del estudiante ---------------- */
-function DetalleModal({ estudianteId, onClose }: { estudianteId: number; onClose: () => void }) {
-  const [detalle, setDetalle] = useState<EstudianteDetalle | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let activo = true;
-    obtenerDetalleEstudiante(estudianteId)
-      .then((d) => {
-        if (activo) setDetalle(d);
-      })
-      .catch(() => {
-        if (activo) setError(true);
-      });
-    return () => {
-      activo = false;
-    };
-  }, [estudianteId]);
-
-  return (
-    <ModalShell onClose={onClose} titulo={detalle ? `${detalle.nombre} ${detalle.apellido}` : "Detalle"}>
-      {error && <div className="text-sm font-bold text-destructive">No se pudo cargar el detalle.</div>}
-      {!error && !detalle && (
-        <div className="py-8 text-center text-sm font-bold text-muted-foreground">Cargando…</div>
-      )}
-      {detalle && (
-        <div className="flex flex-col gap-5">
-          <div className="flex gap-3 text-sm font-extrabold">
-            <span className="rounded-full bg-[#FFF1E7] px-3 py-1 text-brand-orange">
-              🔥 Racha {detalle.racha_actual}
-            </span>
-            <span className="rounded-full bg-[#EAF1FF] px-3 py-1 text-brand-blue">
-              ⭐ {detalle.puntos_totales} pts
-            </span>
-            <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">
-              {detalle.grado ?? "—"}
-            </span>
-          </div>
-
-          {/* Ruta */}
-          <div>
-            <div className="mb-2 text-[13px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              Ruta de aprendizaje{" "}
-              {detalle.ruta && `· ${detalle.ruta.lecciones_completadas}/${detalle.ruta.total_lecciones}`}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {(detalle.ruta?.lecciones ?? []).map((l) => (
-                <div
-                  key={l.id}
-                  className="flex items-center gap-3 rounded-xl bg-[#F7F9FC] px-3.5 py-2.5"
-                >
-                  <span className="w-5 text-center text-sm">
-                    {l.estado === "completada"
-                      ? "⭐"
-                      : l.estado === "en_progreso"
-                        ? "📖"
-                        : l.estado === "disponible"
-                          ? "🔵"
-                          : "🔒"}
-                  </span>
-                  <span className="flex-1 text-sm font-extrabold text-navy">{l.nombre}</span>
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {l.actividades_completadas}/{l.actividades_requeridas}
-                  </span>
-                </div>
-              ))}
-              {(!detalle.ruta || detalle.ruta.lecciones.length === 0) && (
-                <div className="text-sm font-bold text-muted-foreground">Sin ruta asignada.</div>
-              )}
-            </div>
-          </div>
-
-          {/* Perfil de comprensión */}
-          <div>
-            <div className="mb-2 text-[13px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              Perfil de comprensión
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {detalle.perfil.map((p) => (
-                <div key={`${p.asignatura}·${p.tema}`} className="flex items-center gap-3">
-                  <span
-                    className="h-2.5 w-2.5 flex-none rounded-full"
-                    style={{ background: NIVEL_COLOR[p.nivel] ?? "#9AA0AD" }}
-                  />
-                  <span className="flex-1 truncate text-sm font-bold text-navy">{p.tema}</span>
-                  <span className="text-sm font-black text-navy">{Math.round(p.puntaje_promedio)}</span>
-                  <span className="w-20 text-right text-[11px] font-extrabold text-muted-foreground">
-                    {p.total_actividades} act.
-                  </span>
-                </div>
-              ))}
-              {detalle.perfil.length === 0 && (
-                <div className="text-sm font-bold text-muted-foreground">Sin actividades aún.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </ModalShell>
   );
 }

@@ -51,7 +51,7 @@ export default function ProgresoPage() {
   // --- Cargando ---
   if (cargando) {
     return (
-      <div className="px-[38px] py-[34px]">
+      <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
         <div className="text-2xl font-black text-navy">Mi progreso</div>
         <div className="mt-10 text-center text-sm font-bold text-muted-foreground">
           Cargando tu progreso…
@@ -63,7 +63,7 @@ export default function ProgresoPage() {
   // --- Error ---
   if (error) {
     return (
-      <div className="px-[38px] py-[34px]">
+      <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
         <div className="text-2xl font-black text-navy">Mi progreso</div>
         <div className="mx-auto mt-10 max-w-[420px] rounded-[22px] border border-border bg-white p-8 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
           <div className="text-base font-extrabold text-navy">No se pudo cargar tu progreso.</div>
@@ -84,7 +84,7 @@ export default function ProgresoPage() {
   // --- Estado vacío ---
   if (items.length === 0) {
     return (
-      <div className="px-[38px] py-[34px]">
+      <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
         <div className="text-2xl font-black text-navy">Mi progreso</div>
         <div className="mx-auto mt-10 max-w-[480px] rounded-[24px] border border-border bg-white p-10 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
           <div className="mx-auto mb-4 h-[84px] w-[84px] animate-floaty overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange">
@@ -114,9 +114,9 @@ export default function ProgresoPage() {
   );
 
   return (
-    <div className="px-[38px] py-[34px]">
+    <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
       {/* Cabecera + stats */}
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-2xl font-black text-navy">Mi progreso</div>
           <div className="mt-[3px] text-sm font-bold text-muted-foreground">
@@ -143,7 +143,7 @@ export default function ProgresoPage() {
           return (
             <div
               key={`${p.asignatura}·${p.tema}`}
-              className="flex items-center gap-[22px] rounded-[20px] border border-border bg-white px-6 py-5 shadow-[0_5px_16px_rgba(30,43,77,.05)]"
+              className="flex items-center gap-3 rounded-[20px] border border-border bg-white px-4 py-4 shadow-[0_5px_16px_rgba(30,43,77,.05)] sm:gap-[22px] sm:px-6 sm:py-5"
             >
               <div
                 className="grid h-[46px] w-[46px] flex-none place-items-center rounded-[14px] text-lg font-black"
@@ -172,7 +172,7 @@ export default function ProgresoPage() {
                   />
                 </div>
               </div>
-              <div className="w-[180px] flex-none text-right">
+              <div className="w-auto flex-none text-right sm:w-[180px]">
                 <span
                   className="inline-block rounded-full px-4 py-2 text-[13px] font-extrabold"
                   style={{ background: nv.chipBg, color: nv.chipColor }}

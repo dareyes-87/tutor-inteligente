@@ -50,6 +50,7 @@ class EstudianteDetalle(BaseModel):
 class TemaPreguntado(BaseModel):
     tema: str
     total: int
+    ejemplo: str | None = None  # pregunta reciente de ejemplo (si existe)
 
 
 class EstadisticasDocente(BaseModel):

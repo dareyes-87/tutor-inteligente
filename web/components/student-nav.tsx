@@ -19,7 +19,7 @@ export function StudentNav() {
   const grado = "5to Primaria";
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col gap-1.5 self-stretch border-r border-border bg-white px-[18px] py-[26px]">
+    <aside className="hidden w-[248px] shrink-0 flex-col gap-1.5 self-stretch border-r border-border bg-white px-[18px] py-[26px] md:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 pb-6 pt-0.5">
         <div

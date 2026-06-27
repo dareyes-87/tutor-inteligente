@@ -46,9 +46,9 @@ export default function InicioPage() {
     : 0;
 
   return (
-    <div className="px-[38px] py-[34px]">
+    <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
       {/* Saludo + CTA */}
-      <div className="mb-[26px] flex items-center justify-between gap-6">
+      <div className="mb-[26px] flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="flex items-center gap-4">
           <div className="h-[62px] w-[62px] flex-none overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
             <Mascota size={62} />
@@ -64,7 +64,7 @@ export default function InicioPage() {
         </div>
         <Link
           href="/chat"
-          className="btn-relief flex items-center gap-2.5 rounded-[18px] bg-brand-blue px-[26px] py-4 text-[17px] font-black text-white"
+          className="btn-relief flex w-full items-center justify-center gap-2.5 rounded-[18px] bg-brand-blue px-[26px] py-4 text-[17px] font-black text-white sm:w-auto"
           style={{ ["--btn-relief-color" as string]: "var(--brand-blue-dark)" }}
         >
           💬 Pregúntale al tutor
@@ -72,7 +72,7 @@ export default function InicioPage() {
       </div>
 
       {/* Racha (real) + Mi ruta (real) */}
-      <div className="mb-7 flex gap-5">
+      <div className="mb-7 flex flex-col gap-5 lg:flex-row">
         {/* Racha */}
         <div className="flex flex-1 items-center gap-[22px] rounded-[22px] bg-gradient-to-br from-[#FB923C] to-brand-orange px-[26px] py-6 text-white shadow-[0_10px_24px_rgba(249,115,22,.28)]">
           <div className="animate-flame text-[62px] leading-none">🔥</div>
@@ -92,7 +92,7 @@ export default function InicioPage() {
         </div>
 
         {/* Mi ruta */}
-        <div className="w-[430px] flex-none rounded-[22px] border border-border bg-white px-6 py-[22px] shadow-[0_6px_20px_rgba(30,43,77,.05)]">
+        <div className="w-full flex-none rounded-[22px] border border-border bg-white px-6 py-[22px] shadow-[0_6px_20px_rgba(30,43,77,.05)] lg:w-[430px]">
           <div className="mb-1.5 flex items-center justify-between">
             <div className="text-base font-black text-navy">🗺️ Mi ruta</div>
             <Link href="/ruta" className="text-[13px] font-extrabold text-brand-blue">
@@ -136,7 +136,7 @@ export default function InicioPage() {
           Ver todas →
         </Link>
       </div>
-      <div className="grid grid-cols-4 gap-[18px]">
+      <div className="grid grid-cols-2 gap-4 sm:gap-[18px] md:grid-cols-4">
         {ASIGNATURAS_PROGRESO.map((s) => (
           <div
             key={s.name}

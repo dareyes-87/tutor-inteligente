@@ -152,35 +152,45 @@ async def estadisticas(db: AsyncSession) -> EstadisticasDocente:
         await db.execute(select(func.count()).select_from(Leccion))
     ).scalar_one()
 
-    # Promedio de progreso: media, por estudiante, de (completadas / total_lecciones).
-    # Aproximación válida con un libro por grado (lo dominante hoy).
-    completadas = await _completadas_por_estudiante(db)
-    ids = (
+    # Promedio de progreso: considera los 3 niveles de cada lección.
+    # SUM(nivel_completado de todas las lecciones de todos los estudiantes)
+    #   / (total_lecciones * 3 * total_estudiantes) * 100.
+    suma_niveles = (
         await db.execute(
-            select(Usuario.id).where(Usuario.rol == RolUsuario.estudiante)
+            select(func.coalesce(func.sum(ProgresoLeccion.nivel_completado), 0))
         )
-    ).scalars().all()
-    if ids and total_lecciones > 0:
-        porcentajes = [
-            min(100.0, completadas.get(sid, 0) / total_lecciones * 100) for sid in ids
-        ]
-        promedio_progreso = round(sum(porcentajes) / len(porcentajes), 1)
-    else:
-        promedio_progreso = 0.0
+    ).scalar_one()
+    denom = total_lecciones * 3 * total_estudiantes
+    promedio_progreso = round(min(100.0, suma_niveles / denom * 100), 1) if denom > 0 else 0.0
 
-    # Temas más preguntados: asignaturas por nº de mensajes de usuario.
+    # Temas más preguntados: asignaturas por nº de mensajes de usuario, con una
+    # pregunta reciente de ejemplo por asignatura.
     temas_rows = (
         await db.execute(
-            select(Asignatura.nombre, func.count(Mensaje.id))
+            select(Asignatura.id, Asignatura.nombre, func.count(Mensaje.id))
             .join(Conversacion, Mensaje.conversacion_id == Conversacion.id)
             .join(Asignatura, Conversacion.asignatura_id == Asignatura.id)
             .where(Mensaje.rol == RolMensaje.usuario)
-            .group_by(Asignatura.nombre)
+            .group_by(Asignatura.id, Asignatura.nombre)
             .order_by(func.count(Mensaje.id).desc())
             .limit(5)
         )
     ).all()
-    temas = [TemaPreguntado(tema=nombre, total=total) for nombre, total in temas_rows]
+    temas = []
+    for asig_id, nombre, total in temas_rows:
+        ejemplo = (
+            await db.execute(
+                select(Mensaje.contenido)
+                .join(Conversacion, Mensaje.conversacion_id == Conversacion.id)
+                .where(
+                    Conversacion.asignatura_id == asig_id,
+                    Mensaje.rol == RolMensaje.usuario,
+                )
+                .order_by(Mensaje.id.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        temas.append(TemaPreguntado(tema=nombre, total=total, ejemplo=ejemplo))
 
     return EstadisticasDocente(
         total_estudiantes=total_estudiantes,

@@ -447,6 +447,7 @@ export interface EstudianteDetalle {
 export interface TemaPreguntado {
   tema: string;
   total: number;
+  ejemplo?: string | null;
 }
 
 export interface EstadisticasDocente {
