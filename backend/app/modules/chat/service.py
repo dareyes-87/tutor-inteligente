@@ -24,6 +24,27 @@ RESPUESTA_FUERA_DE_CONTEXTO = (
     "¿Quieres preguntarme sobre los temas que estamos viendo?"
 )
 
+# Frases que indican que la respuesta es un rechazo por grounding. Si el LLM
+# rechaza aunque el contexto haya pasado el umbral de relevancia, no tiene
+# sentido mostrar referencias (páginas) de fragmentos que no se usaron.
+PALABRAS_RECHAZO = (
+    "no encuentro",
+    "no tengo información",
+    "no tengo informacion",
+    "fuera del tema",
+    "no puedo responder",
+    "no está en",
+    "no esta en",
+    "lo siento",
+    "no aparece",
+)
+
+
+def _es_rechazo(respuesta: str) -> bool:
+    """True si la respuesta del tutor es un rechazo por estar fuera de los libros."""
+    texto = respuesta.lower()
+    return any(p in texto for p in PALABRAS_RECHAZO)
+
 
 async def obtener_o_crear_conversacion(
     db: AsyncSession,
@@ -127,6 +148,11 @@ async def procesar_pregunta(
             "[Chat] Contexto NO relevante: respuesta determinística de rechazo (sin LLM)"
         )
         respuesta = RESPUESTA_FUERA_DE_CONTEXTO
+        fragments_referencia = []
+
+    # Si el LLM rechazó la pregunta (aunque el contexto pasara el umbral), no
+    # mostrar referencias: las páginas recuperadas no respaldan esa respuesta.
+    if _es_rechazo(respuesta):
         fragments_referencia = []
 
     # 5. Guardar mensajes
