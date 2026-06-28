@@ -24,6 +24,7 @@ from app.modules.chat.router import router as chat_router
 from app.modules.actividades.router import router as actividades_router
 from app.modules.lecciones.router import router as lecciones_router
 from app.modules.docente.router import router as docente_router
+from app.modules.admin.router import router as admin_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,6 +61,7 @@ app.include_router(chat_router)
 app.include_router(actividades_router)
 app.include_router(lecciones_router)
 app.include_router(docente_router)
+app.include_router(admin_router)
 
 
 # ---- Endpoints de infraestructura ----

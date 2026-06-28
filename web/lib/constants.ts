@@ -35,7 +35,18 @@ export const TEACHER_NAV: NavItem[] = [
   { href: "/docente/preguntas", key: "preguntas", label: "Preguntas", icon: "❓" },
 ];
 
+/** Sidebar del administrador — gestión de la estructura del colegio. */
+export const ADMIN_NAV: NavItem[] = [
+  { href: "/admin", key: "dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/admin/docentes", key: "docentes", label: "Docentes", icon: "👨‍🏫" },
+  { href: "/admin/estudiantes", key: "estudiantes", label: "Estudiantes", icon: "👩‍🎓" },
+  { href: "/admin/grados", key: "grados", label: "Grados", icon: "🏫" },
+  { href: "/admin/asignaturas", key: "asignaturas", label: "Asignaturas", icon: "📚" },
+];
+
 /** Ruta de inicio según el rol del usuario. */
 export function homeForRole(rol: Rol): string {
-  return rol === "estudiante" ? "/inicio" : "/docente";
+  if (rol === "estudiante") return "/inicio";
+  if (rol === "administrador") return "/admin";
+  return "/docente";
 }

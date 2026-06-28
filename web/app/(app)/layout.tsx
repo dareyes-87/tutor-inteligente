@@ -4,7 +4,7 @@ import { StudentTabBar } from "@/components/student-tabbar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RequireAuth>
+    <RequireAuth roles={["estudiante"]}>
       <div className="flex min-h-screen bg-cream">
         <StudentNav />
         {/* pb-16 reserva el alto de la barra de pestañas en móvil; en md:+ desaparece. */}

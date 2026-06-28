@@ -496,3 +496,150 @@ export function obtenerEstadisticas(): Promise<EstadisticasDocente> {
 export function subirLibro(formData: FormData): Promise<LibroSubido> {
   return request<LibroSubido>("/ingesta/libros", { method: "POST", body: formData });
 }
+
+// ===================== Panel administrador =====================
+
+export interface DocenteResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+  username: string;
+  activo: boolean;
+  grado_id: number | null;
+  grado: string | null;
+  libros_subidos: number;
+}
+
+export interface EstudianteAdminResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+  username: string;
+  grado_id: number | null;
+  grado: string | null;
+  activo: boolean;
+  progreso: number;
+  ultima_actividad: string | null;
+}
+
+export interface EstudianteCreado {
+  id: number | null;
+  nombre: string;
+  apellido: string;
+  username: string;
+  password_generado: string;
+}
+
+export interface GradoResumen {
+  id: number;
+  nombre: string;
+  nivel: string;
+  cantidad_estudiantes: number;
+  cantidad_docentes: number;
+}
+
+export interface AsignaturaResumen {
+  id: number;
+  nombre: string;
+  cantidad_libros: number;
+}
+
+export interface DashboardAdmin {
+  total_estudiantes: number;
+  total_docentes: number;
+  total_grados: number;
+  total_asignaturas: number;
+  total_libros: number;
+  total_lecciones: number;
+  total_fragmentos: number;
+  progreso_general: number;
+  estudiantes_activos_hoy: number;
+  libro_mas_reciente: { titulo: string; fecha_subida: string; estado: string } | null;
+}
+
+// --- Docentes ---
+export function adminListarDocentes(): Promise<DocenteResumen[]> {
+  return request<DocenteResumen[]>("/admin/docentes");
+}
+export function adminCrearDocente(body: {
+  nombre: string; apellido: string; username: string; password: string; grado_id?: number | null;
+}): Promise<Usuario> {
+  return request<Usuario>("/admin/docentes", { method: "POST", body: JSON.stringify(body) });
+}
+export function adminActualizarDocente(
+  id: number,
+  body: { nombre?: string; apellido?: string; grado_id?: number | null; activo?: boolean },
+): Promise<Usuario> {
+  return request<Usuario>(`/admin/docentes/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+export function adminResetPasswordDocente(id: number, nueva_password: string): Promise<void> {
+  return request<void>(`/admin/docentes/${id}/reset-password`, {
+    method: "POST", body: JSON.stringify({ nueva_password }),
+  });
+}
+
+// --- Estudiantes ---
+export function adminListarEstudiantes(params?: { grado_id?: number; activo?: boolean }): Promise<EstudianteAdminResumen[]> {
+  const q = new URLSearchParams();
+  if (params?.grado_id != null) q.set("grado_id", String(params.grado_id));
+  if (params?.activo != null) q.set("activo", String(params.activo));
+  const qs = q.toString();
+  return request<EstudianteAdminResumen[]>(`/admin/estudiantes${qs ? `?${qs}` : ""}`);
+}
+export function adminCrearEstudiante(body: {
+  nombre: string; apellido: string; grado_id: number; username?: string; password?: string;
+}): Promise<EstudianteCreado> {
+  return request<EstudianteCreado>("/admin/estudiantes", { method: "POST", body: JSON.stringify(body) });
+}
+export function adminActualizarEstudiante(
+  id: number,
+  body: { nombre?: string; apellido?: string; grado_id?: number | null; activo?: boolean },
+): Promise<Usuario> {
+  return request<Usuario>(`/admin/estudiantes/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+export function adminResetPasswordEstudiante(id: number, nueva_password: string): Promise<void> {
+  return request<void>(`/admin/estudiantes/${id}/reset-password`, {
+    method: "POST", body: JSON.stringify({ nueva_password }),
+  });
+}
+export function adminImportarEstudiantes(formData: FormData): Promise<EstudianteCreado[]> {
+  return request<EstudianteCreado[]>("/admin/estudiantes/importar", { method: "POST", body: formData });
+}
+
+// --- Grados ---
+export function adminListarGrados(): Promise<GradoResumen[]> {
+  return request<GradoResumen[]>("/admin/grados");
+}
+export function adminCrearGrado(nombre: string): Promise<GradoResumen> {
+  return request<GradoResumen>("/admin/grados", { method: "POST", body: JSON.stringify({ nombre }) });
+}
+export function adminActualizarGrado(id: number, nombre: string): Promise<GradoResumen> {
+  return request<GradoResumen>(`/admin/grados/${id}`, { method: "PUT", body: JSON.stringify({ nombre }) });
+}
+export function adminEliminarGrado(id: number): Promise<void> {
+  return request<void>(`/admin/grados/${id}`, { method: "DELETE" });
+}
+export function adminPromoverGrado(grado_origen_id: number, grado_destino_id: number): Promise<{ estudiantes_promovidos: number }> {
+  return request<{ estudiantes_promovidos: number }>("/admin/promover-grado", {
+    method: "POST", body: JSON.stringify({ grado_origen_id, grado_destino_id }),
+  });
+}
+
+// --- Asignaturas ---
+export function adminListarAsignaturas(): Promise<AsignaturaResumen[]> {
+  return request<AsignaturaResumen[]>("/admin/asignaturas");
+}
+export function adminCrearAsignatura(nombre: string): Promise<AsignaturaResumen> {
+  return request<AsignaturaResumen>("/admin/asignaturas", { method: "POST", body: JSON.stringify({ nombre }) });
+}
+export function adminActualizarAsignatura(id: number, nombre: string): Promise<AsignaturaResumen> {
+  return request<AsignaturaResumen>(`/admin/asignaturas/${id}`, { method: "PUT", body: JSON.stringify({ nombre }) });
+}
+export function adminEliminarAsignatura(id: number): Promise<void> {
+  return request<void>(`/admin/asignaturas/${id}`, { method: "DELETE" });
+}
+
+// --- Dashboard ---
+export function adminDashboard(): Promise<DashboardAdmin> {
+  return request<DashboardAdmin>("/admin/dashboard");
+}

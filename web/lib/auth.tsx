@@ -19,8 +19,10 @@ import {
   getToken,
   login as apiLogin,
   logout as apiLogout,
+  type Rol,
   type Usuario,
 } from "@/lib/api";
+import { homeForRole } from "@/lib/constants";
 
 interface AuthContextValue {
   user: Usuario | null;
@@ -84,18 +86,33 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-/** Envuelve páginas que requieren sesión; redirige a /login si no hay usuario. */
-export function RequireAuth({ children }: { children: React.ReactNode }) {
+/**
+ * Envuelve páginas que requieren sesión; redirige a /login si no hay usuario.
+ * Si se pasa `roles`, además exige que el rol del usuario esté permitido; si no,
+ * lo manda a su área (homeForRole) para que cada rol use su propio panel.
+ */
+export function RequireAuth({
+  children,
+  roles,
+}: {
+  children: React.ReactNode;
+  roles?: Rol[];
+}) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [loading, user, router]);
+  const rolPermitido = !user || !roles || roles.includes(user.rol);
 
-  if (loading || !user) {
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+    } else if (!rolPermitido) {
+      router.replace(homeForRole(user.rol));
+    }
+  }, [loading, user, rolPermitido, router]);
+
+  if (loading || !user || !rolPermitido) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
         Cargando…
