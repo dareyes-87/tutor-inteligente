@@ -5,6 +5,7 @@ Sprint 1: /auth/*, /ingesta/*
 Sprint 2: /chat/*, /actividades/*
 """
 import logging
+import os
 import httpx
 from contextlib import asynccontextmanager
 
@@ -46,9 +47,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Orígenes permitidos para CORS. En producción (Railway) se define
+# ALLOWED_ORIGINS como lista separada por comas con el dominio del frontend.
+# Si no existe, se usa el valor de desarrollo. localhost:3000 siempre se incluye.
+origins_env = os.getenv("ALLOWED_ORIGINS", "")
+origins = [o.strip() for o in origins_env.split(",") if o.strip()] if origins_env else ["http://localhost:3000"]
+if "http://localhost:3000" not in origins:
+    origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
