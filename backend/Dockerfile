@@ -19,5 +19,7 @@ COPY . .
 
 RUN mkdir -p /data/books
 
-# Producción: sin --reload, workers 1
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Producción: migra (Alembic) y luego arranca uvicorn sin --reload, workers 1
+COPY start.sh .
+RUN chmod +x start.sh
+CMD ["./start.sh"]
