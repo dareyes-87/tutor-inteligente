@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "tutor"
     POSTGRES_HOST: str = "postgres"
     POSTGRES_PORT: int = 5432
+    # Railway (y otros PaaS) inyectan una sola URL completa. Si está
+    # definida, tiene prioridad sobre las variables POSTGRES_* de arriba.
+    DATABASE_URL: str = ""
 
     # --- ChromaDB ---
     CHROMA_HOST: str = "chroma"
@@ -35,8 +38,27 @@ class Settings(BaseSettings):
     # --- Almacenamiento ---
     BOOKS_DIR: str = "/data/books"
 
+    @staticmethod
+    def _normalizar_esquema(url: str, driver: str) -> str:
+        """
+        Railway genera URLs con el esquema `postgres://`, pero SQLAlchemy
+        necesita `postgresql://`. Además forzamos el driver correcto
+        (asyncpg para la app, psycopg para Alembic).
+        """
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://"):
+            pass  # ya está bien
+        # Si la URL ya trae un driver explícito (postgresql+algo://) la
+        # dejamos tal cual; si no, insertamos el driver que toca.
+        if url.startswith("postgresql://"):
+            url = "postgresql+" + driver + "://" + url[len("postgresql://"):]
+        return url
+
     @property
     def database_url_async(self) -> str:
+        if self.DATABASE_URL:
+            return self._normalizar_esquema(self.DATABASE_URL, "asyncpg")
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -44,6 +66,8 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
+        if self.DATABASE_URL:
+            return self._normalizar_esquema(self.DATABASE_URL, "psycopg")
         return (
             f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
