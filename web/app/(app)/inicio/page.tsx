@@ -13,7 +13,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Mascota } from "@/components/mascota";
 import { ProgressRing } from "@/components/progress-ring";
-import { ASIGNATURAS_PROGRESO } from "@/lib/mock"; // mock: grilla de asignaturas (ver lib/mock.ts)
 
 export default function InicioPage() {
   const { user } = useAuth();
@@ -58,7 +57,7 @@ export default function InicioPage() {
               ¡Hola, {nombre}! 👋
             </div>
             <div className="mt-[5px] text-[15px] font-semibold text-muted-foreground">
-              ¿List{user?.rol === "estudiante" ? "a" : "@"} para seguir aprendiendo hoy?
+              ¿Seguimos aprendiendo hoy?
             </div>
           </div>
         </div>
@@ -129,35 +128,45 @@ export default function InicioPage() {
         </div>
       </div>
 
-      {/* Asignaturas (datos mock — ver lib/mock.ts) */}
+      {/* Asignaturas (asignatura real del estudiante — desde la ruta del libro) */}
       <div className="mb-4 flex items-center justify-between">
         <div className="text-xl font-black text-navy">Mis asignaturas</div>
         <Link href="/progreso" className="text-[13px] font-extrabold text-brand-blue">
           Ver todas →
         </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:gap-[18px] md:grid-cols-4">
-        {ASIGNATURAS_PROGRESO.map((s) => (
-          <div
-            key={s.name}
-            className="rounded-[22px] border border-border bg-white p-[22px] text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]"
-          >
-            <div
-              className="mx-auto mb-3.5 grid h-12 w-12 place-items-center rounded-[14px] text-2xl"
-              style={{ background: s.soft }}
-            >
-              {s.icon}
+      {ruta ? (
+        <div className="grid grid-cols-1 gap-4 sm:gap-[18px] md:grid-cols-4">
+          <div className="rounded-[22px] border border-border bg-white p-[22px] text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
+            <div className="mx-auto mb-3.5 grid h-12 w-12 place-items-center rounded-[14px] bg-[#E9F9EF] text-2xl">
+              📚
             </div>
             <div className="mx-auto mb-3.5 w-fit">
-              <ProgressRing pct={s.pct} color={s.color}>
-                <span className="text-[22px] font-black text-navy">{s.pct}%</span>
+              <ProgressRing pct={Math.round(ruta.progreso_porcentaje)} color="#22C55E">
+                <span className="text-[22px] font-black text-navy">
+                  {Math.round(ruta.progreso_porcentaje)}%
+                </span>
               </ProgressRing>
             </div>
-            <div className="text-[15px] font-extrabold leading-tight text-navy">{s.name}</div>
-            <div className="mt-1 text-xs font-bold text-muted-foreground">{s.meta}</div>
+            <div className="text-[15px] font-extrabold leading-tight text-navy">
+              {ruta.asignatura}
+            </div>
+            <div className="mt-1 text-xs font-bold text-muted-foreground">
+              {ruta.lecciones_completadas} de {ruta.total_lecciones} lecciones
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-[22px] border border-border bg-white px-6 py-10 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
+          <div className="mb-2 text-4xl">📚</div>
+          <div className="text-base font-black text-navy">
+            Aún no tienes asignaturas asignadas
+          </div>
+          <div className="mt-1 text-sm font-bold text-muted-foreground">
+            Tu maestro pronto subirá el material para empezar. 🌟
+          </div>
+        </div>
+      )}
     </div>
   );
 }
