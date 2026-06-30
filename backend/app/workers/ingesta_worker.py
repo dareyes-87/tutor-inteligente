@@ -3,6 +3,7 @@ Worker de ingesta: procesa un PDF en segundo plano.
 Se lanza desde el endpoint de subida usando FastAPI BackgroundTasks.
 NUNCA corre dentro del request HTTP (un libro puede tardar minutos).
 """
+import asyncio
 import logging
 import traceback
 
@@ -63,8 +64,10 @@ async def procesar_libro(libro_id: int) -> None:
             grado_obj = gr.scalar_one()
 
             # === PASO 1: Extraer texto ===
+            # OCR (Tesseract) es CPU-bound y bloquearía el event loop de uvicorn;
+            # se corre en un thread aparte para que el servidor siga respondiendo.
             logger.info(f"[Libro {libro_id}] Iniciando extracción de texto...")
-            pages = process_pdf(libro.archivo_pdf_path)
+            pages = await asyncio.to_thread(process_pdf, libro.archivo_pdf_path)
             libro.total_paginas = len(pages)
             libro.paginas_procesadas = len(pages)
             await db.commit()
@@ -76,8 +79,10 @@ async def procesar_libro(libro_id: int) -> None:
                 return
 
             # === PASO 2: Chunking ===
+            # CPU-bound: también en thread aparte.
             logger.info(f"[Libro {libro_id}] Dividiendo en chunks...")
-            chunks = chunk_pages(
+            chunks = await asyncio.to_thread(
+                chunk_pages,
                 pages,
                 libro_id=libro.id,
                 asignatura=asignatura_obj.nombre,
@@ -91,13 +96,15 @@ async def procesar_libro(libro_id: int) -> None:
                 return
 
             # === PASO 3: Embeddings ===
+            # sentence-transformers/torch en CPU es pesado: en thread aparte.
             logger.info(f"[Libro {libro_id}] Generando embeddings para {len(chunks)} chunks...")
             texts = [c["text"] for c in chunks]
-            embeddings = generate_embeddings(texts)
+            embeddings = await asyncio.to_thread(generate_embeddings, texts)
 
             # === PASO 4: Indexar en ChromaDB ===
+            # I/O síncrona al cliente Chroma: en thread aparte para no bloquear.
             logger.info(f"[Libro {libro_id}] Indexando en ChromaDB...")
-            index_chunks(chunks, embeddings)
+            await asyncio.to_thread(index_chunks, chunks, embeddings)
 
             # === PASO 5: Guardar fragmentos en Postgres ===
             logger.info(f"[Libro {libro_id}] Guardando fragmentos en Postgres...")
