@@ -63,15 +63,11 @@ export default function LoginPage() {
         {/* Formulario */}
         <div className="flex flex-1 flex-col justify-center px-12 py-[46px]">
           <div className="mb-[26px] flex items-center gap-3">
-            <div
-              className="grid h-[46px] w-10 flex-none place-items-center bg-navy"
-              style={{
-                clipPath: "polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)",
-                boxShadow: "inset 0 0 0 2px #F97316",
-              }}
-            >
-              <span className="text-[17px]">📖</span>
-            </div>
+            <img
+              src="/dash.png"
+              alt="Oasis Christian School"
+              className="h-[90px] w-[90px] flex-none object-contain"
+            />
             <div className="leading-[1.05]">
               <div className="text-[17px] font-black text-navy">Oasis Christian School</div>
               <div className="text-[11px] font-bold tracking-[0.05em] text-muted-foreground">

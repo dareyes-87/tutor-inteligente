@@ -41,12 +41,11 @@ export function TeacherNav() {
     <div className="flex w-[248px] flex-none flex-col gap-1.5 self-stretch bg-navy px-[18px] py-[26px]">
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 pb-6 pt-0.5">
-        <div
-          className="grid h-12 w-[42px] flex-none place-items-center bg-white"
-          style={{ clipPath: "polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)" }}
-        >
-          <span className="text-lg">📖</span>
-        </div>
+        <img
+          src="/dash.png"
+          alt="Oasis Christian School"
+          className="h-12 w-12 flex-none object-contain"
+        />
         <div className="leading-[1.05]">
           <div className="text-base font-black text-white">Oasis</div>
           <div className="text-[10.5px] font-bold tracking-[0.04em] text-[#8E97AD]">

@@ -11,7 +11,6 @@ import {
   type RutaAprendizaje,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Mascota } from "@/components/mascota";
 import { ProgressRing } from "@/components/progress-ring";
 
 export default function InicioPage() {
@@ -49,9 +48,11 @@ export default function InicioPage() {
       {/* Saludo + CTA */}
       <div className="mb-[26px] flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="flex items-center gap-4">
-          <div className="h-[62px] w-[62px] flex-none overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
-            <Mascota size={62} />
-          </div>
+          <img
+            src="/dash.png"
+            alt="Oasis Christian School"
+            className="h-14 w-14 flex-none object-contain"
+          />
           <div>
             <div className="text-[28px] font-black leading-none text-navy">
               ¡Hola, {nombre}! 👋

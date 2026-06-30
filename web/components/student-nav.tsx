@@ -22,15 +22,11 @@ export function StudentNav() {
     <aside className="hidden w-[248px] shrink-0 flex-col gap-1.5 self-stretch border-r border-border bg-white px-[18px] py-[26px] md:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 pb-6 pt-0.5">
-        <div
-          className="grid h-12 w-[42px] flex-none place-items-center bg-navy"
-          style={{
-            clipPath: "polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)",
-            boxShadow: "inset 0 0 0 2px #F97316",
-          }}
-        >
-          <span className="text-lg leading-none">📖</span>
-        </div>
+        <img
+          src="/dash.png"
+          alt="Oasis Christian School"
+          className="h-12 w-12 flex-none object-contain"
+        />
         <div className="leading-[1.05]">
           <div className="text-base font-black text-navy">Oasis</div>
           <div className="text-[10.5px] font-bold tracking-[0.04em] text-muted-foreground">
