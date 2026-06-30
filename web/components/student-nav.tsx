@@ -44,7 +44,7 @@ export function StudentNav() {
         <img
           src="/logo_colegio.png"
           alt="Oasis Christian School"
-          className="h-14 w-14 flex-none object-contain"
+          className="h-16 w-16 flex-none object-contain"
         />
         <div className="leading-[1.05]">
           <div className="text-base font-black text-navy">Oasis</div>

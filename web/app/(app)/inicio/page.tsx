@@ -50,8 +50,8 @@ export default function InicioPage() {
         <div className="flex items-center gap-4">
           <img
             src="/dash.png"
-            alt="Oasis Christian School"
-            className="h-14 w-14 flex-none object-contain"
+            alt="Tutor Tigre"
+            className="h-16 w-16 flex-none object-contain"
           />
           <div>
             <div className="text-[28px] font-black leading-none text-navy">

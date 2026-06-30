@@ -48,15 +48,19 @@ export default function LoginPage() {
 
       <div className="relative flex w-full max-w-[880px] overflow-hidden rounded-[32px] border border-[#F0EBE3] bg-white shadow-[0_20px_50px_rgba(30,43,77,.14)]">
         {/* Panel mascota */}
-        <div className="relative hidden w-[380px] flex-none items-end justify-center overflow-hidden bg-navy md:flex">
+        <div className="relative hidden w-[380px] flex-none items-center justify-center overflow-hidden bg-navy md:flex">
           <div className="absolute left-0 right-0 top-[34px] flex justify-center">
             <div className="relative rounded-[18px] bg-white px-5 py-3 text-base font-extrabold text-navy shadow-[0_8px_20px_rgba(0,0,0,.2)]">
               ¡Hola! ¿Listo para aprender?
               <div className="absolute -bottom-2 left-9 h-[18px] w-[18px] rotate-45 bg-white" />
             </div>
           </div>
-          <div className="animate-floaty pb-2">
-            <Mascota size={340} alt="Tigre saludando" className="w-[340px]" />
+          <div className="animate-floaty">
+            <Mascota
+              size={300}
+              alt="Tigre saludando"
+              className="h-[300px] w-[300px] object-contain"
+            />
           </div>
         </div>
 
@@ -66,7 +70,7 @@ export default function LoginPage() {
             <img
               src="/logo_colegio.png"
               alt="Oasis Christian School"
-              className="h-[90px] w-[90px] flex-none object-contain"
+              className="h-[110px] w-[110px] flex-none object-contain"
             />
             <div className="leading-[1.05]">
               <div className="text-[17px] font-black text-navy">Oasis Christian School</div>

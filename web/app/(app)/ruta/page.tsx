@@ -178,8 +178,8 @@ export default function RutaPage() {
             backgroundSize: "22px 22px",
           }}
         />
-        <div className="animate-floaty relative h-[90px] w-[90px] flex-none overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange shadow-[0_8px_28px_rgba(0,0,0,.3)]">
-          <Mascota size={90} />
+        <div className="animate-floaty relative h-[100px] w-[100px] flex-none overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange shadow-[0_8px_28px_rgba(0,0,0,.3)]">
+          <Mascota size={100} />
         </div>
         <div className="relative flex-1">
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand-orange/20 px-3.5 py-[5px] text-[12.5px] font-extrabold text-[#FED7AA]">
@@ -260,8 +260,8 @@ export default function RutaPage() {
 
       {/* === FOOTER MOTIVACIONAL === */}
       <div className="mt-3 flex items-center justify-center gap-4 rounded-[20px] border border-border bg-white p-[22px] shadow-[0_5px_16px_rgba(30,43,77,.05)]">
-        <div className="h-[52px] w-[52px] flex-none overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
-          <Mascota size={52} />
+        <div className="h-14 w-14 flex-none overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
+          <Mascota size={56} />
         </div>
         <div className="text-base font-extrabold text-navy">
           ¡Completa todas las lecciones y desbloquea tu certificado de {ruta.asignatura}! 🏅

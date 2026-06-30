@@ -84,8 +84,8 @@ export default function ChatPage() {
       {/* Cabecera */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-4 sm:px-8 sm:py-[22px]">
         <div className="flex items-center gap-[13px]">
-          <div className="h-[50px] w-[50px] overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
-            <Mascota size={50} />
+          <div className="h-14 w-14 overflow-hidden rounded-full bg-navy ring-[3px] ring-brand-orange">
+            <Mascota size={56} />
           </div>
           <div>
             <div className="text-lg font-black text-navy">Tutor Tigre</div>
@@ -132,8 +132,8 @@ export default function ChatPage() {
           {/* Bienvenida cuando no hay mensajes aún */}
           {mensajes.length === 0 && (
             <div className="flex items-end gap-[11px]">
-              <div className="h-10 w-10 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
-                <Mascota size={40} />
+              <div className="h-12 w-12 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
+                <Mascota size={48} />
               </div>
               <div className="max-w-[85%] rounded-[6px_18px_18px_18px] border border-border bg-white px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed text-[#1F2433] shadow-[0_3px_10px_rgba(30,43,77,.06)] sm:max-w-[60%]">
                 ¡Hola! 🐯 Soy tu tutor. Pregúntame lo que quieras sobre{" "}
@@ -150,8 +150,8 @@ export default function ChatPage() {
                 className={`flex items-end gap-[11px] ${tutor ? "justify-start" : "justify-end"}`}
               >
                 {tutor && (
-                  <div className="h-10 w-10 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
-                    <Mascota size={40} />
+                  <div className="h-12 w-12 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
+                    <Mascota size={48} />
                   </div>
                 )}
                 <div className="max-w-[85%] sm:max-w-[60%]">
@@ -172,8 +172,8 @@ export default function ChatPage() {
 
           {enviando && (
             <div className="flex items-end gap-[11px] justify-start">
-              <div className="h-10 w-10 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
-                <Mascota size={40} />
+              <div className="h-12 w-12 flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
+                <Mascota size={48} />
               </div>
               <div className="rounded-[6px_18px_18px_18px] border border-border bg-white px-[18px] py-3.5 text-[15.5px] font-semibold text-muted-foreground shadow-[0_3px_10px_rgba(30,43,77,.06)]">
                 El tutor está pensando…
