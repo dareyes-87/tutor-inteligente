@@ -1,8 +1,7 @@
 import Image from "next/image";
 
 /**
- * Imagen de la mascota (tigre). Usa un placeholder en /assets/mascota.png;
- * la imagen real la coloca el equipo en web/public/assets/.
+ * Imagen de la mascota (tigre Oasis). La imagen real es /dash.png.
  */
 export function Mascota({
   size,
@@ -15,7 +14,7 @@ export function Mascota({
 }) {
   return (
     <Image
-      src="/assets/mascota.png"
+      src="/dash.png"
       alt={alt}
       width={size}
       height={size}

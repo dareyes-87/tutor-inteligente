@@ -16,6 +16,7 @@ from app.modules.lecciones.schemas import (
     CompletarNivelResponse,
     LeccionEnRuta,
     MicroLeccionResponse,
+    MiGradoResponse,
     MiLibroResponse,
     RachaResponse,
     RankingResponse,
@@ -35,6 +36,15 @@ async def get_mi_libro(
 ):
     """Libro activo del estudiante (resuelto por su grado). 404 si no hay."""
     return await service.obtener_mi_libro(current_user, db)
+
+
+@router.get("/lecciones/mi-grado", response_model=MiGradoResponse)
+async def get_mi_grado(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(_estudiante),
+):
+    """Grado del estudiante autenticado (para el sidebar)."""
+    return await service.obtener_mi_grado(current_user, db)
 
 
 @router.get("/lecciones/ruta", response_model=RutaAprendizaje)

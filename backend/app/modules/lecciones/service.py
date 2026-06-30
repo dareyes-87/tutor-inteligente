@@ -27,6 +27,7 @@ from app.modules.lecciones.schemas import (
     CompletarNivelResponse,
     LeccionEnRuta,
     MicroLeccionResponse,
+    MiGradoResponse,
     MiLibroResponse,
     RachaResponse,
     RankingEstudiante,
@@ -730,3 +731,15 @@ async def obtener_ranking(
             mi_posicion = posicion
 
     return RankingResponse(ranking=ranking, mi_posicion=mi_posicion)
+
+
+async def obtener_mi_grado(current_user: Usuario, db: AsyncSession) -> MiGradoResponse:
+    """Grado del estudiante autenticado (para el sidebar). None si no tiene grado."""
+    if current_user.grado_id is None:
+        return MiGradoResponse(id=None, nombre=None)
+    nombre = (
+        await db.execute(
+            select(Grado.nombre).where(Grado.id == current_user.grado_id)
+        )
+    ).scalar_one_or_none()
+    return MiGradoResponse(id=current_user.grado_id, nombre=nombre)

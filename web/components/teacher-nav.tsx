@@ -42,9 +42,9 @@ export function TeacherNav() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 pb-6 pt-0.5">
         <img
-          src="/dash.png"
+          src="/logo_colegio.png"
           alt="Oasis Christian School"
-          className="h-12 w-12 flex-none object-contain"
+          className="h-14 w-14 flex-none object-contain"
         />
         <div className="leading-[1.05]">
           <div className="text-base font-black text-white">Oasis</div>

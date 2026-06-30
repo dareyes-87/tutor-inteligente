@@ -296,6 +296,15 @@ export function obtenerMiLibro(): Promise<MiLibro> {
   return request<MiLibro>("/lecciones/mi-libro");
 }
 
+/** Grado del estudiante autenticado (para el sidebar). */
+export interface MiGradoEstudiante {
+  id: number | null;
+  nombre: string | null;
+}
+export function obtenerMiGradoEstudiante(): Promise<MiGradoEstudiante> {
+  return request<MiGradoEstudiante>("/lecciones/mi-grado");
+}
+
 /** Ruta de aprendizaje del libro con el progreso del estudiante. */
 export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);

@@ -124,3 +124,9 @@ class RankingEstudiante(BaseModel):
 class RankingResponse(BaseModel):
     ranking: list[RankingEstudiante]
     mi_posicion: int
+
+
+class MiGradoResponse(BaseModel):
+    """Grado del estudiante autenticado (para el sidebar)."""
+    id: int | None
+    nombre: str | None

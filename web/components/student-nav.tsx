@@ -4,10 +4,11 @@
  * Sidebar de navegación del estudiante — réplica de StudentNav del diseño.
  * Marca el item activo según la ruta y usa el contexto de auth para el usuario.
  */
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { obtenerMiGradoEstudiante } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { STUDENT_NAV } from "@/lib/constants";
 
@@ -16,16 +17,34 @@ export function StudentNav() {
   const { user, logout } = useAuth();
 
   const nombre = user ? `${user.nombre} ${user.apellido[0] ?? ""}.` : "Estudiante";
-  const grado = "5to Primaria";
+  const iniciales = user
+    ? `${user.nombre[0] ?? ""}${user.apellido[0] ?? ""}`.toUpperCase()
+    : "ES";
+
+  // Grado real del estudiante (el backend resuelve el nombre desde su grado_id).
+  const [grado, setGrado] = useState<string | null>(null);
+  useEffect(() => {
+    let activo = true;
+    obtenerMiGradoEstudiante()
+      .then((g) => {
+        if (activo) setGrado(g.nombre);
+      })
+      .catch(() => {
+        /* silencioso: si falla, el sidebar solo muestra "Salir" */
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   return (
     <aside className="hidden w-[248px] shrink-0 flex-col gap-1.5 self-stretch border-r border-border bg-white px-[18px] py-[26px] md:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 px-2 pb-6 pt-0.5">
         <img
-          src="/dash.png"
+          src="/logo_colegio.png"
           alt="Oasis Christian School"
-          className="h-12 w-12 flex-none object-contain"
+          className="h-14 w-14 flex-none object-contain"
         />
         <div className="leading-[1.05]">
           <div className="text-base font-black text-navy">Oasis</div>
@@ -60,14 +79,8 @@ export function StudentNav() {
 
       {/* Usuario + salir */}
       <div className="mt-auto flex items-center gap-[11px] rounded-2xl bg-muted/70 p-3">
-        <div className="h-[42px] w-[42px] flex-none overflow-hidden rounded-full bg-navy ring-2 ring-brand-orange">
-          <Image
-            src="/assets/mascota.png"
-            alt=""
-            width={42}
-            height={42}
-            className="h-full w-full object-cover"
-          />
+        <div className="grid h-[42px] w-[42px] flex-none place-items-center rounded-full bg-navy font-black text-white ring-2 ring-brand-orange">
+          {iniciales}
         </div>
         <div className="min-w-0 leading-[1.1]">
           <div className="truncate text-sm font-extrabold text-navy">{nombre}</div>

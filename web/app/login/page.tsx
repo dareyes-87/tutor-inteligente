@@ -64,7 +64,7 @@ export default function LoginPage() {
         <div className="flex flex-1 flex-col justify-center px-12 py-[46px]">
           <div className="mb-[26px] flex items-center gap-3">
             <img
-              src="/dash.png"
+              src="/logo_colegio.png"
               alt="Oasis Christian School"
               className="h-[90px] w-[90px] flex-none object-contain"
             />
