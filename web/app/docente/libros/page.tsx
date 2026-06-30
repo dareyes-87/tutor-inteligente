@@ -49,10 +49,19 @@ export default function LibrosPage() {
           <div className="mt-1 text-sm font-bold text-[#7B8194]">
             Sube los libros de texto que el tutor usará para responder y generar actividades.
           </div>
+          {hayProcesando && (
+            <div className="mt-2 inline-block rounded-lg bg-[#FEF6E7] px-3 py-1.5 text-xs font-extrabold text-[#D97706]">
+              ⏳ Espera a que el libro actual termine de procesarse antes de subir otro.
+            </div>
+          )}
         </div>
         <button
           onClick={() => setShowUpload(true)}
-          className="rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_4px_0_#1D4ED8] active:translate-y-px"
+          disabled={hayProcesando}
+          title={
+            hayProcesando ? "Espera a que el libro actual termine de procesarse" : undefined
+          }
+          className="rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_4px_0_#1D4ED8] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:active:translate-y-0"
         >
           + Subir nuevo libro
         </button>

@@ -17,6 +17,7 @@ from app.models.usuario import RolUsuario, Usuario
 from app.modules.actividades.service import obtener_perfil_estudiante
 from app.modules.lecciones.service import obtener_ruta
 from app.modules.docente.schemas import (
+    AsignaturaOpcion,
     EstadisticasDocente,
     EstudianteDetalle,
     EstudianteResumen,
@@ -104,6 +105,14 @@ async def listar_estudiantes(
     ]
     estudiantes.sort(key=lambda e: e.puntos_totales, reverse=True)
     return estudiantes
+
+
+async def listar_asignaturas(db: AsyncSession) -> list[AsignaturaOpcion]:
+    """Asignaturas disponibles para el formulario de subida (rol docente)."""
+    rows = (
+        await db.execute(select(Asignatura).order_by(Asignatura.nombre))
+    ).scalars().all()
+    return [AsignaturaOpcion(id=a.id, nombre=a.nombre) for a in rows]
 
 
 async def mi_grado(db: AsyncSession, grado_id: int | None) -> MiGradoResponse:

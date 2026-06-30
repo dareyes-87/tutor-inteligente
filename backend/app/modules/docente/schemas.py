@@ -12,6 +12,12 @@ class MiGradoResponse(BaseModel):
     nombre: str | None
 
 
+class AsignaturaOpcion(BaseModel):
+    """Asignatura para el dropdown del formulario de subida (solo id y nombre)."""
+    id: int
+    nombre: str
+
+
 class LibroDocente(BaseModel):
     id: int
     titulo: str

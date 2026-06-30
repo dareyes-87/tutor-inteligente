@@ -2,27 +2,67 @@
 
 /**
  * Modal para subir un nuevo libro (PDF) — compartido por el panel docente.
- * La asignatura/grado están fijos en Fase 1 (un solo libro de Ciencias 1ro).
+ * El grado se autoasigna al del docente (user.grado_id); la asignatura se
+ * elige de la lista real cargada desde GET /docente/asignaturas.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { ApiError, subirLibro } from "@/lib/api";
+import {
+  ApiError,
+  obtenerAsignaturasDocente,
+  subirLibro,
+  type AsignaturaOpcion,
+} from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export function UploadModal({ onClose, onSubido }: { onClose: () => void; onSubido: () => void }) {
+  const { user } = useAuth();
   const [titulo, setTitulo] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
 
+  // Asignaturas reales (se cargan al abrir el modal).
+  const [asignaturas, setAsignaturas] = useState<AsignaturaOpcion[]>([]);
+  const [cargandoAsig, setCargandoAsig] = useState(true);
+  const [asignaturaId, setAsignaturaId] = useState<string>("");
+
+  useEffect(() => {
+    let activo = true;
+    obtenerAsignaturasDocente()
+      .then((lista) => {
+        if (!activo) return;
+        setAsignaturas(lista);
+        setAsignaturaId(lista[0] ? String(lista[0].id) : "");
+      })
+      .catch((err) => {
+        if (activo) {
+          toast.error(
+            err instanceof ApiError ? err.message : "No se pudieron cargar las asignaturas",
+          );
+        }
+      })
+      .finally(() => {
+        if (activo) setCargandoAsig(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
   async function handleSubir(e: React.FormEvent) {
     e.preventDefault();
-    if (!titulo.trim() || !file || subiendo) return;
+    if (!titulo.trim() || !file || !asignaturaId || subiendo) return;
+    if (user?.grado_id == null) {
+      toast.error("Tu cuenta no tiene un grado asignado. Pide al administrador que lo configure.");
+      return;
+    }
     setSubiendo(true);
     try {
       const fd = new FormData();
       fd.append("titulo", titulo.trim());
-      fd.append("asignatura_id", "1");
-      fd.append("grado_id", "1");
+      fd.append("asignatura_id", asignaturaId);
+      fd.append("grado_id", String(user.grado_id));
       fd.append("archivo", file);
       await subirLibro(fd);
       toast.success("Libro subido. Procesando OCR…");
@@ -44,24 +84,29 @@ export function UploadModal({ onClose, onSubido }: { onClose: () => void; onSubi
             className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-navy outline-none focus:border-brand-blue"
           />
         </Campo>
-        <div className="grid grid-cols-2 gap-4">
-          <Campo label="Asignatura">
+        <Campo label="Asignatura">
+          {cargandoAsig ? (
+            <div className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-muted-foreground">
+              Cargando asignaturas…
+            </div>
+          ) : asignaturas.length === 0 ? (
+            <div className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-muted-foreground">
+              No hay asignaturas. Pide al administrador que cree alguna.
+            </div>
+          ) : (
             <select
-              disabled
-              className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-navy outline-none"
+              value={asignaturaId}
+              onChange={(ev) => setAsignaturaId(ev.target.value)}
+              className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-navy outline-none focus:border-brand-blue"
             >
-              <option>Ciencias Naturales</option>
+              {asignaturas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nombre}
+                </option>
+              ))}
             </select>
-          </Campo>
-          <Campo label="Grado">
-            <select
-              disabled
-              className="w-full rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-semibold text-navy outline-none"
-            >
-              <option>1ro Básico</option>
-            </select>
-          </Campo>
-        </div>
+          )}
+        </Campo>
         <Campo label="Archivo PDF">
           <input
             type="file"
@@ -81,7 +126,7 @@ export function UploadModal({ onClose, onSubido }: { onClose: () => void; onSubi
           </button>
           <button
             type="submit"
-            disabled={!titulo.trim() || !file || subiendo}
+            disabled={!titulo.trim() || !file || !asignaturaId || subiendo}
             className="rounded-xl bg-brand-blue px-6 py-2.5 text-sm font-extrabold text-white shadow-[0_4px_0_#1D4ED8] active:translate-y-px disabled:opacity-50"
           >
             {subiendo ? "Subiendo…" : "Subir"}

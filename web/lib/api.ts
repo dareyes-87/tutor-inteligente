@@ -498,6 +498,15 @@ export function obtenerMiGrado(): Promise<MiGrado> {
   return request<MiGrado>("/docente/mi-grado");
 }
 
+/** Asignaturas para el dropdown de subida de libros (rol docente). */
+export interface AsignaturaOpcion {
+  id: number;
+  nombre: string;
+}
+export function obtenerAsignaturasDocente(): Promise<AsignaturaOpcion[]> {
+  return request<AsignaturaOpcion[]>("/docente/asignaturas");
+}
+
 /**
  * Sube un libro PDF (multipart). El helper `request` NO fija Content-Type
  * cuando el body es FormData, así que el browser pone el boundary correcto.

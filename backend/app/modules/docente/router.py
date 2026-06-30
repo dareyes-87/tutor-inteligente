@@ -7,6 +7,7 @@ from app.models.usuario import RolUsuario, Usuario
 from app.modules.auth.dependencies import require_role
 from app.modules.docente import service
 from app.modules.docente.schemas import (
+    AsignaturaOpcion,
     EstadisticasDocente,
     EstudianteDetalle,
     EstudianteResumen,
@@ -22,6 +23,12 @@ _docente = require_role(RolUsuario.docente, RolUsuario.administrador)
 @router.get("/libros", response_model=list[LibroDocente])
 async def get_libros(db: AsyncSession = Depends(get_db), _=Depends(_docente)):
     return await service.listar_libros(db)
+
+
+@router.get("/asignaturas", response_model=list[AsignaturaOpcion])
+async def get_asignaturas(db: AsyncSession = Depends(get_db), _=Depends(_docente)):
+    """Asignaturas disponibles para el formulario de subida de libros."""
+    return await service.listar_asignaturas(db)
 
 
 @router.get("/mi-grado", response_model=MiGradoResponse)
