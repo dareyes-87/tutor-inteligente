@@ -6,6 +6,12 @@ from pydantic import BaseModel
 from app.modules.lecciones.schemas import RutaAprendizaje
 
 
+class MiGradoResponse(BaseModel):
+    """Grado del docente autenticado, para el sidebar del panel."""
+    id: int | None
+    nombre: str | None
+
+
 class LibroDocente(BaseModel):
     id: int
     titulo: str

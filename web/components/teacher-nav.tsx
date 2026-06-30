@@ -4,9 +4,11 @@
  * Sidebar del docente — versión sobria (navy) de la navegación.
  * Cada item navega a su página; el activo se resalta según la ruta actual.
  */
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { obtenerMiGrado } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { TEACHER_NAV } from "@/lib/constants";
 
@@ -14,7 +16,23 @@ export function TeacherNav() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  const nombre = user ? `Prof. ${user.apellido || user.nombre}` : "Docente";
+  // Grado real del docente (el backend resuelve el nombre desde su grado_id).
+  const [grado, setGrado] = useState<string | null>(null);
+  useEffect(() => {
+    let activo = true;
+    obtenerMiGrado()
+      .then((g) => {
+        if (activo) setGrado(g.nombre);
+      })
+      .catch(() => {
+        /* silencioso: si falla, el sidebar solo muestra "Salir" */
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const nombre = user ? `Docente ${user.apellido || user.nombre}` : "Docente";
   const iniciales = user
     ? `${user.nombre[0] ?? ""}${user.apellido[0] ?? ""}`.toUpperCase()
     : "PR";
@@ -75,7 +93,9 @@ export function TeacherNav() {
         </div>
         <div className="leading-[1.1]">
           <div className="text-[13.5px] font-extrabold text-white">{nombre}</div>
-          <div className="text-[11px] font-bold text-[#8E97AD]">5to Primaria · Salir</div>
+          <div className="text-[11px] font-bold text-[#8E97AD]">
+            {grado ? `${grado} · Salir` : "Salir"}
+          </div>
         </div>
       </button>
     </div>

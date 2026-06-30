@@ -69,7 +69,7 @@ export default function DocentePage() {
       {/* Header */}
       <div className="mb-1 text-2xl font-black text-navy">Panel docente</div>
       <div className="mb-6 text-sm font-bold text-[#7B8194]">
-        {user ? `Prof. ${user.apellido || user.nombre}` : "Docente"} · Oasis Christian School
+        {user ? `Docente ${user.apellido || user.nombre}` : "Docente"} · Oasis Christian School
       </div>
 
       {/* Estadísticas */}

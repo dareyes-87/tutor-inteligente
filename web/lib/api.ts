@@ -489,6 +489,15 @@ export function obtenerEstadisticas(): Promise<EstadisticasDocente> {
   return request<EstadisticasDocente>("/docente/estadisticas");
 }
 
+/** Grado del docente autenticado (para el sidebar). */
+export interface MiGrado {
+  id: number | null;
+  nombre: string | null;
+}
+export function obtenerMiGrado(): Promise<MiGrado> {
+  return request<MiGrado>("/docente/mi-grado");
+}
+
 /**
  * Sube un libro PDF (multipart). El helper `request` NO fija Content-Type
  * cuando el body es FormData, así que el browser pone el boundary correcto.
