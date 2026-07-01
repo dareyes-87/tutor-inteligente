@@ -109,9 +109,15 @@ export default function ProgresoPage() {
 
   // --- Con datos ---
   const totalActividades = items.reduce((s, p) => s + p.total_actividades, 0);
-  const avanceTotal = Math.round(
-    items.reduce((s, p) => s + p.puntaje_promedio, 0) / items.length,
-  );
+  // Promedio ponderado por nº de actividades: temas con más práctica pesan más,
+  // dando un avance más representativo que un promedio simple de promedios.
+  const avanceTotal =
+    totalActividades === 0
+      ? 0
+      : Math.round(
+          items.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) /
+            totalActividades,
+        );
 
   return (
     <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
@@ -152,12 +158,12 @@ export default function ProgresoPage() {
                 {i + 1}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="mb-2.5 flex items-center justify-between gap-3">
+                <div className="mb-2.5 flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-[16.5px] font-extrabold text-navy">
                       {p.tema}
                     </span>
-                    <span className="flex-none rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
+                    <span className="mr-2 flex-none rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
                       {p.asignatura}
                     </span>
                   </div>

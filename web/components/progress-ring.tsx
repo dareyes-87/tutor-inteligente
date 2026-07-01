@@ -1,5 +1,8 @@
 /**
- * Anillo de progreso circular (conic-gradient), como en el dashboard del diseño.
+ * Anillo de progreso circular dibujado con SVG (arco vía stroke-dasharray).
+ * Extremos redondeados (stroke-linecap="round") y escalado responsive: el SVG
+ * usa viewBox y w/h al 100%, así que el tamaño lo fija el contenedor; `size`
+ * solo define el ancho máximo por defecto.
  */
 export function ProgressRing({
   pct,
@@ -14,23 +17,48 @@ export function ProgressRing({
   thickness?: number;
   children?: React.ReactNode;
 }) {
-  const deg = (Math.min(100, Math.max(0, pct)) * 3.6).toFixed(1);
-  const inner = size - thickness * 2;
+  const valor = Math.min(100, Math.max(0, pct));
+  // Coordenadas en el espacio del viewBox (siempre size×size, escala con CSS).
+  const radio = (size - thickness) / 2;
+  const centro = size / 2;
+  const circunferencia = 2 * Math.PI * radio;
+  const offset = circunferencia * (1 - valor / 100);
+
   return (
     <div
-      className="relative grid place-items-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: `conic-gradient(${color} ${deg}deg, #ECE7DE 0deg)`,
-      }}
+      className="relative grid aspect-square w-full place-items-center"
+      style={{ maxWidth: size }}
     >
-      <div
-        className="grid place-items-center rounded-full bg-white"
-        style={{ width: inner, height: inner }}
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="h-full w-full -rotate-90"
+        aria-hidden="true"
       >
-        {children}
-      </div>
+        {/* Pista de fondo */}
+        <circle
+          cx={centro}
+          cy={centro}
+          r={radio}
+          fill="none"
+          stroke="#ECE7DE"
+          strokeWidth={thickness}
+        />
+        {/* Arco de progreso */}
+        <circle
+          cx={centro}
+          cy={centro}
+          r={radio}
+          fill="none"
+          stroke={color}
+          strokeWidth={thickness}
+          strokeLinecap="round"
+          strokeDasharray={circunferencia}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset .4s ease" }}
+        />
+      </svg>
+      {/* Texto centrado encima del anillo */}
+      <div className="absolute inset-0 grid place-items-center">{children}</div>
     </div>
   );
 }

@@ -142,7 +142,7 @@ export default function InicioPage() {
             <div className="mx-auto mb-3.5 grid h-12 w-12 place-items-center rounded-[14px] bg-[#E9F9EF] text-2xl">
               📚
             </div>
-            <div className="mx-auto mb-3.5 w-fit">
+            <div className="mx-auto mb-3.5 w-[108px] max-w-full">
               <ProgressRing pct={Math.round(ruta.progreso_porcentaje)} color="#22C55E">
                 <span className="text-[22px] font-black text-navy">
                   {Math.round(ruta.progreso_porcentaje)}%
