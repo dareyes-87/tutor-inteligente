@@ -2,14 +2,20 @@
  * Cliente API del móvil. Misma lógica que web/lib/api.ts pero con
  * expo-secure-store para persistir el JWT.
  *
- * API_URL apunta a la IP LOCAL de la máquina de desarrollo (no localhost,
- * porque el teléfono no resuelve localhost al backend). Cambiar aquí si tu
- * IP es distinta, o usar `npx expo start --tunnel`.
+ * La URL del backend se inyecta en tiempo de build/dev vía la variable de
+ * entorno EXPO_PUBLIC_API_URL (ver eas.json y, para desarrollo local, un
+ * archivo .env con `EXPO_PUBLIC_API_URL=...`). Debe usar HTTPS en producción:
+ * Android bloquea el tráfico HTTP sin cifrar (cleartext) por defecto.
+ *
+ * Si la variable no está definida, cae a la URL de producción de Railway, para
+ * que el APK nunca quede apuntando a una IP local por accidente.
  */
 import * as SecureStore from "expo-secure-store";
 
-// DEMO: el servidor debe correr en esta IP durante la defensa (misma red WiFi)
-export const API_URL = "http://192.168.100.50:8000";
+// Fuente única de la URL del backend (env de build/dev, con fallback a producción).
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  "https://tutor-inteligente-production.up.railway.app";
 
 const TOKEN_KEY = "auth_token";
 

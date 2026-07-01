@@ -21,8 +21,12 @@ Al terminar, EAS da un link para descargar el .apk directamente.
 Instalar en el dispositivo Android: activar "Fuentes desconocidas"
 en Ajustes > Seguridad, luego abrir el .apk descargado.
 
-## Para la defensa
-- El servidor backend debe estar corriendo:
-  `cd ~/tutor-inteligente && docker compose up -d`
-- El dispositivo Android y la laptop deben estar en la misma red WiFi
-- URL del servidor: http://192.168.100.12:8000
+## URL del backend
+- La app apunta al backend de **producción en Railway** (HTTPS):
+  `https://tutor-inteligente-production.up.railway.app`
+- Se inyecta vía `EXPO_PUBLIC_API_URL` en `eas.json` (perfil `preview`) y la lee
+  `src/lib/api.ts`. Ya NO depende de una IP local ni de estar en la misma WiFi.
+- Para probar contra un backend local en desarrollo, crea un archivo `.env` en
+  `mobile/` con `EXPO_PUBLIC_API_URL=http://<tu-ip-local>:8000` y corre
+  `npx expo start` (recuerda que HTTP local no funciona en un APK release por la
+  política de cleartext de Android; para eso usa Expo Go en desarrollo).
