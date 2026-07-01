@@ -1,5 +1,6 @@
 """Lógica de negocio del chat: orquesta RAG + LLM + historial."""
 import logging
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -44,6 +45,30 @@ def _es_rechazo(respuesta: str) -> bool:
     """True si la respuesta del tutor es un rechazo por estar fuera de los libros."""
     texto = respuesta.lower()
     return any(p in texto for p in PALABRAS_RECHAZO)
+
+
+def _paginas_citadas(respuesta: str) -> list[int]:
+    """Extrae los números de página citados en el texto, formato '(página X)'."""
+    return [int(n) for n in re.findall(r"p[aá]gina\s+(\d+)", respuesta, re.IGNORECASE)]
+
+
+def _citas_validas(respuesta: str, fragments: list[dict]) -> bool:
+    """
+    True si todas las páginas citadas en la respuesta existen entre los
+    fragmentos recuperados. Si la respuesta no cita ninguna página, se considera
+    válida (no es una alucinación de citas).
+
+    Capa 3 del grounding: detecta cuando el LLM inventa una cita de página que no
+    está respaldada por el contexto recuperado. El campo de página en `fragments`
+    es `page_num` (ver rag/search.py:93).
+    """
+    citadas = _paginas_citadas(respuesta)
+    if not citadas:
+        return True
+    paginas_disponibles = {
+        f.get("page_num") for f in fragments if f.get("page_num") is not None
+    }
+    return all(p in paginas_disponibles for p in citadas)
 
 
 async def obtener_o_crear_conversacion(
@@ -158,8 +183,29 @@ async def procesar_pregunta(
 
     # Si el LLM rechazó la pregunta (aunque el contexto pasara el umbral), no
     # mostrar referencias: las páginas recuperadas no respaldan esa respuesta.
+    #
+    # Capa 3 del grounding: si el modelo NO rechazó pero citó una página que no
+    # está entre los fragmentos recuperados, es señal de alucinación de cita.
+    # OPCIÓN A (actual, mínimo riesgo): limpiar referencias + log de auditoría;
+    # la respuesta sí se muestra al estudiante, pero sin páginas que no la
+    # respaldan. Para cambiar a la OPCIÓN B (tratar la cita inválida como
+    # alucinación y reemplazar la respuesta por RESPUESTA_FUERA_DE_CONTEXTO),
+    # basta con reemplazar el cuerpo del `elif` por esas dos líneas.
     if _es_rechazo(respuesta):
         fragments_referencia = []
+    elif not _citas_validas(respuesta, fragments):
+        logger.warning(
+            "[Chat] Grounding: el modelo citó una página que NO está en los "
+            "fragmentos recuperados. Pregunta=%r, respuesta=%r, "
+            "paginas_citadas=%r, paginas_disponibles=%r",
+            pregunta,
+            respuesta,
+            _paginas_citadas(respuesta),
+            {f.get("page_num") for f in fragments},
+        )
+        fragments_referencia = []
+        # OPCIÓN B (más estricta, desactivada): descartar también el contenido.
+        # respuesta = RESPUESTA_FUERA_DE_CONTEXTO
 
     # 5. Guardar mensajes
     referencias_json = [
