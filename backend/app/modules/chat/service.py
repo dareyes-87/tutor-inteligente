@@ -13,7 +13,7 @@ from app.models.asignatura import Asignatura
 from app.models.usuario import Usuario
 from app.models.grado import Grado
 from app.modules.rag.search import search_fragments, is_context_relevant
-from app.modules.chat.prompts import SYSTEM_PROMPT, build_context_prompt, build_messages
+from app.modules.chat.prompts import build_context_prompt, build_messages
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,13 @@ async def procesar_pregunta(
     # no depende de que el modelo obedezca el prompt.
     if is_context_relevant(fragments):
         context = build_context_prompt(fragments)
-        messages = build_messages(SYSTEM_PROMPT, context, history, pregunta)
+        messages = build_messages(
+            context, history, pregunta, grado_nombre, asignatura_nombre
+        )
+        logger.info(
+            f"[Chat] System prompt adaptado a grado='{grado_nombre}', "
+            f"asignatura='{asignatura_nombre}'"
+        )
         logger.info(
             f"[Chat] Contexto relevante: enviando al LLM con {len(fragments)} fragmentos"
         )
