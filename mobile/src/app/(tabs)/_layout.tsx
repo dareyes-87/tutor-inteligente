@@ -36,6 +36,10 @@ export default function TabsLayout() {
         name="ranking"
         options={{ title: "Ranking", tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" focused={focused} /> }}
       />
+      <Tabs.Screen
+        name="chat"
+        options={{ title: "Chat", tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} /> }}
+      />
     </Tabs>
   );
 }
