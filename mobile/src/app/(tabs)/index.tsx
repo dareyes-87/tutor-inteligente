@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Mascota } from "@/components/Mascota";
 import { ProgressBar } from "@/components/ProgressBar";
 import {
   getPerfil,
@@ -112,8 +113,13 @@ export default function InicioScreen() {
         >
           <SafeAreaView edges={["top"]}>
             <View style={styles.header}>
-              <Text style={styles.hola}>¡Hola, {user?.nombre ?? "estudiante"}! 🐯</Text>
-              <Text style={styles.sub}>¿Seguimos aprendiendo hoy?</Text>
+              <View style={styles.avatar}>
+                <Mascota size={48} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.hola}>¡Hola, {user?.nombre ?? "estudiante"}!</Text>
+                <Text style={styles.sub}>¿Seguimos aprendiendo hoy?</Text>
+              </View>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -200,7 +206,17 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.cream },
   errorText: { fontSize: 15, fontWeight: "700", color: Colors.textLight },
 
-  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
+  header: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: Colors.navy,
+    borderWidth: 3,
+    borderColor: Colors.orange,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   hola: { fontSize: 24, fontWeight: "900", color: Colors.white },
   sub: { fontSize: 14, fontWeight: "700", color: "#CBD5E1", marginTop: 4 },
 

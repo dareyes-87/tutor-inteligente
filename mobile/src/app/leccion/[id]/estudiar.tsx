@@ -26,6 +26,7 @@ import {
   type TarjetaEducativa,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
+import { Mascota } from "@/components/Mascota";
 
 const ASIGNATURA_ID = 1;
 
@@ -357,8 +358,11 @@ function MiniChat({ contexto, onCerrar }: { contexto: string; onCerrar: () => vo
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.modalHeader, { paddingTop: 14 }]}>
+          <View style={styles.modalAvatar}>
+            <Mascota size={34} />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.modalTitulo}>💬 Tutor Tigre</Text>
+            <Text style={styles.modalTitulo}>Tutor Tigre</Text>
             <Text style={styles.modalSub} numberOfLines={1}>
               Sobre: {contexto}
             </Text>
@@ -463,6 +467,7 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalSheet: { height: "82%", backgroundColor: Colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
   modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.navy, paddingHorizontal: 16, paddingBottom: 14 },
+  modalAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.navyLight, borderWidth: 2, borderColor: Colors.orange, alignItems: "center", justifyContent: "center" },
   modalTitulo: { color: Colors.white, fontSize: 14, fontWeight: "900" },
   modalSub: { color: "#94A3B8", fontSize: 11, fontWeight: "700" },
   modalHint: { textAlign: "center", marginTop: 24, color: Colors.textLight, fontSize: 14, fontWeight: "600" },

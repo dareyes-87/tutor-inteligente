@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { preguntar, type ChatResponse } from "@/lib/api";
 import { Colors } from "@/lib/colors";
+import { Mascota } from "@/components/Mascota";
 
 /**
  * Asignaturas disponibles para el chat (Fase 1, hardcodeadas — mismo patrón que
@@ -83,7 +84,7 @@ export default function ChatScreen() {
       {/* Header navy con el Tutor Tigre */}
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarEmoji}>🐯</Text>
+          <Mascota size={40} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.titulo}>Tutor Tigre</Text>
@@ -143,7 +144,7 @@ export default function ChatScreen() {
         >
           {mensajes.length === 0 && !enviando && (
             <View style={styles.bienvenida}>
-              <Text style={styles.bienvenidaEmoji}>🐯</Text>
+              <Mascota size={72} />
               <Text style={styles.bienvenidaText}>
                 ¡Hola! Soy tu Tutor Tigre. Pregúntame lo que quieras sobre{" "}
                 {asignaturaActual?.nombre ?? "tu libro"} y te responderé con la página del libro.
@@ -241,7 +242,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarEmoji: { fontSize: 24 },
   titulo: { color: Colors.navy, fontSize: 18, fontWeight: "900" },
   enLineaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.green },
@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
   asigLabelText: { color: Colors.navy, fontSize: 13, fontWeight: "800" },
 
   bienvenida: { alignItems: "center", gap: 10, paddingHorizontal: 12, paddingTop: 20 },
-  bienvenidaEmoji: { fontSize: 48 },
   bienvenidaText: {
     textAlign: "center",
     color: Colors.text,

@@ -14,6 +14,8 @@ import {
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Colors } from "@/lib/colors";
+import { LogoColegio } from "@/components/LogoColegio";
+import { Mascota } from "@/components/Mascota";
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -46,9 +48,10 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-      {/* Mitad superior crema con mascota */}
+      {/* Mitad superior crema con logo del colegio + mascota */}
       <View style={styles.top}>
-        <Text style={styles.mascota}>🐯</Text>
+        <LogoColegio size={64} />
+        <Mascota size={120} />
         <Text style={styles.titulo}>Tutor Tigre</Text>
         <Text style={styles.subtitulo}>Tu compañero de aprendizaje</Text>
       </View>
@@ -101,8 +104,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.navy },
-  top: { flex: 1, backgroundColor: Colors.cream, alignItems: "center", justifyContent: "center", paddingTop: 40 },
-  mascota: { fontSize: 84 },
+  top: { flex: 1, backgroundColor: Colors.cream, alignItems: "center", justifyContent: "center", paddingTop: 40, gap: 6 },
   titulo: { fontSize: 34, fontWeight: "900", color: Colors.navy, marginTop: 8 },
   subtitulo: { fontSize: 15, fontWeight: "700", color: Colors.textLight, marginTop: 4 },
   bottom: { flex: 1, backgroundColor: Colors.navy, justifyContent: "center", paddingHorizontal: 24 },
