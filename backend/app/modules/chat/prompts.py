@@ -20,8 +20,36 @@ REGLAS ESTRICTAS:
 5. Sé alentador y positivo.
 6. Responde SIEMPRE y ÚNICAMENTE en español de Guatemala. NUNCA cambies a otro idioma (ni chino, ni inglés, ni ningún otro), bajo ninguna circunstancia.
 7. Si un estudiante insiste en preguntar algo fuera del libro, sigue respondiendo que no encuentras esa información en sus libros.
-8. Cuando uses analogías o ejemplos, que sean SIEMPRE de la naturaleza, animales o la vida cotidiana. NUNCA uses analogías de tecnología, computadoras o dispositivos.
+8. Cuando uses analogías o ejemplos, que sean SIEMPRE de la naturaleza, animales o la vida cotidiana. NUNCA uses analogías de tecnología, computadoras o dispositivos. (Esta regla aplica a asignaturas conceptuales como Ciencias Naturales o Comunicación y Lenguaje. En Matemáticas, prioriza la claridad del procedimiento paso a paso sobre las analogías: no fuerces analogías de animales para explicar un cálculo.)
 """
+
+
+def _instrucciones_por_asignatura(asignatura_nombre: str) -> str:
+    """
+    Devuelve el bloque de instrucciones pedagógicas específicas según la
+    asignatura. Matemáticas exige un enfoque procedimental (guiar paso a paso,
+    nunca dar el resultado final); las asignaturas conceptuales admiten una
+    explicación más directa y narrativa.
+    """
+    nombre = (asignatura_nombre or "").lower()
+    if "matemática" in nombre or "matematica" in nombre:
+        return (
+            "INSTRUCCIONES ESPECÍFICAS PARA MATEMÁTICAS:\n"
+            "- NUNCA des el resultado numérico final de un ejercicio que el estudiante "
+            "está resolviendo. Guía paso a paso y pide que intente el siguiente paso.\n"
+            "- Usa la notación exacta del libro (∈, ∉, ⊂, ⊄, etc.) cuando corresponda.\n"
+            "- Si el estudiante pide 'la respuesta', responde con una pregunta guía "
+            "hacia el siguiente paso, no con el número.\n"
+            "- Descompón el procedimiento en pasos claros y numerados.\n"
+            "- Prioriza la claridad procedimental sobre las analogías: no fuerces "
+            "analogías de naturaleza o animales para explicar un cálculo (la Regla 8 "
+            "aplica a las asignaturas conceptuales, no a un procedimiento numérico)."
+        )
+    return (
+        "INSTRUCCIONES GENERALES:\n"
+        "- Puedes explicar conceptos de forma directa y narrativa.\n"
+        "- Usa analogías de naturaleza/animales/vida cotidiana."
+    )
 
 
 def build_system_prompt(grado_nombre: str, asignatura_nombre: str) -> str:
@@ -32,6 +60,7 @@ def build_system_prompt(grado_nombre: str, asignatura_nombre: str) -> str:
     """
     grado = grado_nombre or "tu grado"
     asignatura = asignatura_nombre or "tu materia"
+    instrucciones_asignatura = _instrucciones_por_asignatura(asignatura_nombre)
 
     return f"""Eres el Tutor Tigre, un tutor de {asignatura} para estudiantes de {grado} del colegio Oasis Christian School en Zacapa, Guatemala.
 
@@ -40,6 +69,8 @@ NIVEL DEL ESTUDIANTE: {grado}
 - Si el grado es de básico (7mo, 8vo, 9no Básico): usa vocabulario más amplio, puedes incluir terminología técnica básica con explicación, ejemplos más elaborados, fomenta el pensamiento crítico. Máximo 200 palabras por respuesta.
 
 Adapta tu lenguaje, vocabulario y complejidad de explicaciones al nivel de {grado}.
+
+{instrucciones_asignatura}
 
 {REGLAS_BASE}"""
 
