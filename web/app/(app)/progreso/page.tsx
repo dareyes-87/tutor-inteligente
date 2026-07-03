@@ -109,15 +109,32 @@ export default function ProgresoPage() {
 
   // --- Con datos ---
   const totalActividades = items.reduce((s, p) => s + p.total_actividades, 0);
-  // Promedio ponderado por nº de actividades: temas con más práctica pesan más,
-  // dando un avance más representativo que un promedio simple de promedios.
-  const avanceTotal =
-    totalActividades === 0
+
+  // Dominio = promedio ponderado del puntaje por nº de actividades (temas con más
+  // práctica pesan más). Se reutiliza para el total y para cada asignatura.
+  const dominioDe = (temas: PerfilTema[]) => {
+    const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
+    return tot === 0
       ? 0
       : Math.round(
-          items.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) /
-            totalActividades,
+          temas.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) / tot,
         );
+  };
+  const avanceTotal = dominioDe(items);
+
+  // Agrupar temas por asignatura, preservando el orden de aparición.
+  const grupos: { asignatura: string; temas: PerfilTema[] }[] = [];
+  for (const p of items) {
+    let g = grupos.find((x) => x.asignatura === p.asignatura);
+    if (!g) {
+      g = { asignatura: p.asignatura, temas: [] };
+      grupos.push(g);
+    }
+    g.temas.push(p);
+  }
+  // Con una sola asignatura no se agrupa (evita ruido visual); con varias, cada
+  // asignatura tiene su encabezado y su propio % de DOMINIO.
+  const multiples = grupos.length > 1;
 
   return (
     <div className="px-4 py-6 sm:px-6 md:px-[38px] md:py-[34px]">
@@ -136,62 +153,108 @@ export default function ProgresoPage() {
           </div>
           <div className="rounded-2xl border border-border bg-white px-5 py-3 text-center shadow-[0_5px_16px_rgba(30,43,77,.05)]">
             <div className="text-2xl font-black text-brand-orange">{avanceTotal}%</div>
-            <div className="text-[11px] font-extrabold text-muted-foreground">DOMINIO</div>
+            <div className="text-[11px] font-extrabold text-muted-foreground">
+              {multiples ? "DOMINIO GENERAL" : "DOMINIO"}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Temas */}
-      <div className="flex flex-col gap-3.5">
-        {items.map((p, i) => {
-          const nv = nivelMeta(p.nivel);
-          const pct = Math.round(p.puntaje_promedio);
-          return (
-            <div
-              key={`${p.asignatura}·${p.tema}`}
-              className="flex items-center gap-3 rounded-[20px] border border-border bg-white px-4 py-4 shadow-[0_5px_16px_rgba(30,43,77,.05)] sm:gap-[22px] sm:px-6 sm:py-5"
-            >
-              <div
-                className="grid h-[46px] w-[46px] flex-none place-items-center rounded-[14px] text-lg font-black"
-                style={{ background: nv.chipBg, color: nv.chipColor }}
-              >
-                {i + 1}
+      {multiples ? (
+        /* Desglose por asignatura */
+        <div className="flex flex-col gap-7">
+          {grupos.map((g) => (
+            <div key={g.asignatura}>
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[17px] font-black text-navy">{g.asignatura}</span>
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[12px] font-extrabold text-muted-foreground">
+                    {g.temas.length} {g.temas.length === 1 ? "tema" : "temas"}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-brand-orange">{dominioDe(g.temas)}%</span>
+                  <span className="text-[11px] font-extrabold text-muted-foreground">DOMINIO</span>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                {/* Nombre del tema arriba (prominente), asignatura debajo como
-                    metadata secundaria: evita el truncado "La ..." y que el badge
-                    tape el nombre. */}
-                <div className="mb-1 flex items-start justify-between gap-3">
-                  <span className="text-[16.5px] font-extrabold leading-tight text-navy">
-                    {p.tema}
-                  </span>
-                  <span className="flex-none whitespace-nowrap text-[12.5px] font-extrabold text-muted-foreground">
-                    {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
-                  </span>
-                </div>
-                <div className="mb-2.5">
-                  <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
-                    {p.asignatura}
-                  </span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-[#ECE7DE]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct}%`, background: nv.bar }}
+              <div className="flex flex-col gap-3.5">
+                {g.temas.map((p, i) => (
+                  <TemaRow
+                    key={`${p.asignatura}·${p.tema}`}
+                    p={p}
+                    numero={i + 1}
+                    mostrarAsignatura={false}
                   />
-                </div>
-              </div>
-              <div className="w-auto flex-none text-right sm:w-[180px]">
-                <span
-                  className="inline-block rounded-full px-4 py-2 text-[13px] font-extrabold"
-                  style={{ background: nv.chipBg, color: nv.chipColor }}
-                >
-                  {nv.chip}
-                </span>
+                ))}
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+      ) : (
+        /* Una sola asignatura: lista plana */
+        <div className="flex flex-col gap-3.5">
+          {items.map((p, i) => (
+            <TemaRow
+              key={`${p.asignatura}·${p.tema}`}
+              p={p}
+              numero={i + 1}
+              mostrarAsignatura
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Fila de un tema en Mi Progreso. `mostrarAsignatura` se apaga cuando ya hay un
+ * encabezado de asignatura (desglose), para no repetir el badge. */
+function TemaRow({
+  p,
+  numero,
+  mostrarAsignatura,
+}: {
+  p: PerfilTema;
+  numero: number;
+  mostrarAsignatura: boolean;
+}) {
+  const nv = nivelMeta(p.nivel);
+  const pct = Math.round(p.puntaje_promedio);
+  return (
+    <div className="flex items-center gap-3 rounded-[20px] border border-border bg-white px-4 py-4 shadow-[0_5px_16px_rgba(30,43,77,.05)] sm:gap-[22px] sm:px-6 sm:py-5">
+      <div
+        className="grid h-[46px] w-[46px] flex-none place-items-center rounded-[14px] text-lg font-black"
+        style={{ background: nv.chipBg, color: nv.chipColor }}
+      >
+        {numero}
+      </div>
+      <div className="min-w-0 flex-1">
+        {/* Nombre del tema arriba (prominente), asignatura debajo como metadata
+            secundaria: evita el truncado "La ..." y que el badge tape el nombre. */}
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <span className="text-[16.5px] font-extrabold leading-tight text-navy">{p.tema}</span>
+          <span className="flex-none whitespace-nowrap text-[12.5px] font-extrabold text-muted-foreground">
+            {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
+          </span>
+        </div>
+        {mostrarAsignatura && (
+          <div className="mb-2.5">
+            <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
+              {p.asignatura}
+            </span>
+          </div>
+        )}
+        <div className={`${mostrarAsignatura ? "" : "mt-2 "}h-3 overflow-hidden rounded-full bg-[#ECE7DE]`}>
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: nv.bar }} />
+        </div>
+      </div>
+      <div className="w-auto flex-none text-right sm:w-[180px]">
+        <span
+          className="inline-block rounded-full px-4 py-2 text-[13px] font-extrabold"
+          style={{ background: nv.chipBg, color: nv.chipColor }}
+        >
+          {nv.chip}
+        </span>
       </div>
     </div>
   );
