@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   ApiError,
   iniciarLeccion,
+  obtenerMiGradoEstudiante,
   obtenerMisLibros,
   obtenerRacha,
   obtenerRanking,
@@ -86,6 +87,7 @@ export default function RutaPage() {
   const [libros, setLibros] = useState<LibroDisponible[] | null>(null);
   const [selectedLibroId, setSelectedLibroId] = useState<number | null>(null);
   const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
+  const [grado, setGrado] = useState<string | null>(null);
   const [racha, setRacha] = useState(0);
   const [puntos, setPuntos] = useState(0);
   const [cargando, setCargando] = useState(true); // carga inicial (libros + primera ruta)
@@ -98,10 +100,11 @@ export default function RutaPage() {
   // `cargando` ya arranca en true (y `recargar` lo re-activa), así que no se toca aquí.
   useEffect(() => {
     let activo = true;
-    Promise.all([obtenerMisLibros(), obtenerRacha(), obtenerRanking()])
-      .then(([librosResp, rachaResp, rankingResp]) => {
+    Promise.all([obtenerMisLibros(), obtenerRacha(), obtenerRanking(), obtenerMiGradoEstudiante()])
+      .then(([librosResp, rachaResp, rankingResp, gradoResp]) => {
         if (!activo) return;
         setLibros(librosResp);
+        setGrado(gradoResp.nombre);
         setRacha(rachaResp.racha_actual);
         const yo = rankingResp.ranking.find((e) => e.posicion === rankingResp.mi_posicion);
         setPuntos(yo?.puntos_totales ?? 0);
@@ -267,7 +270,8 @@ export default function RutaPage() {
             Lección {leccionActual} de {ruta.total_lecciones}
           </div>
           <div className="mt-[5px] text-[15px] font-bold text-[#CBD5E1]">
-            {ruta.asignatura} · 5to Primaria
+            {ruta.asignatura}
+            {grado ? ` · ${grado}` : ""}
           </div>
           <div className="mt-4 flex items-center gap-3.5">
             <div className="h-3.5 flex-1 overflow-hidden rounded-full bg-white/[0.12]">
