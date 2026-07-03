@@ -134,3 +134,36 @@ meseta** hacia la época 3. Conclusión: 3 épocas es un buen punto de parada; u
 corrida con 4–6 épocas rendiría mejoras marginales (y sigue costando el mínimo de $4), pero
 la palanca de mayor impacto sería **más/mejor data**, no más épocas. (El train-loss por paso
 no está en la API de eventos de Together; vive en el dashboard/W&B.)
+
+## 8. Decisión de despliegue
+
+El modelo fine-tuneado se entrenó y evaluó exitosamente (sección 7): la curva de
+validation loss (1.0850 → 1.0010 → 0.9932 en 3 épocas) muestra aprendizaje sostenido
+sin sobreajuste, con meseta hacia la época 3.
+
+Para servir el modelo en producción, Together AI requiere un **endpoint dedicado**
+sobre hardware **2× NVIDIA H100 80GB** a **$12.98/hora**, a diferencia del modelo base
+`Qwen/Qwen2.5-7B-Instruct-Turbo`, que es **serverless** (facturación por token, sin
+costo de infraestructura dedicada porque el modelo está compartido entre múltiples
+clientes de Together AI).
+
+El patrón de uso real del piloto —acceso abierto de estudiantes durante un mes
+completo, sin horario ni días fijos, incluyendo el uso fuera del horario escolar
+(7:00–12:30)— implica mantener el endpoint disponible de forma continua:
+
+| Modalidad de disponibilidad | Cálculo | Costo mensual estimado |
+|---|---|---|
+| 24/7 (cobertura del uso real) | $12.98/h × 24 h × 30 días | **≈ $9,345/mes** |
+| Solo horario escolar (5.5 h × 22 días hábiles) | $12.98/h × 5.5 h × 22 días | **≈ $1,571/mes** |
+
+Ambas modalidades exceden el presupuesto del proyecto; además, la modalidad de horario
+escolar no cubre el patrón de uso real (los estudiantes acceden mayormente fuera del
+horario de clases).
+
+**Decisión.** El modelo fine-tuneado se mantiene como **resultado evaluado del objetivo
+específico 3** (comparación fine-tuned vs. base), documentado con datos reales de costo
+de Together AI. El despliegue en producción para el piloto continúa sobre el **modelo
+base serverless** (`Qwen/Qwen2.5-7B-Instruct-Turbo`), que no presenta esta limitación de
+costo por estar compartido entre múltiples clientes de la plataforma. La comparación de
+comportamiento entre ambos modelos se realiza en entorno de evaluación, no en
+producción, evitando el costo de infraestructura dedicada.
