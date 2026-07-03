@@ -111,3 +111,26 @@ versión previa).
   época 3 → el modelo aún aprende; se justifica una segunda corrida con 4–6 épocas.
 - Si el val-loss toca un mínimo y luego **sube** mientras el train-loss sigue bajando
   (brecha creciente) → sobreajuste; el óptimo es la época del mínimo de val-loss.
+
+## 7. Resultados del entrenamiento (job real)
+
+- **Job ID:** `ft-0b6b58db-9271`
+- **Modelo resultante (LoRA adapter):** `dhreyes03_8f57/Qwen2.5-7B-Instruct-tutor-pedagogico-51b293e9`
+- **Estado:** completado · **duración total ≈ 10 min** (cola + entrenamiento).
+- **Tokens facturables:** 714,293 · **Costo real:** **$4.00** (mínimo de Together; el cómputo por tokens daba ~$1.13).
+
+**Curva de validation loss (eval por época):**
+
+| Época | Step | Val loss | Δ vs. época anterior |
+|---:|---:|---:|---:|
+| 1 | 32 | 1.0850 | — |
+| 2 | 64 | 1.0010 | −0.0840 |
+| 3 | 96 | 0.9932 | −0.0078 |
+
+**Lectura (regla de decisión aplicada):** el val-loss **decrece de forma monótona** en las 3
+épocas (nunca sube) → **no hay señal de sobreajuste**; 3 épocas fue una elección segura. La
+mejora marginal cae ~10× entre época 1→2 (−0.084) y 2→3 (−0.008), es decir **se alcanzó una
+meseta** hacia la época 3. Conclusión: 3 épocas es un buen punto de parada; una segunda
+corrida con 4–6 épocas rendiría mejoras marginales (y sigue costando el mínimo de $4), pero
+la palanca de mayor impacto sería **más/mejor data**, no más épocas. (El train-loss por paso
+no está en la API de eventos de Together; vive en el dashboard/W&B.)
