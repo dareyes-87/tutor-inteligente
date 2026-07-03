@@ -26,6 +26,7 @@ from app.models.usuario import RolUsuario, Usuario
 from app.modules.lecciones.schemas import (
     CompletarNivelResponse,
     LeccionEnRuta,
+    LibroDisponible,
     MicroLeccionResponse,
     MiGradoResponse,
     MiLibroResponse,
@@ -250,6 +251,47 @@ async def obtener_mi_libro(estudiante: Usuario, db: AsyncSession) -> MiLibroResp
         titulo=libro.titulo,
         total_lecciones=total,
     )
+
+
+async def obtener_mis_libros(
+    estudiante: Usuario, db: AsyncSession
+) -> list[LibroDisponible]:
+    """
+    TODOS los libros `completado` con lecciones del grado del estudiante, cada uno
+    con su asignatura. A diferencia de `obtener_mi_libro` (que resuelve uno solo),
+    esto devuelve la lista completa para poder ofrecer un selector de asignatura.
+
+    Devuelve lista vacía (no 404) si el estudiante no tiene grado o no hay libros.
+    """
+    if estudiante.grado_id is None:
+        return []
+
+    total_lecciones = func.count(Leccion.id)
+    filas = (
+        await db.execute(
+            select(LibroTexto, Asignatura.id, Asignatura.nombre, total_lecciones)
+            .join(Leccion, Leccion.libro_id == LibroTexto.id)
+            .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
+            .where(
+                LibroTexto.grado_id == estudiante.grado_id,
+                LibroTexto.estado_indexacion == EstadoIndexacion.completado,
+            )
+            .group_by(LibroTexto.id, Asignatura.id, Asignatura.nombre)
+            .having(total_lecciones > 0)
+            .order_by(LibroTexto.id)
+        )
+    ).all()
+
+    return [
+        LibroDisponible(
+            libro_id=libro.id,
+            titulo=libro.titulo,
+            asignatura_id=asignatura_id,
+            asignatura_nombre=asignatura_nombre,
+            total_lecciones=total,
+        )
+        for libro, asignatura_id, asignatura_nombre, total in filas
+    ]
 
 
 # Enfoque pedagógico de cada nivel (se inyecta en el prompt de la micro-lección).

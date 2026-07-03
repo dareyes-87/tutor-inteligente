@@ -15,6 +15,7 @@ from app.modules.lecciones.schemas import (
     CompletarActividadRequest,
     CompletarNivelResponse,
     LeccionEnRuta,
+    LibroDisponible,
     MicroLeccionResponse,
     MiGradoResponse,
     MiLibroResponse,
@@ -36,6 +37,18 @@ async def get_mi_libro(
 ):
     """Libro activo del estudiante (resuelto por su grado). 404 si no hay."""
     return await service.obtener_mi_libro(current_user, db)
+
+
+@router.get("/lecciones/mis-libros", response_model=list[LibroDisponible])
+async def get_mis_libros(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(_estudiante),
+):
+    """Todos los libros disponibles del grado del estudiante (con su asignatura).
+
+    Lista vacía si no hay ninguno. Habilita el selector de asignatura en Mi Ruta.
+    """
+    return await service.obtener_mis_libros(current_user, db)
 
 
 @router.get("/lecciones/mi-grado", response_model=MiGradoResponse)

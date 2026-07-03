@@ -54,6 +54,15 @@ class MiLibroResponse(BaseModel):
     total_lecciones: int
 
 
+class LibroDisponible(BaseModel):
+    """Un libro (con su asignatura) disponible para el grado del estudiante."""
+    libro_id: int
+    titulo: str
+    asignatura_id: int
+    asignatura_nombre: str
+    total_lecciones: int
+
+
 # ----------------------- Micro-lección guiada -----------------------
 
 class PreguntaRapida(BaseModel):
