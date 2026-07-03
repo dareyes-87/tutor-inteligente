@@ -136,7 +136,7 @@ export default function ProgresoPage() {
           </div>
           <div className="rounded-2xl border border-border bg-white px-5 py-3 text-center shadow-[0_5px_16px_rgba(30,43,77,.05)]">
             <div className="text-2xl font-black text-brand-orange">{avanceTotal}%</div>
-            <div className="text-[11px] font-extrabold text-muted-foreground">AVANCE TOTAL</div>
+            <div className="text-[11px] font-extrabold text-muted-foreground">DOMINIO</div>
           </div>
         </div>
       </div>
@@ -158,18 +158,21 @@ export default function ProgresoPage() {
                 {i + 1}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="mb-2.5 flex items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[16.5px] font-extrabold text-navy">
-                      {p.tema}
-                    </span>
-                    <span className="mr-2 flex-none rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
-                      {p.asignatura}
-                    </span>
-                  </div>
-                  <div className="flex-none text-[12.5px] font-extrabold text-muted-foreground">
+                {/* Nombre del tema arriba (prominente), asignatura debajo como
+                    metadata secundaria: evita el truncado "La ..." y que el badge
+                    tape el nombre. */}
+                <div className="mb-1 flex items-start justify-between gap-3">
+                  <span className="text-[16.5px] font-extrabold leading-tight text-navy">
+                    {p.tema}
+                  </span>
+                  <span className="flex-none whitespace-nowrap text-[12.5px] font-extrabold text-muted-foreground">
                     {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
-                  </div>
+                  </span>
+                </div>
+                <div className="mb-2.5">
+                  <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold text-muted-foreground">
+                    {p.asignatura}
+                  </span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-[#ECE7DE]">
                   <div
