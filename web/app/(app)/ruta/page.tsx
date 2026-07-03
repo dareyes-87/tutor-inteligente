@@ -8,12 +8,13 @@ import { toast } from "sonner";
 import {
   ApiError,
   iniciarLeccion,
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerRacha,
   obtenerRanking,
   obtenerRuta,
   type EstadoLeccion,
   type LeccionEnRuta,
+  type LibroDisponible,
   type RutaAprendizaje,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -82,28 +83,53 @@ function estiloDe(estado: EstadoLeccion): EstiloEstado {
 export default function RutaPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [libros, setLibros] = useState<LibroDisponible[] | null>(null);
+  const [selectedLibroId, setSelectedLibroId] = useState<number | null>(null);
   const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
   const [racha, setRacha] = useState(0);
   const [puntos, setPuntos] = useState(0);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(true); // carga inicial (libros + primera ruta)
+  const [cambiando, setCambiando] = useState(false); // cambio de pestaña de asignatura
   const [error, setError] = useState(false);
   const [actuando, setActuando] = useState(false);
   const [intento, setIntento] = useState(0); // dispara la (re)carga
 
-  // El effect solo hace setState dentro de los callbacks de la promesa.
+  // 1) Libros disponibles del grado + gamificación. Elige el primero por defecto.
+  // `cargando` ya arranca en true (y `recargar` lo re-activa), así que no se toca aquí.
   useEffect(() => {
     let activo = true;
-    Promise.all([
-      obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
-      obtenerRacha(),
-      obtenerRanking(),
-    ])
-      .then(([r, rachaResp, rankingResp]) => {
+    Promise.all([obtenerMisLibros(), obtenerRacha(), obtenerRanking()])
+      .then(([librosResp, rachaResp, rankingResp]) => {
         if (!activo) return;
-        setRuta(r);
+        setLibros(librosResp);
         setRacha(rachaResp.racha_actual);
         const yo = rankingResp.ranking.find((e) => e.posicion === rankingResp.mi_posicion);
         setPuntos(yo?.puntos_totales ?? 0);
+        setSelectedLibroId(librosResp.length > 0 ? librosResp[0].libro_id : null);
+        setError(false);
+        // Sin libros no habrá ruta que cargar: cerrar el loading aquí.
+        if (librosResp.length === 0) setCargando(false);
+      })
+      .catch((err) => {
+        if (!activo) return;
+        setError(true);
+        setCargando(false);
+        toast.error(err instanceof ApiError ? err.message : "No se pudo cargar tu ruta");
+      });
+    return () => {
+      activo = false;
+    };
+  }, [intento]);
+
+  // 2) Ruta del libro seleccionado. `cambiando` (fijado en el click de pestaña)
+  // distingue un cambio de asignatura de la carga inicial.
+  useEffect(() => {
+    if (selectedLibroId == null) return;
+    let activo = true;
+    obtenerRuta(selectedLibroId)
+      .then((r) => {
+        if (!activo) return;
+        setRuta(r);
         setError(false);
       })
       .catch((err) => {
@@ -112,12 +138,21 @@ export default function RutaPage() {
         toast.error(err instanceof ApiError ? err.message : "No se pudo cargar tu ruta");
       })
       .finally(() => {
-        if (activo) setCargando(false);
+        if (!activo) return;
+        setCargando(false);
+        setCambiando(false);
       });
     return () => {
       activo = false;
     };
-  }, [intento]);
+  }, [selectedLibroId, intento]);
+
+  // Cambiar de asignatura: muestra un estado sutil sin recargar toda la página.
+  const seleccionarAsignatura = (libroId: number) => {
+    if (libroId === selectedLibroId || cambiando) return;
+    setCambiando(true);
+    setSelectedLibroId(libroId);
+  };
 
   const recargar = () => {
     setCargando(true);
@@ -144,6 +179,24 @@ export default function RutaPage() {
       </div>
     );
   }
+  // Sin libros disponibles para el grado (aún no se han subido/indexado).
+  if (libros && libros.length === 0) {
+    return (
+      <div className="px-4 py-9 sm:px-6 md:px-[42px]">
+        <div className="mx-auto max-w-[460px] rounded-[24px] border border-border bg-white p-10 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
+          <div className="mx-auto mb-4 h-[84px] w-[84px] animate-floaty overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange">
+            <Mascota size={84} />
+          </div>
+          <div className="text-lg font-black text-navy">
+            Aún no hay libros disponibles para tu grado.
+          </div>
+          <div className="mt-2 text-[13.5px] font-bold text-muted-foreground">
+            Cuando tu maestra suba un libro, tu ruta de aprendizaje aparecerá aquí.
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error || !ruta) {
     return (
       <div className="px-[42px] py-9">
@@ -166,6 +219,31 @@ export default function RutaPage() {
 
   return (
     <div className="max-w-[1192px] px-4 py-6 sm:px-6 md:px-[42px] md:py-9">
+      {/* === SELECTOR DE ASIGNATURA (solo si el grado tiene más de un libro) === */}
+      {libros && libros.length > 1 && (
+        <div className="mb-6 flex flex-wrap gap-2.5">
+          {libros.map((lb) => {
+            const activo = lb.libro_id === selectedLibroId;
+            return (
+              <button
+                key={lb.libro_id}
+                onClick={() => seleccionarAsignatura(lb.libro_id)}
+                disabled={cambiando}
+                className={`rounded-[14px] border-2 px-4 py-2.5 text-sm font-extrabold transition disabled:opacity-60 ${
+                  activo
+                    ? "border-brand-blue bg-brand-blue text-white"
+                    : "border-border bg-white text-[#5A6170] hover:bg-muted/60"
+                }`}
+              >
+                📚 {lb.asignatura_nombre}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Contenido de la ruta; se atenúa mientras se cambia de asignatura. */}
+      <div className={cambiando ? "opacity-50 transition-opacity" : "transition-opacity"}>
       {/* === HERO === */}
       <div
         className="relative mb-8 flex flex-col gap-4 overflow-hidden rounded-[24px] px-5 py-6 md:flex-row md:items-center md:gap-6 md:px-[34px] md:py-7"
@@ -266,6 +344,7 @@ export default function RutaPage() {
         <div className="text-base font-extrabold text-navy">
           ¡Completa todas las lecciones y desbloquea tu certificado de {ruta.asignatura}! 🏅
         </div>
+      </div>
       </div>
     </div>
   );

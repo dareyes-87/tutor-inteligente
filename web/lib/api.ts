@@ -296,6 +296,20 @@ export function obtenerMiLibro(): Promise<MiLibro> {
   return request<MiLibro>("/lecciones/mi-libro");
 }
 
+/** Un libro disponible del grado del estudiante, con su asignatura. */
+export interface LibroDisponible {
+  libro_id: number;
+  titulo: string;
+  asignatura_id: number;
+  asignatura_nombre: string;
+  total_lecciones: number;
+}
+
+/** Todos los libros disponibles del estudiante (por grado). Lista vacía si no hay. */
+export function obtenerMisLibros(): Promise<LibroDisponible[]> {
+  return request<LibroDisponible[]>("/lecciones/mis-libros");
+}
+
 /** Grado del estudiante autenticado (para el sidebar). */
 export interface MiGradoEstudiante {
   id: number | null;
