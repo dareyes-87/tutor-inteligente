@@ -6,6 +6,7 @@ import type { Rol } from "@/lib/api";
  */
 export const ASIGNATURAS: { id: number; nombre: string }[] = [
   { id: 1, nombre: "Ciencias Naturales" },
+  { id: 2, nombre: "Matemáticas" },
 ];
 
 /** Item de navegación del estudiante (sidebar). */
