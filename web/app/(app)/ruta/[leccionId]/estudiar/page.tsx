@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerMicroLeccion,
   obtenerRuta,
   preguntar,
@@ -14,8 +14,6 @@ import {
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
 import { Mascota } from "@/components/mascota";
-
-const ASIGNATURA_ID = ASIGNATURAS[0].id;
 
 interface MiniMsg {
   rol: "usuario" | "asistente";
@@ -29,6 +27,8 @@ export default function EstudiarPage() {
 
   const [micro, setMicro] = useState<MicroLeccion | null>(null);
   const [nivel, setNivel] = useState(1);
+  // Asignatura real de la lección (se resuelve al cargar); el chat de Estudiar la usa.
+  const [asignaturaId, setAsignaturaId] = useState(ASIGNATURAS[0].id);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
@@ -48,12 +48,20 @@ export default function EstudiarPage() {
         // Resolver el nivel actual del estudiante en esta lección (viene en /ruta).
         let nivelActual = 1;
         try {
-          const mi = await obtenerMiLibro();
-          const ruta = await obtenerRuta(mi.libro_id);
-          const lec = ruta.lecciones.find((l) => l.id === leccionId);
-          if (lec) nivelActual = lec.nivel_actual || 1;
+          // Buscar la lección en la ruta de cada libro del grado para resolver su
+          // asignatura real (no asumir Ciencias) y el nivel actual del estudiante.
+          const libros = await obtenerMisLibros();
+          for (const lb of libros) {
+            const ruta = await obtenerRuta(lb.libro_id);
+            const lec = ruta.lecciones.find((l) => l.id === leccionId);
+            if (lec) {
+              nivelActual = lec.nivel_actual || 1;
+              if (activo) setAsignaturaId(lb.asignatura_id);
+              break;
+            }
+          }
         } catch {
-          /* si falla, asumimos nivel 1 */
+          /* si falla, asumimos nivel 1 y asignatura por defecto */
         }
         const m = await obtenerMicroLeccion(leccionId, nivelActual);
         if (!activo) return;
@@ -194,6 +202,7 @@ export default function EstudiarPage() {
       {chatAbierto && (
         <MiniChat
           contexto={tarjeta?.titulo_concepto ?? micro.titulo}
+          asignaturaId={asignaturaId}
           onCerrar={() => setChatAbierto(false)}
         />
       )}
@@ -368,7 +377,7 @@ function BotonPrincipal({
 
 // ----------------------- Mini-chat modal -----------------------
 
-function MiniChat({ contexto, onCerrar }: { contexto: string; onCerrar: () => void }) {
+function MiniChat({ contexto, asignaturaId, onCerrar }: { contexto: string; asignaturaId: number; onCerrar: () => void }) {
   const [mensajes, setMensajes] = useState<MiniMsg[]>([]);
   const [conversacionId, setConversacionId] = useState<number | null>(null);
   const [texto, setTexto] = useState("");
@@ -387,7 +396,7 @@ function MiniChat({ contexto, onCerrar }: { contexto: string; onCerrar: () => vo
     setTexto("");
     setEnviando(true);
     try {
-      const res = await preguntar(t, ASIGNATURA_ID, conversacionId);
+      const res = await preguntar(t, asignaturaId, conversacionId);
       setConversacionId(res.conversacion_id);
       setMensajes((prev) => [...prev, { rol: "asistente", contenido: res.respuesta }]);
     } catch (err) {

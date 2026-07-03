@@ -8,18 +8,18 @@ import {
   completarNivel,
   generarActividad,
   iniciarLeccion,
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
   type CompletarNivelResponse,
+  type LeccionEnRuta,
   type ResultadoResponse,
   type TipoActividad,
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
 import { Mascota } from "@/components/mascota";
 
-const ASIGNATURA_ID = ASIGNATURAS[0].id; // Ciencias Naturales
 const TIPOS: TipoActividad[] = [
   "opcion_multiple",
   "verdadero_falso",
@@ -66,9 +66,20 @@ export default function PracticarPage() {
     let activo = true;
     (async () => {
       try {
-        const mi = await obtenerMiLibro();
-        const ruta = await obtenerRuta(mi.libro_id);
-        const leccion = ruta.lecciones.find((l) => l.id === leccionId);
+        // Resolver a qué libro/asignatura pertenece la lección (no asumir Ciencias):
+        // se busca la lección en la ruta de cada libro disponible del grado.
+        const libros = await obtenerMisLibros();
+        let asignaturaId = ASIGNATURAS[0].id; // fallback
+        let leccion: LeccionEnRuta | undefined;
+        for (const lb of libros) {
+          const r = await obtenerRuta(lb.libro_id);
+          const l = r.lecciones.find((x) => x.id === leccionId);
+          if (l) {
+            leccion = l;
+            asignaturaId = lb.asignatura_id;
+            break;
+          }
+        }
         if (!leccion) throw new Error("Lección no encontrada");
         if (leccion.estado === "bloqueada") throw new Error("Esta lección está bloqueada");
         if (leccion.estado === "disponible") {
@@ -86,7 +97,7 @@ export default function PracticarPage() {
         const nivelGuardado = Number(sessionStorage.getItem(`nivel_${leccionId}`)) || leccion.nivel_actual || 1;
         if (activo) setNivel(nivelGuardado);
         const settled = await Promise.allSettled(
-          TIPOS.map((t) => generarActividad(ASIGNATURA_ID, t, tema, leccionId, fragmentIds)),
+          TIPOS.map((t) => generarActividad(asignaturaId, t, tema, leccionId, fragmentIds)),
         );
         if (!activo) return;
         const generadas = settled
