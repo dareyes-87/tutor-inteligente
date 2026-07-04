@@ -6,16 +6,16 @@ a qué nivel, y las restricciones.
 
 # Bloque de reglas que NO cambia según el estudiante (grounding, idioma, formato).
 # Se mantiene íntegro debajo del bloque contextual generado por grado/asignatura.
-REGLAS_BASE = """REGLA FUNDAMENTAL: Responde EXCLUSIVAMENTE con la información que aparece en los fragmentos del libro proporcionados como contexto. Esta regla NO tiene excepciones.
+REGLAS_BASE = """REGLA FUNDAMENTAL: Responde EXCLUSIVAMENTE con la información que aparece en el libro proporcionado como contenido. Esta regla NO tiene excepciones.
 
 REGLA ADICIONAL DE VERIFICACIÓN:
-Antes de responder, compara el TEMA de la pregunta del estudiante con el TEMA de los fragmentos proporcionados. Si la pregunta trata de un tema distinto al de los fragmentos —aunque parezcan relacionados o pertenezcan a la misma materia—, responde EXACTAMENTE: "No encuentro información sobre eso en tus libros de clase. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?"
-No uses tu conocimiento propio para llenar vacíos temáticos: si los fragmentos no tratan específicamente el tema de la pregunta, NO inventes la respuesta aunque sepas la respuesta correcta.
+Antes de responder, compara el TEMA de la pregunta del estudiante con el TEMA del contenido del libro proporcionado. Si la pregunta trata de un tema distinto —aunque parezca relacionado o pertenezca a la misma materia—, responde EXACTAMENTE: "No encuentro información sobre eso en tus libros de clase. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?"
+No uses tu conocimiento propio para llenar vacíos temáticos: si el libro no trata específicamente el tema de la pregunta, NO inventes la respuesta aunque sepas la respuesta correcta.
 
 REGLAS ESTRICTAS:
-1. Si la respuesta NO está en los fragmentos, responde EXACTAMENTE: "No encuentro información sobre eso en tus libros. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?"
-2. NO complementes con conocimiento propio. Si los fragmentos dicen algo parcial, responde solo lo que dicen los fragmentos.
-3. Cita la página del libro de donde sacas cada dato: (página X).
+1. Si la respuesta NO está en el libro, responde EXACTAMENTE: "No encuentro información sobre eso en tus libros. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?"
+2. NO complementes con conocimiento propio. Si el libro dice algo parcial, responde solo lo que dice el libro.
+3. Cita la página del libro de donde sacas cada dato: (página X). NUNCA digas "fragmento" ni ningún término técnico de procesamiento de datos: solo menciona la página.
 4. Adapta el lenguaje al nivel del estudiante.
 5. Sé alentador y positivo.
 6. Responde SIEMPRE y ÚNICAMENTE en español de Guatemala. NUNCA cambies a otro idioma (ni chino, ni inglés, ni ningún otro), bajo ninguna circunstancia.
@@ -76,14 +76,21 @@ Adapta tu lenguaje, vocabulario y complejidad de explicaciones al nivel de {grad
 
 
 def build_context_prompt(fragments: list[dict]) -> str:
-    """Construye el bloque de contexto a partir de los fragmentos RAG."""
-    if not fragments:
-        return "No se encontró contexto relevante en los libros."
+    """Construye el bloque de contenido del libro a partir de los fragmentos RAG.
 
-    parts = ["CONTEXTO DEL LIBRO (usa SOLO esta información para responder):\n"]
-    for i, frag in enumerate(fragments, 1):
+    Las secciones se etiquetan SOLO con el número de página ("--- Página N
+    ---"), nunca con la palabra "Fragmento": el LLM tiende a repetir
+    literalmente las etiquetas que ve en su propio input, y "Fragmento" es
+    jerga interna del pipeline RAG que un estudiante de primaria no entiende
+    (ver bug real: el LLM citaba "el Fragmento 4" en su explicación).
+    """
+    if not fragments:
+        return "No se encontró contenido relevante en los libros."
+
+    parts = ["CONTENIDO DEL LIBRO (usa SOLO esta información para responder):\n"]
+    for frag in fragments:
         page = frag.get("page_num", "?")
-        parts.append(f"--- Fragmento {i} (página {page}) ---")
+        parts.append(f"--- Página {page} ---")
         parts.append(frag["text"])
         parts.append("")
 

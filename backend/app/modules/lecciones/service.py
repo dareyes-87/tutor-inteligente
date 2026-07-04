@@ -503,9 +503,11 @@ async def generar_micro_leccion(
     # Muestreo Top-K por nivel (usa todos si hay menos fragmentos que Top-K).
     fragments = _seleccionar_fragmentos_nivel(pool, leccion_id, nivel)
 
+    # Etiquetado SOLO con el número de página (nunca "Fragmento"): el LLM
+    # repite literalmente las etiquetas que ve en su propio input (ver mismo
+    # fix en chat/prompts.py::build_context_prompt).
     contexto = "\n\n".join(
-        f"--- Fragmento {i} (página {f.get('page_num', '?')}) ---\n{f['text']}"
-        for i, f in enumerate(fragments, start=1)
+        f"--- Página {f.get('page_num', '?')} ---\n{f['text']}" for f in fragments
     )
     fragmentos_texto = " ".join((f["text"] or "").lower() for f in fragments)
 
