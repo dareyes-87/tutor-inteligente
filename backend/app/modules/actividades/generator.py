@@ -100,7 +100,7 @@ def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
 # literalmente en vez de basarse en los fragmentos del libro. Mantenerlos genéricos
 # obliga al LLM a tomar el contenido del contexto.
 ACTIVITY_PROMPTS = {
-    TipoActividad.opcion_multiple: """Genera UNA pregunta de opción múltiple basada en el contexto.
+    TipoActividad.opcion_multiple: """Genera UNA pregunta de opción múltiple basada en el libro.
 NO antepongas letras ni números de inciso ("A.", "B)", "1.", etc.) a las opciones: escribe SOLO el texto de la opción, el estudiante las toca directamente sin necesitar una letra.
 REGLAS CRÍTICAS para los distractores (las opciones incorrectas):
 - Cada distractor debe ser CLARAMENTE INCORRECTO según el libro, no ambiguo ni parcialmente correcto.
@@ -116,7 +116,7 @@ Responde SOLO con JSON válido, sin texto adicional:
     "explicacion": "por qué esa es la respuesta correcta"
 }""",
 
-    TipoActividad.verdadero_falso: """Genera UNA afirmación de verdadero o falso basada en el contexto.
+    TipoActividad.verdadero_falso: """Genera UNA afirmación de verdadero o falso basada en el libro.
 Responde SOLO con JSON válido, sin texto adicional:
 {
     "afirmacion": "la afirmación a evaluar",
@@ -132,21 +132,22 @@ El hueco (___) NUNCA debe quedar junto a una palabra igual a la respuesta espera
 Si el término clave de este concepto es un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠), NO lo uses como respuesta del hueco: ningún teclado permite escribir esos símbolos. Elige en su lugar otro término clave que se escriba con palabras.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
-    "oracion": "<una oración tomada del contexto con ___ en el TÉRMINO CLAVE>",
-    "respuesta_correcta": "<el término clave exacto que va en ___, tal como aparece en el contexto>",
+    "oracion": "<una oración tomada del libro con ___ en el TÉRMINO CLAVE>",
+    "respuesta_correcta": "<el término clave exacto que va en ___, tal como aparece en el libro>",
     "pista": "una pista para ayudar al estudiante"
 }""",
 
     TipoActividad.ordenar: """Genera UN ejercicio de ordenar elementos basado en el libro. Los elementos deben ser conceptos, pasos o etapas QUE APARECEN en el libro (una secuencia o proceso descrito en el libro). No uses procesos que no estén en el libro.
+IMPORTANTE: este tipo de ejercicio es SOLO para temas con una secuencia natural de pasos (un proceso, procedimiento, ciclo o algoritmo descrito en el libro: por ejemplo, las etapas de un proceso biológico, los pasos de un procedimiento matemático, el orden cronológico de un evento). NO lo uses para definiciones, propiedades o relaciones entre conceptos (por ejemplo, "qué es un subconjunto" NO tiene un orden natural de pasos: sería forzado e inventado). Si el contenido del libro no describe un proceso con pasos reales, en vez de inventar un orden arbitrario, usa como elementos los PASOS DE UN PROCEDIMIENTO que el libro sí explique para aplicar o verificar ese concepto (por ejemplo, los pasos para comprobar si se cumple una propiedad), de modo que exista un único orden lógicamente correcto. Nunca generes elementos que sean afirmaciones equivalentes o negaciones entre sí, porque entonces cualquier orden podría defenderse como válido.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
-    "instruccion": "<instrucción de qué ordenar, sobre el proceso del contexto>",
-    "elementos_desordenados": ["<elemento del contexto>", "<elemento del contexto>", "<elemento del contexto>"],
-    "orden_correcto": ["<los mismos elementos en el orden correcto según el contexto>"],
-    "explicacion": "explicación del orden correcto según el contexto"
+    "instruccion": "<instrucción de qué ordenar, sobre el proceso del libro>",
+    "elementos_desordenados": ["<elemento del libro>", "<elemento del libro>", "<elemento del libro>"],
+    "orden_correcto": ["<los mismos elementos en el orden correcto>"],
+    "explicacion": "explicación del orden correcto"
 }""",
 
-    TipoActividad.respuesta_corta: """Genera UNA pregunta de respuesta corta basada en el contexto.
+    TipoActividad.respuesta_corta: """Genera UNA pregunta de respuesta corta basada en el libro.
 La pregunta DEBE pedir UN SOLO TÉRMINO o CONCEPTO específico. Formúlala como: "¿Cómo se llama el hueso que protege al cerebro?" (respuesta: cráneo). NUNCA preguntes dos cosas en una ("¿qué parte Y cuál es su función?"). La respuesta esperada debe ser de 1 a 3 palabras como máximo.
 NUNCA hagas una pregunta cuya respuesta sea un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠): el estudiante escribe la respuesta en un campo de texto libre y ningún teclado tiene esos símbolos, así que sería imposible de responder. Si el concepto involucra uno de esos símbolos, pregunta por otra cosa (una definición, un ejemplo, el nombre del concepto en palabras).
 Responde SOLO con JSON válido, sin texto adicional:
@@ -198,7 +199,7 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
                 "IGNÓRALA como fuente y basa la actividad solo en la teoría/definiciones del "
                 "resto del libro. "
                 + (
-                    f"Si el contexto es insuficiente para generar una actividad de calidad, "
+                    f"Si el contenido del libro es insuficiente para generar una actividad de calidad, "
                     f"genera una pregunta conceptual básica sobre el tema: {tema}."
                     if tema else ""
                 )
