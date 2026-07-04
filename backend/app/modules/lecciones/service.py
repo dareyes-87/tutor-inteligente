@@ -23,6 +23,7 @@ from app.models.leccion import Leccion
 from app.models.libro import EstadoIndexacion, LibroTexto
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
+from app.modules.lecciones.emoji_map import get_emoji_for_topic
 from app.modules.lecciones.schemas import (
     CompletarNivelResponse,
     LeccionEnRuta,
@@ -35,7 +36,7 @@ from app.modules.lecciones.schemas import (
     RankingResponse,
     RutaAprendizaje,
 )
-from app.modules.rag.search import search_fragments
+from app.modules.rag.search import es_ejercicio_del_libro, search_fragments
 
 logger = logging.getLogger(__name__)
 
@@ -323,8 +324,7 @@ Genera un JSON con esta estructura exacta:
   "tarjetas": [
     {{
       "tipo": "introduccion",
-      "contenido": "Texto introductorio breve y amigable (2-3 oraciones)",
-      "emoji": "🔬"
+      "contenido": "Texto introductorio breve y amigable (2-3 oraciones)"
     }},
     {{
       "tipo": "concepto",
@@ -337,13 +337,11 @@ Genera un JSON con esta estructura exacta:
         "opciones": ["opción 1", "opción 2", "opción 3", "opción 4"],
         "respuesta_correcta": "la opción correcta",
         "explicacion": "Por qué esa es la respuesta correcta"
-      }},
-      "emoji": "🧬"
+      }}
     }},
     {{
       "tipo": "resumen",
-      "contenido": "Resumen de todo lo aprendido (3-4 oraciones)",
-      "emoji": "⭐"
+      "contenido": "Resumen de todo lo aprendido (3-4 oraciones)"
     }}
   ]
 }}
@@ -360,7 +358,8 @@ REGLAS:
 - Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles. Las opciones incorrectas (distractores) deben ser CLARAMENTE diferentes a la respuesta correcta: no uses sinónimos ni frases que signifiquen lo mismo con otras palabras. Cada distractor debe referirse a un concepto diferente.
 - Si necesitas hacer una pregunta abierta ("¿Qué...?", "¿Cuál...?"), usa SIEMPRE "tipo": "opcion_multiple" con 4 opciones, NUNCA "verdadero_falso".
 - NO uses información que no esté en los fragmentos
-- Incluye emojis relevantes para cada tarjeta
+- IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en los fragmentos. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
+- NO incluyas "emoji" en el JSON: se asigna aparte
 - Responde SOLO con el JSON, sin texto adicional"""
     return [
         {
@@ -399,6 +398,22 @@ def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
         # debe quedar en ese orden).
         if tarjeta.pregunta.tipo == "opcion_multiple":
             random.shuffle(tarjeta.pregunta.opciones)
+
+
+def _asignar_emojis(micro: MicroLeccionResponse, tema_leccion: str, asignatura_nombre: str) -> None:
+    """Asigna el emoji de cada tarjeta con el mapeo curado (muta `micro`).
+
+    El LLM ya no elige el emoji (ver `_build_micro_leccion_messages`): se asigna
+    SIEMPRE aquí para evitar casos como 🧬 en un tema de Matemáticas. Las
+    tarjetas de concepto usan su propio `titulo_concepto` (más específico); las
+    de introducción/resumen usan el tema de la lección completa.
+    """
+    emoji_leccion = get_emoji_for_topic(tema_leccion, asignatura_nombre)
+    for tarjeta in micro.tarjetas:
+        if tarjeta.titulo_concepto:
+            tarjeta.emoji = get_emoji_for_topic(tarjeta.titulo_concepto, asignatura_nombre)
+        else:
+            tarjeta.emoji = emoji_leccion
 
 
 async def generar_micro_leccion(
@@ -449,6 +464,10 @@ async def generar_micro_leccion(
             {"text": r.contenido_texto, "page_num": r.numero_pagina, "chunk_id": r.chunk_id_vectordb}
             for r in rows
         ]
+        # Filtrar ejercicios del libro (Mesa lista, Ahora es tu turno…): el LLM
+        # los copia como si fueran teoría. No cambia qué se recupera, solo qué
+        # de lo recuperado se usa como contexto.
+        pool = [f for f in pool if not es_ejercicio_del_libro(f["text"])]
     if not pool:
         logger.info(
             "[MicroLeccion] Lección %s sin fragmentos en el rango %s; usando búsqueda semántica (fallback)",
@@ -460,6 +479,7 @@ async def generar_micro_leccion(
             grado=grado_nombre,
             top_k=POOL_CANDIDATOS_FRAGMENTOS,
         )
+        pool = [f for f in pool if not es_ejercicio_del_libro(f["text"])]
     if not pool:
         raise HTTPException(
             status_code=502,
@@ -517,6 +537,8 @@ async def generar_micro_leccion(
 
     if micro is None or not micro.tarjetas:
         raise HTTPException(status_code=502, detail="No se pudo generar la micro-lección.")
+    tema_leccion = f"{leccion.tema_clave or ''} {leccion.nombre}".strip()
+    _asignar_emojis(micro, tema_leccion, asignatura_nombre)
     micro.fragment_ids = fragment_ids
     micro.nivel_actual = nivel
     micro.es_ultimo_nivel = nivel >= max(NIVEL_TOPK)

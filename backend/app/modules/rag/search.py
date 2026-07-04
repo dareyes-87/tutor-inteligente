@@ -112,6 +112,24 @@ def search_fragments(
     return fragments
 
 
+_MARCADORES_EJERCICIO = ("mesa lista", "ahora es tu turno", "ejercicio", "practica")
+
+
+def es_ejercicio_del_libro(texto: str) -> bool:
+    """True si el texto de un fragmento es un ejercicio del libro (resuelto o
+    propuesto: "¡Mesa lista!", "Ahora es tu turno", etc.), no la teoría del tema.
+
+    El LLM tiende a copiar estos ejercicios como si fueran la definición del
+    concepto (p. ej. tomar los elementos de un ejercicio de conjuntos como si
+    fueran la teoría de pertenencia). Se usa para filtrar el POOL de fragmentos
+    ANTES de armar el contexto que ve el LLM (micro-lección y actividades); NO
+    cambia qué fragmentos se recuperan por rango de páginas, solo cuáles de
+    esos se le pasan al LLM como contexto.
+    """
+    t = (texto or "").lower()
+    return any(marcador in t for marcador in _MARCADORES_EJERCICIO)
+
+
 def is_context_relevant(fragments: list[dict]) -> bool:
     """
     Decide si los fragmentos recuperados son contexto suficiente y relevante.

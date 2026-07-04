@@ -12,7 +12,7 @@ from app.models.fragmento import Fragmento
 from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.usuario import Usuario
-from app.modules.rag.search import search_fragments, is_context_relevant
+from app.modules.rag.search import es_ejercicio_del_libro, is_context_relevant, search_fragments
 from app.modules.chat.prompts import build_context_prompt
 from app.modules.actividades.generator import generar_actividad
 from app.modules.actividades.evaluator import evaluar_actividad
@@ -91,6 +91,10 @@ async def crear_actividad(
             )
         ).scalars().all()
         fragments = [{"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows]
+        # Filtrar ejercicios del libro (Mesa lista, Ahora es tu turno…): el LLM
+        # los copia como si fueran teoría. No cambia qué se recupera, solo qué
+        # de lo recuperado se usa como contexto.
+        fragments = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
         if fragments:
             usar_grounding = False
 
@@ -114,6 +118,7 @@ async def crear_actividad(
             fragments = [
                 {"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows
             ]
+            fragments = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
             if fragments:
                 usar_grounding = False
 
@@ -123,6 +128,7 @@ async def crear_actividad(
         fragments = search_fragments(
             query=query, asignatura=asignatura.nombre, grado=grado_nombre
         )
+        fragments = [f for f in fragments if not es_ejercicio_del_libro(f.get("text", ""))]
 
     if not fragments:
         logger.warning("No se encontraron fragmentos para generar actividad")
