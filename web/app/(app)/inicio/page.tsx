@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerRacha,
   obtenerRuta,
   type RachaResponse,
@@ -18,18 +18,20 @@ export default function InicioPage() {
   const nombre = user?.nombre ?? "Sofía";
 
   const [racha, setRacha] = useState<RachaResponse | null>(null);
-  const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
+  const [rutas, setRutas] = useState<RutaAprendizaje[] | null>(null);
 
   useEffect(() => {
     let activo = true;
     Promise.all([
       obtenerRacha(),
-      obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
+      obtenerMisLibros().then((libros) =>
+        Promise.all(libros.map((libro) => obtenerRuta(libro.libro_id))),
+      ),
     ])
-      .then(([rachaResp, rutaResp]) => {
+      .then(([rachaResp, rutasResp]) => {
         if (!activo) return;
         setRacha(rachaResp);
-        setRuta(rutaResp);
+        setRutas(rutasResp);
       })
       .catch(() => {
         /* silencioso: el dashboard sigue mostrándose con lo demás */
@@ -39,6 +41,8 @@ export default function InicioPage() {
     };
   }, []);
 
+  // "Mi ruta" (hero) muestra la primera asignatura del estudiante.
+  const ruta = rutas && rutas.length > 0 ? rutas[0] : null;
   const leccionActual = ruta
     ? Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1)
     : 0;
@@ -136,26 +140,31 @@ export default function InicioPage() {
           Ver todas →
         </Link>
       </div>
-      {ruta ? (
+      {rutas && rutas.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:gap-[18px] md:grid-cols-4">
-          <div className="rounded-[22px] border border-border bg-white p-[22px] text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
-            <div className="mx-auto mb-3.5 grid h-12 w-12 place-items-center rounded-[14px] bg-[#E9F9EF] text-2xl">
-              📚
+          {rutas.map((r) => (
+            <div
+              key={r.libro_id}
+              className="rounded-[22px] border border-border bg-white p-[22px] text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]"
+            >
+              <div className="mx-auto mb-3.5 grid h-12 w-12 place-items-center rounded-[14px] bg-[#E9F9EF] text-2xl">
+                📚
+              </div>
+              <div className="mx-auto mb-3.5 w-[108px] max-w-full">
+                <ProgressRing pct={Math.round(r.progreso_porcentaje)} color="#22C55E">
+                  <span className="text-[22px] font-black text-navy">
+                    {Math.round(r.progreso_porcentaje)}%
+                  </span>
+                </ProgressRing>
+              </div>
+              <div className="text-[15px] font-extrabold leading-tight text-navy">
+                {r.asignatura}
+              </div>
+              <div className="mt-1 text-xs font-bold text-muted-foreground">
+                {r.lecciones_completadas} de {r.total_lecciones} lecciones
+              </div>
             </div>
-            <div className="mx-auto mb-3.5 w-[108px] max-w-full">
-              <ProgressRing pct={Math.round(ruta.progreso_porcentaje)} color="#22C55E">
-                <span className="text-[22px] font-black text-navy">
-                  {Math.round(ruta.progreso_porcentaje)}%
-                </span>
-              </ProgressRing>
-            </div>
-            <div className="text-[15px] font-extrabold leading-tight text-navy">
-              {ruta.asignatura}
-            </div>
-            <div className="mt-1 text-xs font-bold text-muted-foreground">
-              {ruta.lecciones_completadas} de {ruta.total_lecciones} lecciones
-            </div>
-          </div>
+          ))}
         </div>
       ) : (
         <div className="rounded-[22px] border border-border bg-white px-6 py-10 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">

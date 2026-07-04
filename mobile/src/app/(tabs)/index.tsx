@@ -15,54 +15,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Mascota } from "@/components/Mascota";
 import { ProgressBar } from "@/components/ProgressBar";
 import {
-  getPerfil,
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerRacha,
   obtenerRuta,
-  type PerfilTema,
   type RachaResponse,
   type RutaAprendizaje,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Colors } from "@/lib/colors";
 
-/** Progreso agregado por asignatura (promedio ponderado por nº de actividades). */
-type AsignaturaProgreso = { asignatura: string; avance: number; actividades: number };
-
-function agruparPorAsignatura(perfil: PerfilTema[]): AsignaturaProgreso[] {
-  const mapa = new Map<string, { suma: number; total: number }>();
-  for (const p of perfil) {
-    const cur = mapa.get(p.asignatura) ?? { suma: 0, total: 0 };
-    cur.suma += p.puntaje_promedio * p.total_actividades;
-    cur.total += p.total_actividades;
-    mapa.set(p.asignatura, cur);
-  }
-  return [...mapa.entries()].map(([asignatura, { suma, total }]) => ({
-    asignatura,
-    avance: total === 0 ? 0 : Math.round(suma / total),
-    actividades: total,
-  }));
-}
-
 export default function InicioScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [ruta, setRuta] = useState<RutaAprendizaje | null>(null);
+  const [rutas, setRutas] = useState<RutaAprendizaje[]>([]);
   const [racha, setRacha] = useState<RachaResponse | null>(null);
-  const [asignaturas, setAsignaturas] = useState<AsignaturaProgreso[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      const [rachaResp, rutaResp, perfilResp] = await Promise.all([
-        obtenerRacha(),
-        obtenerMiLibro().then((mi) => obtenerRuta(mi.libro_id)),
-        getPerfil(),
-      ]);
+      const [rachaResp, libros] = await Promise.all([obtenerRacha(), obtenerMisLibros()]);
+      const rutasResp = await Promise.all(libros.map((libro) => obtenerRuta(libro.libro_id)));
       setRacha(rachaResp);
-      setRuta(rutaResp);
-      setAsignaturas(agruparPorAsignatura(perfilResp));
+      setRutas(rutasResp);
       setError(false);
     } catch {
       setError(true);
@@ -93,6 +68,8 @@ export default function InicioScreen() {
     );
   }
 
+  // "Mi ruta" (hero) muestra la primera asignatura del estudiante.
+  const ruta = rutas.length > 0 ? rutas[0] : null;
   const leccionActual = ruta
     ? Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1)
     : 0;
@@ -174,25 +151,25 @@ export default function InicioScreen() {
 
           {/* Mis asignaturas */}
           <Text style={styles.seccionTitulo}>Mis asignaturas</Text>
-          {asignaturas.length > 0 ? (
-            asignaturas.map((a) => (
-              <View key={a.asignatura} style={styles.asigCard}>
+          {rutas.length > 0 ? (
+            rutas.map((r) => (
+              <View key={r.libro_id} style={styles.asigCard}>
                 <View style={styles.asigHead}>
-                  <Text style={styles.asigNombre}>📚 {a.asignatura}</Text>
-                  <Text style={styles.asigPct}>{a.avance}%</Text>
+                  <Text style={styles.asigNombre}>📚 {r.asignatura}</Text>
+                  <Text style={styles.asigPct}>{Math.round(r.progreso_porcentaje)}%</Text>
                 </View>
-                <ProgressBar progress={a.avance} color={Colors.green} height={10} />
+                <ProgressBar progress={r.progreso_porcentaje} color={Colors.green} height={10} />
                 <Text style={styles.asigMeta}>
-                  {a.actividades} {a.actividades === 1 ? "actividad" : "actividades"} completadas
+                  {r.lecciones_completadas} de {r.total_lecciones} lecciones
                 </Text>
               </View>
             ))
           ) : (
             <View style={styles.vacioCard}>
               <Text style={styles.vacioEmoji}>📚</Text>
-              <Text style={styles.vacioTitulo}>Aún no has practicado</Text>
+              <Text style={styles.vacioTitulo}>Aún no tienes asignaturas asignadas</Text>
               <Text style={styles.vacioSub}>
-                Resuelve actividades y aquí verás tu avance por asignatura. 🌟
+                Tu maestro pronto subirá el material para empezar. 🌟
               </Text>
             </View>
           )}
