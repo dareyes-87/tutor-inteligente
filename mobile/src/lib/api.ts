@@ -178,6 +178,19 @@ export function obtenerRuta(libroId: number): Promise<RutaAprendizaje> {
   return request<RutaAprendizaje>(`/lecciones/ruta?libro_id=${libroId}`);
 }
 
+/** Un libro disponible del grado del estudiante, con su asignatura. */
+export interface LibroDisponible {
+  libro_id: number;
+  titulo: string;
+  asignatura_id: number;
+  asignatura_nombre: string;
+  total_lecciones: number;
+}
+/** Todos los libros disponibles del estudiante (por grado). Lista vacía si no hay. */
+export function obtenerMisLibros(): Promise<LibroDisponible[]> {
+  return request<LibroDisponible[]>("/lecciones/mis-libros");
+}
+
 export interface PreguntaRapida {
   texto: string;
   tipo: string; // verdadero_falso | opcion_multiple

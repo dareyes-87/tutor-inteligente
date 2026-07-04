@@ -18,7 +18,7 @@ import * as Speech from "expo-speech";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-  obtenerMiLibro,
+  obtenerMisLibros,
   obtenerMicroLeccion,
   obtenerRuta,
   preguntar,
@@ -28,8 +28,6 @@ import {
 import { Colors } from "@/lib/colors";
 import { Mascota } from "@/components/Mascota";
 
-const ASIGNATURA_ID = 1;
-
 export default function EstudiarScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const leccionId = Number(id);
@@ -38,6 +36,8 @@ export default function EstudiarScreen() {
 
   const [micro, setMicro] = useState<MicroLeccion | null>(null);
   const [nivel, setNivel] = useState(1);
+  // Asignatura real de la lección (se resuelve al cargar); el mini-chat la usa.
+  const [asignaturaId, setAsignaturaId] = useState(1);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
@@ -52,15 +52,23 @@ export default function EstudiarScreen() {
     let activo = true;
     (async () => {
       try {
-        // Resolver el nivel actual del estudiante en esta lección (viene en /ruta).
+        // Resolver el nivel actual del estudiante en esta lección (viene en /ruta) y
+        // la asignatura real del libro al que pertenece (no asumir Ciencias): se
+        // busca la lección en la ruta de cada libro disponible del grado.
         let nivelActual = 1;
         try {
-          const mi = await obtenerMiLibro();
-          const ruta = await obtenerRuta(mi.libro_id);
-          const lec = ruta.lecciones.find((l) => l.id === leccionId);
-          if (lec) nivelActual = lec.nivel_actual || 1;
+          const libros = await obtenerMisLibros();
+          for (const lb of libros) {
+            const ruta = await obtenerRuta(lb.libro_id);
+            const lec = ruta.lecciones.find((l) => l.id === leccionId);
+            if (lec) {
+              nivelActual = lec.nivel_actual || 1;
+              if (activo) setAsignaturaId(lb.asignatura_id);
+              break;
+            }
+          }
         } catch {
-          /* nivel 1 por defecto */
+          /* nivel 1 y asignatura por defecto */
         }
         const m = await obtenerMicroLeccion(leccionId, nivelActual);
         if (!activo) return;
@@ -285,6 +293,7 @@ export default function EstudiarScreen() {
       <Modal visible={chatAbierto} animationType="slide" transparent onRequestClose={() => setChatAbierto(false)}>
         <MiniChat
           contexto={tarjeta.titulo_concepto ?? micro.titulo}
+          asignaturaId={asignaturaId}
           onCerrar={() => setChatAbierto(false)}
         />
       </Modal>
@@ -322,7 +331,15 @@ interface MiniMsg {
   texto: string;
 }
 
-function MiniChat({ contexto, onCerrar }: { contexto: string; onCerrar: () => void }) {
+function MiniChat({
+  contexto,
+  asignaturaId,
+  onCerrar,
+}: {
+  contexto: string;
+  asignaturaId: number;
+  onCerrar: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const [mensajes, setMensajes] = useState<MiniMsg[]>([]);
   const [conversacionId, setConversacionId] = useState<number | null>(null);
@@ -341,7 +358,7 @@ function MiniChat({ contexto, onCerrar }: { contexto: string; onCerrar: () => vo
     setTexto("");
     setEnviando(true);
     try {
-      const res = await preguntar(t, ASIGNATURA_ID, conversacionId);
+      const res = await preguntar(t, asignaturaId, conversacionId);
       setConversacionId(res.conversacion_id);
       setMensajes((prev) => [...prev, { rol: "tutor", texto: res.respuesta }]);
     } catch {
