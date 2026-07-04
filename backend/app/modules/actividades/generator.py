@@ -4,11 +4,84 @@ basados en el contenido de los libros (fragmentos RAG).
 """
 import logging
 import random
+import re
 
 from app.llm.client import llm_client
 from app.models.actividad import TipoActividad
 
 logger = logging.getLogger(__name__)
+
+# Símbolos matemáticos especiales: ningún teclado estándar de Android/iOS los
+# tiene, así que NUNCA pueden ser la respuesta esperada de "completar" o
+# "respuesta_corta" (el estudiante no podría escribirlos). Esas preguntas deben
+# generarse como "opcion_multiple" (ver _actividad_invalida / generar_actividad).
+SIMBOLOS_ESPECIALES = set("∈∉⊂⊄⊆⊇∪∩≤≥≠")
+
+
+def _contiene_simbolo_especial(texto: str | None) -> bool:
+    return any(c in SIMBOLOS_ESPECIALES for c in (texto or ""))
+
+
+def _palabras_junto_al_hueco(oracion: str) -> set[str]:
+    """Palabras (en minúsculas) inmediatamente antes y después de cada "___"."""
+    tokens = re.findall(r"___|\w+", oracion or "")
+    palabras = set()
+    for i, tok in enumerate(tokens):
+        if tok != "___":
+            continue
+        if i > 0:
+            palabras.add(tokens[i - 1].lower())
+        if i + 1 < len(tokens):
+            palabras.add(tokens[i + 1].lower())
+    return palabras
+
+
+def _hueco_es_redundante(oracion: str | None, respuesta_correcta: str) -> bool:
+    """True si la respuesta esperada ya está escrita junto al hueco (___), lo
+    que vuelve la oración redundante/sin sentido pedagógico (Bug A: "decimos
+    que pertenece (___) al conjunto" con respuesta "pertenece").
+    """
+    if not oracion or not respuesta_correcta:
+        return False
+    resp = respuesta_correcta.strip().lower()
+    if not resp:
+        return False
+    for palabra in _palabras_junto_al_hueco(oracion):
+        if resp == palabra or resp.rstrip("s") == palabra.rstrip("s"):
+            return True
+    return False
+
+
+def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
+    """Guardrail determinístico post-generación: devuelve la razón por la que
+    la actividad NO sirve, o None si está bien.
+
+    Solo aplica a "completar" y "respuesta_corta" (los únicos tipos donde el
+    estudiante escribe la respuesta en un campo libre):
+      - Bug B: la pregunta "gira en torno a" un símbolo matemático especial
+        (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠) que no se puede teclear — ya sea
+        porque la respuesta_correcta ES el símbolo, o porque el símbolo
+        aparece en el texto visible (oración/pregunta). Esto último cubre un
+        caso real: el LLM esquiva "no uses el símbolo como respuesta"
+        escribiendo el símbolo en la oración y dejando un hueco/respuesta
+        inventada sin sentido en otro lado (ej. oración "...pertenece (∈) al
+        conjunto... ___ se simboliza con el símbolo e" con respuesta "e").
+      - Bug A (solo "completar"): el hueco queda pegado a una palabra igual a
+        la respuesta esperada (hueco redundante).
+    """
+    if tipo not in (TipoActividad.completar, TipoActividad.respuesta_corta):
+        return None
+    respuesta = result.get("respuesta_correcta")
+    respuesta_str = str(respuesta) if respuesta is not None else None
+    texto_visible = result.get("oracion") if tipo == TipoActividad.completar else result.get("pregunta")
+    if _contiene_simbolo_especial(respuesta_str) or _contiene_simbolo_especial(texto_visible):
+        return "la pregunta gira en torno a un símbolo matemático especial (no se puede teclear)"
+    if tipo == TipoActividad.completar and _hueco_es_redundante(
+        result.get("oracion"), respuesta_str or ""
+    ):
+        return "el hueco queda junto a una palabra igual a la respuesta (hueco redundante)"
+    return None
+
 
 # Los ejemplos usan placeholders ABSTRACTOS a propósito: si traen un tema real
 # (p. ej. "energía cinética" o "ciclo del agua"), el modelo 7B tiende a copiarlos
@@ -36,6 +109,8 @@ Responde SOLO con JSON válido, sin texto adicional:
 El espacio en blanco (___) DEBE reemplazar un TÉRMINO CLAVE del tema (nombre de estructura, órgano, proceso, concepto científico). NUNCA pongas el blank en verbos comunes (significa, tiene, es, son), artículos, preposiciones o conectores.
 Ejemplo CORRECTO: "La ___ es la unidad básica de los seres vivos" (respuesta: célula).
 Ejemplo INCORRECTO: "La célula ___ la unidad básica" (respuesta: es).
+El hueco (___) NUNCA debe quedar junto a una palabra igual a la respuesta esperada (eso lo vuelve redundante). Ejemplo INCORRECTO: "decimos que pertenece (___) al conjunto" con respuesta "pertenece" (la palabra ya está escrita justo antes del hueco).
+Si el término clave de este concepto es un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠), NO lo uses como respuesta del hueco: ningún teclado permite escribir esos símbolos. Elige en su lugar otro término clave que se escriba con palabras.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
     "oracion": "<una oración tomada del contexto con ___ en el TÉRMINO CLAVE>",
@@ -54,6 +129,7 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
 
     TipoActividad.respuesta_corta: """Genera UNA pregunta de respuesta corta basada en el contexto.
 La pregunta DEBE pedir UN SOLO TÉRMINO o CONCEPTO específico. Formúlala como: "¿Cómo se llama el hueso que protege al cerebro?" (respuesta: cráneo). NUNCA preguntes dos cosas en una ("¿qué parte Y cuál es su función?"). La respuesta esperada debe ser de 1 a 3 palabras como máximo.
+NUNCA hagas una pregunta cuya respuesta sea un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠): el estudiante escribe la respuesta en un campo de texto libre y ningún teclado tiene esos símbolos, así que sería imposible de responder. Si el concepto involucra uno de esos símbolos, pregunta por otra cosa (una definición, un ejemplo, el nombre del concepto en palabras).
 Responde SOLO con JSON válido, sin texto adicional:
 {
     "pregunta": "la pregunta (pide un solo término)",
@@ -64,11 +140,9 @@ Responde SOLO con JSON válido, sin texto adicional:
 }
 
 
-def generar_actividad(tipo: TipoActividad, context: str, tema: str | None = None) -> dict | None:
-    """
-    Genera una actividad usando el LLM.
-    Devuelve el dict con el contenido y la respuesta correcta, o None si falla.
-    """
+def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> dict | None:
+    """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
+    (sin separar contenido/respuesta_correcta) o None si falla."""
     activity_prompt = ACTIVITY_PROMPTS[tipo]
 
     tema_str = f" sobre el tema: {tema}" if tema else ""
@@ -123,8 +197,48 @@ def generar_actividad(tipo: TipoActividad, context: str, tema: str | None = None
         # compara por texto, así que el shuffle no rompe la evaluación.
         if tipo == TipoActividad.opcion_multiple and isinstance(result.get("opciones"), list):
             random.shuffle(result["opciones"])
+
+    return result
+
+
+def generar_actividad(
+    tipo: TipoActividad, context: str, tema: str | None = None
+) -> tuple[TipoActividad, dict | None]:
+    """
+    Genera una actividad usando el LLM.
+
+    Guardrail post-generación (capa determinística): si `tipo` es "completar"
+    o "respuesta_corta" y la actividad resulta inválida (respuesta = símbolo
+    matemático especial que no se puede teclear, o hueco redundante — ver
+    `_actividad_invalida`), se REGENERA forzando "opcion_multiple" en vez de
+    devolver la actividad rota. El prompt YA le pide al LLM evitar estos casos,
+    pero un caso similar (ejercicios del libro tratados como teoría) demostró
+    que "solo prompt" no basta: se necesita esta capa para garantizar el
+    comportamiento sin importar qué responda el LLM.
+
+    Devuelve `(tipo_efectivo, dict | None)`: `tipo_efectivo` puede diferir del
+    `tipo` pedido si se forzó la regeneración; el dict es None si falló.
+    """
+    result = _llamar_llm(tipo, context, tema)
+
+    if result:
+        razon = _actividad_invalida(tipo, result)
+        if razon:
+            logger.warning(
+                f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
+            )
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema)
+            if result_omc:
+                tipo = TipoActividad.opcion_multiple
+                result = result_omc
+            else:
+                # No se pudo regenerar: mejor no devolver una actividad rota.
+                logger.warning("No se pudo regenerar como opcion_multiple; se descarta la actividad")
+                result = None
+
+    if result:
         logger.info(f"Actividad {tipo.value} generada exitosamente")
     else:
         logger.warning(f"Fallo al generar actividad {tipo.value}")
 
-    return result
+    return tipo, result

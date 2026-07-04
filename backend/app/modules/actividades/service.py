@@ -141,8 +141,10 @@ async def crear_actividad(
 
     context = build_context_prompt(fragments)
 
-    # Generar actividad con el LLM
-    result = generar_actividad(tipo, context, tema)
+    # Generar actividad con el LLM. `tipo` puede cambiar si el guardrail forzó
+    # opcion_multiple (ver generar_actividad): usar SIEMPRE el tipo efectivo
+    # para dar forma a contenido/respuesta_correcta y para guardar la actividad.
+    tipo, result = generar_actividad(tipo, context, tema)
     if not result:
         return None
 
