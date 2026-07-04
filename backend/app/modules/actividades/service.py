@@ -16,6 +16,7 @@ from app.modules.rag.search import es_ejercicio_del_libro, is_context_relevant, 
 from app.modules.chat.prompts import build_context_prompt
 from app.modules.actividades.generator import generar_actividad
 from app.modules.actividades.evaluator import evaluar_actividad
+from app.modules.lecciones.service import actualizar_racha
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +223,9 @@ async def responder_actividad(
         db, estudiante_id, actividad.asignatura_id,
         actividad.tema or "General", evaluacion["puntaje"],
     )
+
+    # Gamificación: responder una actividad cuenta como "usar la app hoy" para la racha.
+    await actualizar_racha(estudiante_id, db)
 
     await db.commit()
 

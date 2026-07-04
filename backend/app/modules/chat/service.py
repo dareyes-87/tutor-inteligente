@@ -15,6 +15,7 @@ from app.models.usuario import Usuario
 from app.models.grado import Grado
 from app.modules.rag.search import search_fragments, is_context_relevant
 from app.modules.chat.prompts import build_context_prompt, build_messages
+from app.modules.lecciones.service import actualizar_racha
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +233,10 @@ async def procesar_pregunta(
         conv.titulo = pregunta[:100]
 
     conv.fecha_ultimo_mensaje = datetime.now(timezone.utc)
+
+    # Gamificación: enviar un mensaje al tutor cuenta como "usar la app hoy" para la racha.
+    await actualizar_racha(estudiante.id, db)
+
     await db.commit()
 
     return {
