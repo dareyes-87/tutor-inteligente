@@ -354,6 +354,7 @@ REGLAS:
 - Cada concepto debe tener una pregunta de comprensión
 - Las preguntas deben ser respondibles con lo explicado en ESA tarjeta, y la "respuesta_correcta" DEBE ser coherente con el "contenido" de esa misma tarjeta (no te contradigas).
 - "respuesta_correcta" debe ser SIEMPRE uno de los textos EXACTOS de "opciones".
+- NO antepongas letras ni números de inciso ("A.", "B)", "1.", etc.) a las opciones: escribe SOLO el texto de la opción.
 - Si "tipo" es "verdadero_falso": "texto" DEBE ser una AFIRMACIÓN que el estudiante juzga como verdadera o falsa (ejemplo: "Las células animales tienen pared celular"). NUNCA una pregunta: no empiece con "¿", ni use "¿Qué...?", "¿Cuál...?" ni "¿Cómo...?". "opciones" debe ser exactamente ["Verdadero", "Falso"] y "respuesta_correcta" debe ser "Verdadero" o "Falso".
 - Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles. Las opciones incorrectas (distractores) deben ser CLARAMENTE diferentes a la respuesta correcta: no uses sinónimos ni frases que signifiquen lo mismo con otras palabras. Cada distractor debe referirse a un concepto diferente.
 - Si necesitas hacer una pregunta abierta ("¿Qué...?", "¿Cuál...?"), usa SIEMPRE "tipo": "opcion_multiple" con 4 opciones, NUNCA "verdadero_falso".
@@ -369,6 +370,16 @@ REGLAS:
         },
         {"role": "user", "content": user},
     ]
+
+
+_PATRON_INCISO = re.compile(r"^\s*[A-Da-d]\s*[\.\):]\s*")
+
+
+def _quitar_inciso(texto: str) -> str:
+    """Quita un inciso ("A.", "b)", "C:") que el LLM haya antepuesto a una
+    opción de opción múltiple (ver mismo guardrail en actividades/generator.py):
+    el estudiante solo toca la opción, no necesita letras de inciso."""
+    return _PATRON_INCISO.sub("", texto or "", count=1).strip()
 
 
 def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
@@ -393,11 +404,14 @@ def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
             else:
                 tarjeta.pregunta = None
                 continue
-        # Mezclar las opciones: el LLM tiende a poner la correcta de primera.
-        # respuesta_correcta guarda el TEXTO (no el índice), así que es seguro;
-        # el frontend compara texto contra texto. No se mezcla V/F (Verdadero/Falso
-        # debe quedar en ese orden).
         if tarjeta.pregunta.tipo == "opcion_multiple":
+            # Guardrail determinístico: quitar incisos que el LLM haya antepuesto.
+            tarjeta.pregunta.opciones = [_quitar_inciso(o) for o in tarjeta.pregunta.opciones]
+            tarjeta.pregunta.respuesta_correcta = _quitar_inciso(tarjeta.pregunta.respuesta_correcta)
+            # Mezclar las opciones: el LLM tiende a poner la correcta de primera.
+            # respuesta_correcta guarda el TEXTO (no el índice), así que es seguro;
+            # el frontend compara texto contra texto. No se mezcla V/F (Verdadero/Falso
+            # debe quedar en ese orden).
             random.shuffle(tarjeta.pregunta.opciones)
 
 

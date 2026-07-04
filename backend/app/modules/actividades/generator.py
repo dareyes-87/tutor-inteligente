@@ -52,6 +52,18 @@ def _hueco_es_redundante(oracion: str | None, respuesta_correcta: str) -> bool:
     return False
 
 
+_PATRON_INCISO = re.compile(r"^\s*[A-Da-d]\s*[\.\):]\s*")
+
+
+def _quitar_inciso(texto: str) -> str:
+    """Quita un inciso ("A.", "b)", "C:") que el LLM haya antepuesto a una
+    opción de opción múltiple, a pesar de que el prompt se lo pide
+    explícitamente. Decisión de producto: el estudiante solo toca la opción,
+    no necesita letras de inciso (y menos si el LLM las genera desordenadas:
+    A, D, B, C confunde más que ayuda)."""
+    return _PATRON_INCISO.sub("", texto or "", count=1).strip()
+
+
 def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
     """Guardrail determinístico post-generación: devuelve la razón por la que
     la actividad NO sirve, o None si está bien.
@@ -89,11 +101,18 @@ def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
 # obliga al LLM a tomar el contenido del contexto.
 ACTIVITY_PROMPTS = {
     TipoActividad.opcion_multiple: """Genera UNA pregunta de opción múltiple basada en el contexto.
+NO antepongas letras ni números de inciso ("A.", "B)", "1.", etc.) a las opciones: escribe SOLO el texto de la opción, el estudiante las toca directamente sin necesitar una letra.
+REGLAS CRÍTICAS para los distractores (las opciones incorrectas):
+- Cada distractor debe ser CLARAMENTE INCORRECTO según el libro, no ambiguo ni parcialmente correcto.
+- NUNCA generes un distractor que podría ser interpretado como correcto por un estudiante que entiende el tema (por ejemplo, la negación exacta de una afirmación verdadera casi siempre también es defendible como cierta o falsa según el caso: evita ese patrón).
+- Los distractores deben ser plausibles (no absurdos) pero inequívocamente incorrectos.
+- ANTES de responder, verifica que SOLO UNA opción sea defendible como correcta.
+- Evita preguntas tipo "¿Cuál de las siguientes afirmaciones es correcta?" con varias opciones que podrían defenderse como ciertas. Prefiere preguntas específicas y concretas (ej. "¿Qué significa que A esté contenido en B?") en vez de pedir juzgar afirmaciones abstractas.
 Responde SOLO con JSON válido, sin texto adicional:
 {
     "pregunta": "la pregunta",
-    "opciones": ["opción A", "opción B", "opción C", "opción D"],
-    "respuesta_correcta": "la opción correcta (texto exacto de una de las opciones)",
+    "opciones": ["opción 1 (sin letra de inciso)", "opción 2 (sin letra de inciso)", "opción 3 (sin letra de inciso)", "opción 4 (sin letra de inciso)"],
+    "respuesta_correcta": "la opción correcta (texto exacto de una de las opciones, sin letra de inciso)",
     "explicacion": "por qué esa es la respuesta correcta"
 }""",
 
@@ -194,11 +213,22 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
         messages[-1]["content"] += "\n\nIMPORTANTE: Responde SOLO con el JSON, sin markdown, sin explicaciones adicionales."
         result = llm_client.generate_json(messages)
 
-    if result:
+    if result and tipo == TipoActividad.opcion_multiple:
+        # Guardrail determinístico: el prompt ya pide no anteponer incisos,
+        # pero el LLM a veces los pone igual (y a veces desordenados,
+        # p. ej. A, D, B, C). Se limpian aquí sin importar qué responda.
+        if isinstance(result.get("opciones"), list):
+            result["opciones"] = [
+                _quitar_inciso(o) if isinstance(o, str) else o
+                for o in result["opciones"]
+            ]
+        if isinstance(result.get("respuesta_correcta"), str):
+            result["respuesta_correcta"] = _quitar_inciso(result["respuesta_correcta"])
+
         # Mezclar las opciones: el LLM tiende a poner la correcta de primera.
         # respuesta_correcta guarda el TEXTO (no el índice), y el evaluador
         # compara por texto, así que el shuffle no rompe la evaluación.
-        if tipo == TipoActividad.opcion_multiple and isinstance(result.get("opciones"), list):
+        if isinstance(result.get("opciones"), list):
             random.shuffle(result["opciones"])
 
     return result
