@@ -105,7 +105,7 @@ Responde SOLO con JSON válido, sin texto adicional:
     "explicacion": "por qué es verdadero o falso"
 }""",
 
-    TipoActividad.completar: """Genera UNA oración para completar. La oración debe salir TEXTUALMENTE del contexto (toma una frase real de los fragmentos y reemplaza por ___ la palabra o término clave que el estudiante debe recordar). Usa ___ donde va la palabra faltante.
+    TipoActividad.completar: """Genera UNA oración para completar. La oración debe salir TEXTUALMENTE del libro (toma una frase real del contenido y reemplaza por ___ la palabra o término clave que el estudiante debe recordar). Usa ___ donde va la palabra faltante.
 El espacio en blanco (___) DEBE reemplazar un TÉRMINO CLAVE del tema (nombre de estructura, órgano, proceso, concepto científico). NUNCA pongas el blank en verbos comunes (significa, tiene, es, son), artículos, preposiciones o conectores.
 Ejemplo CORRECTO: "La ___ es la unidad básica de los seres vivos" (respuesta: célula).
 Ejemplo INCORRECTO: "La célula ___ la unidad básica" (respuesta: es).
@@ -118,7 +118,7 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
     "pista": "una pista para ayudar al estudiante"
 }""",
 
-    TipoActividad.ordenar: """Genera UN ejercicio de ordenar elementos basado en el contexto. Los elementos deben ser conceptos, pasos o etapas QUE APARECEN en los fragmentos (una secuencia o proceso descrito en el contexto). No uses procesos que no estén en el contexto.
+    TipoActividad.ordenar: """Genera UN ejercicio de ordenar elementos basado en el libro. Los elementos deben ser conceptos, pasos o etapas QUE APARECEN en el libro (una secuencia o proceso descrito en el libro). No uses procesos que no estén en el libro.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
     "instruccion": "<instrucción de qué ordenar, sobre el proceso del contexto>",
@@ -152,17 +152,20 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
             "content": (
                 "Eres un profesor que crea ejercicios educativos para estudiantes de "
                 f"primaria/secundaria en Guatemala. Crea ejercicios claros, en español.{tema_str} "
-                "Genera la actividad EXCLUSIVAMENTE con el contenido de los fragmentos del libro "
-                "que se te dan. NO uses tu conocimiento propio. NO inventes información ni ejemplos "
-                "que no estén en los fragmentos. "
+                "Genera la actividad EXCLUSIVAMENTE con el contenido del libro "
+                "que se te da. NO uses tu conocimiento propio. NO inventes información ni ejemplos "
+                "que no estén en el libro. "
                 "IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "
-                "'Mesa lista', 'Ahora es tu turno', 'Ejercicio', 'Practica' que aparezca en los "
-                "fragmentos: esas son actividades del libro, no la teoría del tema. Genera tu "
+                "'Mesa lista', 'Ahora es tu turno', 'Ejercicio', 'Practica' que aparezca en el "
+                "libro: esas son actividades del libro, no la teoría del tema. Genera tu "
                 "actividad basándote ÚNICAMENTE en las definiciones, conceptos, teoría y "
-                "explicaciones de los fragmentos. "
+                "explicaciones del libro. "
                 "SIEMPRE genera todo el contenido en ESPAÑOL. Nunca uses términos en inglés. "
                 "Los términos científicos deben estar en español (ejemplo: profase, no prophase; "
-                "célula, no cell)."
+                "célula, no cell). "
+                "NUNCA uses las palabras 'fragmento', 'contexto', 'chunk' ni ningún término "
+                "técnico de procesamiento de datos en tu respuesta: refiérete siempre al "
+                "material como 'el libro' o 'tu libro de texto'."
             ),
         },
         {
@@ -170,11 +173,11 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
             "content": (
                 f"Basándote ÚNICAMENTE en el siguiente contenido del libro:\n\n{context}\n\n"
                 f"{activity_prompt}\n\n"
-                "Recuerda: la actividad debe tratar sobre lo que dicen los fragmentos de arriba, "
-                "no sobre otros temas. Si algún fragmento es un ejercicio del libro (por ejemplo "
+                "Recuerda: la actividad debe tratar sobre lo que dice el libro arriba, "
+                "no sobre otros temas. Si alguna parte es un ejercicio del libro (por ejemplo "
                 "'Mesa lista', 'Ahora es tu turno' u otro ejercicio ya resuelto o propuesto), "
-                "IGNÓRALO como fuente y basa la actividad solo en la teoría/definiciones de los "
-                "demás fragmentos. "
+                "IGNÓRALA como fuente y basa la actividad solo en la teoría/definiciones del "
+                "resto del libro. "
                 + (
                     f"Si el contexto es insuficiente para generar una actividad de calidad, "
                     f"genera una pregunta conceptual básica sobre el tema: {tema}."

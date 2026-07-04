@@ -311,11 +311,11 @@ def _build_micro_leccion_messages(
     `nivel` (1-3) cambia el enfoque pedagógico (base / profundización / síntesis).
     """
     enfoque = _ENFOQUE_NIVEL.get(nivel, _ENFOQUE_NIVEL[1])
-    user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido de los siguientes fragmentos del libro de texto.
+    user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido del siguiente libro de texto.
 
 ENFOQUE DE ESTA LECCIÓN (NIVEL {nivel} de 3): {enfoque}
 
-FRAGMENTOS DEL LIBRO:
+CONTENIDO DEL LIBRO:
 {fragmentos}
 
 Genera un JSON con esta estructura exacta:
@@ -357,9 +357,10 @@ REGLAS:
 - Si "tipo" es "verdadero_falso": "texto" DEBE ser una AFIRMACIÓN que el estudiante juzga como verdadera o falsa (ejemplo: "Las células animales tienen pared celular"). NUNCA una pregunta: no empiece con "¿", ni use "¿Qué...?", "¿Cuál...?" ni "¿Cómo...?". "opciones" debe ser exactamente ["Verdadero", "Falso"] y "respuesta_correcta" debe ser "Verdadero" o "Falso".
 - Si "tipo" es "opcion_multiple": "texto" es una pregunta con 4 opciones distintas y plausibles. Las opciones incorrectas (distractores) deben ser CLARAMENTE diferentes a la respuesta correcta: no uses sinónimos ni frases que signifiquen lo mismo con otras palabras. Cada distractor debe referirse a un concepto diferente.
 - Si necesitas hacer una pregunta abierta ("¿Qué...?", "¿Cuál...?"), usa SIEMPRE "tipo": "opcion_multiple" con 4 opciones, NUNCA "verdadero_falso".
-- NO uses información que no esté en los fragmentos
-- IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en los fragmentos. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
+- NO uses información que no esté en el libro
+- IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en el libro. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
 - NO incluyas "emoji" en el JSON: se asigna aparte
+- NUNCA uses las palabras "fragmento", "contexto", "chunk" ni ningún término técnico de procesamiento de datos en el contenido: refiérete siempre al material como "el libro" o "tu libro de texto".
 - Responde SOLO con el JSON, sin texto adicional"""
     return [
         {
