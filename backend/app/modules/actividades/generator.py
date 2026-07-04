@@ -64,11 +64,33 @@ def _quitar_inciso(texto: str) -> str:
     return _PATRON_INCISO.sub("", texto or "", count=1).strip()
 
 
+def _orden_tiene_conclusion_fuera_de_lugar(orden_correcto: list | None) -> bool:
+    """True si algún elemento de "conclusión" no queda al FINAL del orden.
+
+    Heurística genérica (no depende del tema): en cualquier procedimiento
+    lógico real, un paso que "concluye" algo (concluir/concluye/conclusión)
+    tiene que ser el último, porque depende del resultado de los pasos
+    anteriores. Si aparece antes, es la señal de que el LLM mezcló dos
+    caminos/desenlaces distintos en una sola secuencia (caso real detectado:
+    para "verificar si A es subconjunto de B" devolvía ["Verificar que todos
+    pertenecen a B", "Concluir que es subconjunto", "Comprobar si alguno NO
+    pertenece"], donde el último paso en realidad es una rama alternativa,
+    no algo que ocurre DESPUÉS de concluir).
+    """
+    if not isinstance(orden_correcto, list) or not orden_correcto:
+        return False
+    indices_conclusion = [
+        i for i, el in enumerate(orden_correcto)
+        if isinstance(el, str) and "conclu" in el.lower()
+    ]
+    return bool(indices_conclusion) and max(indices_conclusion) != len(orden_correcto) - 1
+
+
 def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
     """Guardrail determinístico post-generación: devuelve la razón por la que
     la actividad NO sirve, o None si está bien.
 
-    Solo aplica a "completar" y "respuesta_corta" (los únicos tipos donde el
+    Para "completar" y "respuesta_corta" (los únicos tipos donde el
     estudiante escribe la respuesta en un campo libre):
       - Bug B: la pregunta "gira en torno a" un símbolo matemático especial
         (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠) que no se puede teclear — ya sea
@@ -80,7 +102,31 @@ def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
         conjunto... ___ se simboliza con el símbolo e" con respuesta "e").
       - Bug A (solo "completar"): el hueco queda pegado a una palabra igual a
         la respuesta esperada (hueco redundante).
+
+    Para "ordenar": el prompt YA pide no mezclar caminos/desenlaces
+    contrarios en una secuencia (ver Bug 6), pero un modelo 7B lo sigue
+    haciendo de forma consistente pese a la instrucción — ver
+    `_orden_tiene_conclusion_fuera_de_lugar`.
     """
+    if tipo == TipoActividad.ordenar:
+        elementos = result.get("elementos_desordenados")
+        orden = result.get("orden_correcto")
+        if (
+            isinstance(elementos, list) and isinstance(orden, list)
+            and all(isinstance(e, str) for e in elementos)
+            and all(isinstance(e, str) for e in orden)
+        ):
+            # Caso real detectado: el LLM da 3 elementos para arrastrar pero solo
+            # 2 en "orden_correcto" (descartó el paso de la rama contraria del
+            # resultado, pero lo dejó como elemento arrastrable): el estudiante
+            # no tiene forma de acertar la posición de ese elemento "huérfano"
+            # porque no aparece en la respuesta correcta. Cualquier desajuste de
+            # conjuntos entre ambas listas vuelve el ejercicio injugable.
+            if sorted(elementos) != sorted(orden):
+                return "elementos_desordenados y orden_correcto no son el mismo conjunto de elementos"
+        if _orden_tiene_conclusion_fuera_de_lugar(orden):
+            return "un paso de conclusión no queda al final (secuencia con caminos contradictorios)"
+        return None
     if tipo not in (TipoActividad.completar, TipoActividad.respuesta_corta):
         return None
     respuesta = result.get("respuesta_correcta")
@@ -138,7 +184,9 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
 }""",
 
     TipoActividad.ordenar: """Genera UN ejercicio de ordenar elementos basado en el libro. Los elementos deben ser conceptos, pasos o etapas QUE APARECEN en el libro (una secuencia o proceso descrito en el libro). No uses procesos que no estén en el libro.
-IMPORTANTE: este tipo de ejercicio es SOLO para temas con una secuencia natural de pasos (un proceso, procedimiento, ciclo o algoritmo descrito en el libro: por ejemplo, las etapas de un proceso biológico, los pasos de un procedimiento matemático, el orden cronológico de un evento). NO lo uses para definiciones, propiedades o relaciones entre conceptos (por ejemplo, "qué es un subconjunto" NO tiene un orden natural de pasos: sería forzado e inventado). Si el contenido del libro no describe un proceso con pasos reales, en vez de inventar un orden arbitrario, usa como elementos los PASOS DE UN PROCEDIMIENTO que el libro sí explique para aplicar o verificar ese concepto (por ejemplo, los pasos para comprobar si se cumple una propiedad), de modo que exista un único orden lógicamente correcto. Nunca generes elementos que sean afirmaciones equivalentes o negaciones entre sí, porque entonces cualquier orden podría defenderse como válido.
+IMPORTANTE: este tipo de ejercicio es SOLO para temas con una secuencia natural de pasos (un proceso, procedimiento, ciclo o algoritmo descrito en el libro: por ejemplo, las etapas de un proceso biológico, los pasos de un procedimiento matemático, el orden cronológico de un evento). NO lo uses para definiciones, propiedades o relaciones entre conceptos (por ejemplo, "qué es un subconjunto" NO tiene un orden natural de pasos: sería forzado e inventado).
+Si el contenido del libro no describe un proceso con pasos reales, en vez de inventar un orden arbitrario, usa como elementos los PASOS DE UN ÚNICO PROCEDIMIENTO que el libro sí explique para aplicar o verificar ese concepto, de modo que exista un único orden lógicamente correcto.
+REGLA CRÍTICA (error real que debes evitar): NUNCA mezcles en la misma secuencia pasos que pertenecen a resultados o caminos DISTINTOS o CONTRARIOS entre sí. Ejemplo de ERROR real que NO debes repetir, para "verificar si A es subconjunto de B": ["Verificar si todos los elementos de A pertenecen a B", "Comprobar si por lo menos un elemento de A NO pertenece a B", "Concluir que A es subconjunto de B"] — esto está MAL porque el paso 2 (buscar un elemento que NO pertenece) es el camino para concluir LO CONTRARIO (que A NO es subconjunto), no un paso siguiente del mismo procedimiento. Un ejercicio de ordenar debe tener UN SOLO desenlace posible: o bien los pasos para confirmar que SÍ se cumple la propiedad, o bien elige otro proceso del libro con una secuencia sin bifurcaciones (por ejemplo, los pasos para representar o construir algo, no para decidir entre dos resultados opuestos).
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
     "instruccion": "<instrucción de qué ordenar, sobre el proceso del libro>",
@@ -241,14 +289,14 @@ def generar_actividad(
     """
     Genera una actividad usando el LLM.
 
-    Guardrail post-generación (capa determinística): si `tipo` es "completar"
-    o "respuesta_corta" y la actividad resulta inválida (respuesta = símbolo
-    matemático especial que no se puede teclear, o hueco redundante — ver
-    `_actividad_invalida`), se REGENERA forzando "opcion_multiple" en vez de
-    devolver la actividad rota. El prompt YA le pide al LLM evitar estos casos,
-    pero un caso similar (ejercicios del libro tratados como teoría) demostró
-    que "solo prompt" no basta: se necesita esta capa para garantizar el
-    comportamiento sin importar qué responda el LLM.
+    Guardrail post-generación (capa determinística): si `tipo` es "completar",
+    "respuesta_corta" u "ordenar" y la actividad resulta inválida (respuesta =
+    símbolo matemático especial que no se puede teclear, hueco redundante, o
+    secuencia con caminos contradictorios — ver `_actividad_invalida`), se
+    REGENERA forzando "opcion_multiple" en vez de devolver la actividad rota.
+    El prompt YA le pide al LLM evitar estos casos, pero varios casos reales
+    demostraron que "solo prompt" no basta: se necesita esta capa para
+    garantizar el comportamiento sin importar qué responda el LLM.
 
     Devuelve `(tipo_efectivo, dict | None)`: `tipo_efectivo` puede diferir del
     `tipo` pedido si se forzó la regeneración; el dict es None si falló.
