@@ -310,7 +310,9 @@ _ENFOQUE_NIVEL = {
 # prompt es la única capa disponible aquí. Cubre Bug 2 (nomenclatura posicional)
 # y Bug 5 (ejemplos matemáticos correctos + redondeo).
 _REGLAS_MATEMATICAS_MICRO = """
-- NOMENCLATURA POSICIONAL EXACTA: de derecha a izquierda las posiciones son unidades, decenas, centenas, unidades de millar (NO "mil"), decenas de millar, centenas de millar, unidades de millón. Una centena de millar vale 100,000 (NO 1,000). Al comparar dos números, identifica con cuidado la posición EXACTA donde difieren (ejemplo: 1,234 y 1,243 comparten millar y centena, pero difieren en las DECENAS: 3 vs 4)."""
+- NOMENCLATURA POSICIONAL EXACTA: de derecha a izquierda las posiciones son unidades, decenas, centenas, unidades de millar (NO "mil"), decenas de millar, centenas de millar, unidades de millón. Una centena de millar vale 100,000 (NO 1,000). Al comparar dos números, identifica con cuidado la posición EXACTA donde difieren (ejemplo: 1,234 y 1,243 comparten millar y centena, pero difieren en las DECENAS: 3 vs 4).
+- CADA ejemplo numérico que incluyas DEBE ser matemáticamente correcto. Verifica mentalmente cada operación (suma, resta, comparación, redondeo) antes de escribirla. Si no estás seguro del resultado, usa números más simples donde el resultado sea obvio. NO uses ejemplos cuyo resultado no puedas verificar con certeza.
+- REDONDEO/APROXIMACIÓN, mira SIEMPRE el dígito de la posición inmediatamente menor (0-4 se redondea hacia abajo, 5-9 hacia arriba): a la decena → mira las unidades; a la centena → mira las decenas; a la unidad de millar → mira las centenas; a la decena de millar → mira las unidades de millar. Ejemplo CORRECTO: 45,678 a la decena de millar más cercana → miramos las unidades de millar (5); como 5 ≥ 5, redondeamos hacia arriba: 50,000 (NO 45,000 ni 87,000)."""
 
 
 def _build_micro_leccion_messages(
