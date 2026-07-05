@@ -98,13 +98,25 @@ export default function PracticarScreen() {
         } catch {
           fragmentIds = [];
         }
-        const settled = await Promise.allSettled(
-          TIPOS.map((t) => generarActividad(asignaturaId, t, tema, leccionId, fragmentIds)),
-        );
-        if (!activo) return;
-        const generadas = settled
-          .filter((s): s is PromiseFulfilledResult<ActividadResponse> => s.status === "fulfilled")
-          .map((s) => s.value);
+        // Generación SECUENCIAL (no en paralelo): cada actividad se genera
+        // conociendo las preguntas anteriores de la sesión, para que el LLM
+        // no repita la misma pregunta 3 de 5 veces sobre los mismos fragmentos.
+        const generadas: ActividadResponse[] = [];
+        const preguntasPrevias: string[] = [];
+        for (const t of TIPOS) {
+          try {
+            const a = await generarActividad(
+              asignaturaId, t, tema, leccionId, fragmentIds, preguntasPrevias,
+            );
+            generadas.push(a);
+            const c = a.contenido as Record<string, unknown>;
+            const texto = (c.pregunta ?? c.afirmacion ?? c.oracion ?? c.instruccion) as string | undefined;
+            if (texto) preguntasPrevias.push(texto);
+          } catch {
+            /* una actividad fallida no rompe la sesión: se sigue con las demás */
+          }
+          if (!activo) return;
+        }
         if (generadas.length === 0) {
           setFase("error");
           return;

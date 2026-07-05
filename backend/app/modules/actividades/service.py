@@ -43,6 +43,7 @@ async def crear_actividad(
     tema: str | None = None,
     leccion_id: int | None = None,
     fragment_ids: list[int] | None = None,
+    evitar_preguntas: list[str] | None = None,
 ) -> Actividad | None:
     """Genera una actividad nueva usando RAG + LLM.
 
@@ -145,7 +146,7 @@ async def crear_actividad(
     # Generar actividad con el LLM. `tipo` puede cambiar si el guardrail forzó
     # opcion_multiple (ver generar_actividad): usar SIEMPRE el tipo efectivo
     # para dar forma a contenido/respuesta_correcta y para guardar la actividad.
-    tipo, result = generar_actividad(tipo, context, tema)
+    tipo, result = generar_actividad(tipo, context, tema, evitar_preguntas)
     if not result:
         return None
 

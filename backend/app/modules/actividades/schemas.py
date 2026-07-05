@@ -20,6 +20,12 @@ class GenerarActividadRequest(BaseModel):
         "la actividad se genera con EXACTAMENTE esos fragmentos (la teoría que el "
         "tutor explicó), en vez de una nueva búsqueda semántica.",
     )
+    evitar_preguntas: list[str] = Field(
+        default_factory=list,
+        description="Textos de las preguntas YA generadas en esta sesión de práctica "
+        "(opcional). Se pasan al LLM para que no repita la misma pregunta ni el "
+        "mismo enfoque dentro de una sesión de 5 actividades.",
+    )
 
 
 class ResponderActividadRequest(BaseModel):

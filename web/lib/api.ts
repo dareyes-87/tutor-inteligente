@@ -213,6 +213,7 @@ export function generarActividad(
   tema: string | null,
   leccionId: number | null = null,
   fragmentIds: number[] = [],
+  evitarPreguntas: string[] = [],
 ): Promise<ActividadResponse> {
   return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
@@ -222,6 +223,7 @@ export function generarActividad(
       tema,
       leccion_id: leccionId,
       fragment_ids: fragmentIds,
+      evitar_preguntas: evitarPreguntas,
     }),
   });
 }

@@ -5,6 +5,7 @@ basados en el contenido de los libros (fragmentos RAG).
 import logging
 import random
 import re
+import unicodedata
 
 from app.llm.client import llm_client
 from app.models.actividad import TipoActividad
@@ -314,7 +315,57 @@ Responde SOLO con JSON válido, sin texto adicional:
 }
 
 
-def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> dict | None:
+def _texto_pregunta(result: dict) -> str | None:
+    """El texto visible que "es" la pregunta de la actividad, según su forma:
+    pregunta (opción múltiple / respuesta corta), afirmación (V/F), oración
+    (completar) o instrucción (ordenar)."""
+    for campo in ("pregunta", "afirmacion", "oracion", "instruccion"):
+        valor = result.get(campo)
+        if isinstance(valor, str) and valor.strip():
+            return valor
+    return None
+
+
+def _normalizar_pregunta(texto: str) -> str:
+    """Normaliza para comparar repetición: minúsculas, sin tildes ni signos."""
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9 ]", "", texto.lower()).strip()
+
+
+def _es_pregunta_repetida(result: dict, evitar_preguntas: list[str]) -> bool:
+    """True si la pregunta generada coincide (normalizada) con una ya hecha
+    en la sesión. Caso real: en una sesión de 5, el LLM generó 3 veces
+    "¿Qué significa que A esté contenido en B?" — cada llamada era
+    independiente y producía la pregunta más obvia del tema."""
+    texto = _texto_pregunta(result)
+    if not texto or not evitar_preguntas:
+        return False
+    norm = _normalizar_pregunta(texto)
+    return any(norm == _normalizar_pregunta(p) for p in evitar_preguntas if p)
+
+
+def _bloque_evitar_preguntas(evitar_preguntas: list[str]) -> str:
+    lista = "\n".join(f"- {p}" for p in evitar_preguntas if p and p.strip())
+    if not lista:
+        return ""
+    return (
+        "\n\nIMPORTANTE: En esta sesión de práctica, el estudiante ya respondió "
+        "las siguientes preguntas. NO repitas ninguna de estas preguntas ni "
+        "generes una pregunta con el mismo enfoque:\n"
+        f"{lista}\n"
+        "Genera una pregunta DIFERENTE que evalúe OTRO aspecto del tema (por "
+        "ejemplo: si ya se preguntó una definición, pregunta sobre un caso "
+        "concreto o sobre la diferencia entre dos conceptos)."
+    )
+
+
+def _llamar_llm(
+    tipo: TipoActividad,
+    context: str,
+    tema: str | None = None,
+    evitar_preguntas: list[str] | None = None,
+) -> dict | None:
     """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
     (sin separar contenido/respuesta_correcta) o None si falla."""
     activity_prompt = ACTIVITY_PROMPTS[tipo]
@@ -357,6 +408,7 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
                     f"genera una pregunta conceptual básica sobre el tema: {tema}."
                     if tema else ""
                 )
+                + _bloque_evitar_preguntas(evitar_preguntas or [])
             ),
         },
     ]
@@ -390,7 +442,10 @@ def _llamar_llm(tipo: TipoActividad, context: str, tema: str | None = None) -> d
 
 
 def generar_actividad(
-    tipo: TipoActividad, context: str, tema: str | None = None
+    tipo: TipoActividad,
+    context: str,
+    tema: str | None = None,
+    evitar_preguntas: list[str] | None = None,
 ) -> tuple[TipoActividad, dict | None]:
     """
     Genera una actividad usando el LLM.
@@ -404,10 +459,17 @@ def generar_actividad(
     demostraron que "solo prompt" no basta: se necesita esta capa para
     garantizar el comportamiento sin importar qué responda el LLM.
 
+    `evitar_preguntas` (las preguntas ya generadas en la sesión de práctica)
+    se inyecta en TODOS los prompts —incluida la regeneración— y además se
+    verifica de forma determinística: si la pregunta salió repetida igual,
+    se reintenta UNA vez; si vuelve a repetirse, se acepta con warning (una
+    pregunta repetida es mejor que un hueco en la sesión de 5).
+
     Devuelve `(tipo_efectivo, dict | None)`: `tipo_efectivo` puede diferir del
     `tipo` pedido si se forzó la regeneración; el dict es None si falló.
     """
-    result = _llamar_llm(tipo, context, tema)
+    evitar = [p for p in (evitar_preguntas or []) if p and p.strip()]
+    result = _llamar_llm(tipo, context, tema, evitar)
 
     if result:
         razon = _actividad_invalida(tipo, result)
@@ -417,7 +479,7 @@ def generar_actividad(
             logger.warning(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
-            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema)
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar)
             if result_omc:
                 tipo = TipoActividad.opcion_multiple
                 result = result_omc
@@ -425,6 +487,23 @@ def generar_actividad(
                 # No se pudo regenerar: mejor no devolver una actividad rota.
                 logger.warning("No se pudo regenerar como opcion_multiple; se descarta la actividad")
                 result = None
+
+    # Capa determinística contra repetición: el prompt ya pide variar, pero si
+    # el LLM devolvió igual una pregunta ya hecha en la sesión, se reintenta
+    # UNA vez sumando la repetida a la lista de exclusión.
+    if result and _es_pregunta_repetida(result, evitar):
+        logger.warning(
+            f"Actividad {tipo.value} repite una pregunta de la sesión; reintentando una vez"
+        )
+        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""])
+        if (
+            reintento
+            and not _actividad_invalida(tipo, reintento)
+            and not _es_pregunta_repetida(reintento, evitar)
+        ):
+            result = reintento
+        else:
+            logger.warning("El reintento también repitió (o falló); se acepta la actividad repetida")
 
     if result:
         logger.info(f"Actividad {tipo.value} generada exitosamente")
