@@ -53,6 +53,39 @@ def _hueco_es_redundante(oracion: str | None, respuesta_correcta: str) -> bool:
     return False
 
 
+def _respuesta_es_fragmento_de_palabra(oracion: str | None, respuesta: str | None) -> bool:
+    """True si la respuesta de un 'completar' es un PEDAZO de palabra en vez de
+    una palabra completa. Caso real: oración "...se encuentra ___ a la
+    derecha..." con respuesta "ás" — el LLM partió "más" en "m" + "ás" y dejó
+    "ás" como hueco, que no tiene sentido para nadie.
+
+    Dos señales:
+      1. La respuesta tiene 3 caracteres o menos y NO es un número ni un
+         símbolo matemático: una palabra de 1-3 letras como respuesta a
+         completar casi nunca es un término clave con valor pedagógico (y sí
+         suele ser un fragmento). Si de verdad lo fuera, regenerar como
+         opción múltiple no se pierde nada.
+      2. Al colocar la respuesta en el hueco, queda PEGADA a una letra (antes
+         o después del "___"), formando una sola palabra: el hueco cortó una
+         palabra por la mitad.
+    """
+    if not respuesta:
+        return False
+    resp = respuesta.strip()
+    if not resp:
+        return False
+    if len(resp) <= 3 and not resp.isdigit() and not _contiene_simbolo_especial(resp):
+        return True
+    if not oracion:
+        return False
+    idx = oracion.find("___")
+    if idx == -1:
+        return False
+    letra_antes = idx > 0 and oracion[idx - 1].isalpha()
+    letra_despues = idx + 3 < len(oracion) and oracion[idx + 3].isalpha()
+    return bool(letra_antes or letra_despues)
+
+
 # Frases que delatan que el LLM se basó en un ejercicio/ejemplo/diagrama
 # ESPECÍFICO del libro (que el estudiante no tiene a la vista) en vez de en la
 # teoría del tema. "por ejemplo" NO matchea (es una muletilla legítima); lo que
@@ -588,6 +621,10 @@ def _actividad_invalida(
         result.get("oracion"), respuesta_str or ""
     ):
         return "el hueco queda junto a una palabra igual a la respuesta (hueco redundante)"
+    if tipo == TipoActividad.completar and _respuesta_es_fragmento_de_palabra(
+        result.get("oracion"), respuesta_str
+    ):
+        return "la respuesta es un fragmento de palabra o demasiado corta (ej. 'ás' de 'más')"
     return None
 
 
