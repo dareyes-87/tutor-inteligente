@@ -409,6 +409,111 @@ def _verificar_valor_posicional(tipo: TipoActividad, result: dict) -> str | None
     return None
 
 
+# Preguntas que piden "el número que falta" en una ecuación (incógnita).
+_KEYWORDS_INCOGNITA = (
+    "que numero falta", "numero falta", "que numero va",
+    "cual es la incognita", "la incognita", "numero desconocido",
+    "completa la ecuacion", "completa la operacion", "completa la suma",
+    "completa la resta", "que valor falta", "valor faltante",
+)
+_OP_SIMBOLO_A_NOMBRE = {"+": "suma", "-": "resta", "×": "multiplicacion",
+                        "*": "multiplicacion", "÷": "division", "/": "division"}
+# Un "término" de la ecuación: un número (con coma o espacio de miles) o un
+# marcador de incógnita (?, ___, ▢). NO se incluye "x"/"X" como marcador para
+# no confundirlo con el operador de multiplicación.
+_TERMINO_ECUACION = r"(\d[\d.,]*(?:\s\d{3})*|\?+|_{2,}|[▢□])"
+_RE_ECUACION_BINARIA = re.compile(
+    _TERMINO_ECUACION + r"\s*([+\-×÷*/])\s*" + _TERMINO_ECUACION
+    + r"\s*=\s*" + _TERMINO_ECUACION
+)
+
+
+def _es_marcador_incognita(termino: str) -> bool:
+    return bool(re.fullmatch(r"\?+|_{2,}|[▢□]", termino.strip()))
+
+
+def _resolver_operando(operacion: str, idx_incognita: int, valores: list[int | None]) -> int | None:
+    """Despeja el operando desconocido de "a op b = c" (idx 0=a, 1=b, 2=c).
+    Devuelve None si la operación no tiene solución entera exacta (no bloquear
+    ante casos ambiguos)."""
+    a, b, c = valores  # el operando en idx_incognita es None
+    try:
+        if operacion == "suma":  # a + b = c
+            if idx_incognita == 0:
+                return c - b
+            if idx_incognita == 1:
+                return c - a
+            return a + b
+        if operacion == "resta":  # a - b = c
+            if idx_incognita == 0:
+                return c + b
+            if idx_incognita == 1:
+                return a - c
+            return a - b
+        if operacion == "multiplicacion":  # a * b = c
+            if idx_incognita == 2:
+                return a * b
+            div, resto = (c, b) if idx_incognita == 0 else (c, a)
+            return div // resto if resto and c % resto == 0 else None
+        if operacion == "division":  # a / b = c
+            if idx_incognita == 0:
+                return c * b
+            if idx_incognita == 1:
+                return a // c if c and a % c == 0 else None
+            return a // b if b and a % b == 0 else None
+    except (TypeError, ZeroDivisionError):
+        return None
+    return None
+
+
+def _verificar_incognita(tipo: TipoActividad, result: dict) -> str | None:
+    """Guardrail determinístico para preguntas de "¿qué número falta?" sobre
+    una ecuación. Dos fallas reales:
+      - La ecuación mostrada está COMPLETA ("432 + 278 = 710"): no falta
+        ningún número, así que la pregunta no tiene sentido. Caso real: el
+        LLM preguntó "¿Qué número falta en 432 + 278 = 710?" y marcó "122"
+        (que no es ni operando ni resultado). INVÁLIDA.
+      - La ecuación sí tiene una incógnita (?, ___): se despeja el valor real
+        y se compara con la respuesta marcada; si no coincide, INVÁLIDA.
+    """
+    texto = _texto_pregunta(result)
+    if not texto:
+        return None
+    if not any(k in _normalizar_pregunta(texto) for k in _KEYWORDS_INCOGNITA):
+        return None
+    m = _RE_ECUACION_BINARIA.search(texto)
+    if not m:
+        return None  # dice "qué falta" pero no hay una ecuación parseable: no bloquear
+    terminos = [m.group(1), m.group(3), m.group(4)]
+    op = m.group(2)
+    marcadores = [i for i, t in enumerate(terminos) if _es_marcador_incognita(t)]
+
+    if not marcadores:
+        return (
+            "la pregunta pide un número faltante, pero la ecuación mostrada ya "
+            f"está completa (no tiene incógnita): '{m.group(0)}'"
+        )
+    if len(marcadores) > 1:
+        return None  # más de una incógnita: no se puede resolver sin ambigüedad
+
+    operacion = _OP_SIMBOLO_A_NOMBRE.get(op)
+    if operacion is None:
+        return None
+    valores = [None if i in marcadores else _valor_numerico_de(t) for i, t in enumerate(terminos)]
+    if any(v is None for i, v in enumerate(valores) if i not in marcadores):
+        return None  # algún término no se pudo leer como número
+    faltante = _resolver_operando(operacion, marcadores[0], valores)
+    if faltante is None:
+        return None
+    valor_marcado = _valor_numerico_de(str(result.get("respuesta_correcta")))
+    if valor_marcado is not None and valor_marcado != faltante:
+        return (
+            f"el número que falta en la ecuación es {faltante}, pero se marcó "
+            f"como respuesta {valor_marcado}"
+        )
+    return None
+
+
 # Rango numérico máximo esperado por grado en Matemáticas (currículo de
 # Guatemala). Grados no listados (básico/diversificado) no se restringen:
 # ya incluyen álgebra, fracciones/decimales y números grandes legítimamente.
@@ -572,6 +677,9 @@ def _actividad_invalida(
     razon_rango = _verificar_rango_numerico(result, rango_max)
     if razon_rango:
         return razon_rango
+    razon_incognita = _verificar_incognita(tipo, result)
+    if razon_incognita:
+        return razon_incognita
     razon_aritmetica = _verificar_aritmetica(tipo, result)
     if razon_aritmetica:
         return razon_aritmetica
