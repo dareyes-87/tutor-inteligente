@@ -798,6 +798,16 @@ def _bloque_evitar_preguntas(evitar_preguntas: list[str]) -> str:
     )
 
 
+# Números de 4+ dígitos legibles: comas de miles (aplica a cualquier asignatura;
+# a un niño de primaria "5746252" es mucho más difícil de leer que "5,746,252").
+_INSTRUCCIONES_NUMEROS_LEGIBLES = (
+    " Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador "
+    "de miles para facilitar la lectura (1000 -> 1,000; 45678 -> 45,678; "
+    "5746252 -> 5,746,252; 1000000 -> 1,000,000). NUNCA escribas números grandes sin "
+    "separador de miles."
+)
+
+
 def _bloque_rango_numerico(rango_max: tuple[int, str] | None) -> str:
     if not rango_max:
         return ""
@@ -858,6 +868,7 @@ def _llamar_llm(
                 "ejemplo: 'Si A = {1, 2, 3} y B = {1, 2, 3, 4, 5}, ¿A es subconjunto de B?'). "
                 "Tampoco escribas 'según el ejemplo', 'en el ejercicio' ni 'en el diagrama' "
                 "en la explicación: explica el concepto, no el ejercicio del libro."
+                + _INSTRUCCIONES_NUMEROS_LEGIBLES
                 + _bloque_rango_numerico(rango_max)
             ),
         },

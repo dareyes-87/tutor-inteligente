@@ -363,6 +363,7 @@ REGLAS:
 - IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en el libro. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
 - NO incluyas "emoji" en el JSON: se asigna aparte
 - NUNCA uses las palabras "fragmento", "contexto", "chunk" ni ningún término técnico de procesamiento de datos en el contenido: refiérete siempre al material como "el libro" o "tu libro de texto".
+- Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador de miles para facilitar la lectura a un niño (1000 → 1,000; 45678 → 45,678; 5746252 → 5,746,252; 1000000 → 1,000,000). NUNCA escribas números grandes sin separador de miles.
 - Responde SOLO con el JSON, sin texto adicional"""
     return [
         {
