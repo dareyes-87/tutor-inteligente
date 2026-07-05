@@ -94,6 +94,344 @@ def _referencia_a_ejemplo_del_libro(result: dict) -> str | None:
     return None
 
 
+# ============================================================================
+# Aritmética, valor posicional y rango numérico por grado (Matemáticas).
+# Los LLM no saben hacer aritmética de forma confiable: esto es una
+# limitación conocida, así que NO se confía en el LLM para verificar sus
+# propios resultados numéricos — se calcula con Python.
+# ============================================================================
+
+# Stems (no palabras completas) para cubrir cualquier conjugación del verbo
+# ("suma", "sumar", "suman", "sumamos", "sumando" contienen todos "suma") sin
+# depender de tildes: se comparan contra el texto ya normalizado (sin
+# acentos) — ver `_detectar_operacion`. Caso real: "¿cuál es el resultado de
+# SUMAR...?" sí matcheaba, pero "si se SUMAN los números..." no, porque la
+# lista solo tenía el infinitivo "sumar".
+_PALABRAS_SUMA = ("suma", "adicion", "agregar")
+_PALABRAS_RESTA = ("resta", "diferencia", "sustrac")
+_PALABRAS_MULT = ("multiplic", "producto")
+_PALABRAS_DIV = ("divid", "divisi", "cociente")
+
+
+def _limpiar_numero(texto: str) -> int | None:
+    """"3,458,057" / "3.458.057" / "3458057" -> 3458057. None si no queda un
+    entero limpio (los ejercicios de este dominio son enteros, no decimales)."""
+    limpio = re.sub(r"[.,\s]", "", texto)
+    try:
+        return int(limpio)
+    except ValueError:
+        return None
+
+
+# "1-3 dígitos, luego uno o más grupos de EXACTAMENTE 3 dígitos separados por
+# espacio/coma/punto" (los libros de Guatemala escriben miles con espacio:
+# "5 746 252"). Solo agrupa cuando el patrón de miles es exacto (grupos de 3);
+# así NO fusiona números distintos en una enumeración tipo "3458057, 1875352"
+# (donde tras la coma no hay exactamente 3 dígitos, sino el número completo).
+_PATRON_NUMERO = re.compile(r"\d{1,3}(?:[ .,]\d{3})+|\d+")
+
+
+def _extraer_numeros(texto: str) -> list[int]:
+    """Números (enteros) mencionados en el texto, en orden de aparición,
+    tolerando separadores de miles con espacio, coma o punto."""
+    crudos = _PATRON_NUMERO.findall(texto)
+    numeros = [n for n in (_limpiar_numero(c) for c in crudos) if n is not None]
+    return numeros
+
+
+def _valor_numerico_de(texto: str | None) -> int | None:
+    """Interpreta un texto como UN SOLO número completo (para comparar una
+    opción/respuesta contra un resultado calculado). None si el texto no es
+    puramente numérico (no aplica la verificación, por diseño conservador)."""
+    if not isinstance(texto, str) or not texto.strip():
+        return None
+    numeros = _extraer_numeros(texto)
+    return numeros[0] if len(numeros) == 1 else None
+
+
+def _detectar_operacion(texto: str) -> str | None:
+    t = _normalizar_pregunta(texto)  # minúsculas y sin tildes
+    if any(p in t for p in _PALABRAS_SUMA):
+        return "suma"
+    if any(p in t for p in _PALABRAS_RESTA):
+        return "resta"
+    if any(p in t for p in _PALABRAS_MULT):
+        return "multiplicacion"
+    if any(p in t for p in _PALABRAS_DIV):
+        return "division"
+    return None
+
+
+def _calcular(operacion: str, numeros: list[int]) -> int | float | None:
+    if len(numeros) < 2:
+        return None
+    if operacion == "suma":
+        return sum(numeros)
+    if operacion == "resta":
+        return numeros[0] - numeros[1]
+    if operacion == "multiplicacion":
+        return numeros[0] * numeros[1]
+    if operacion == "division":
+        return numeros[0] / numeros[1] if numeros[1] != 0 else None
+    return None
+
+
+def _detectar_operador_simbolo(texto: str) -> str | None:
+    """Como `_detectar_operacion`, pero por el SÍMBOLO en vez de la palabra
+    (para ecuaciones tipo "3 + 4 = 7" sin la palabra "suma")."""
+    if "+" in texto:
+        return "suma"
+    if "×" in texto or "*" in texto or re.search(r"\d\s*x\s*\d", texto, re.IGNORECASE):
+        return "multiplicacion"
+    if "÷" in texto or "/" in texto:
+        return "division"
+    if "-" in texto:
+        return "resta"
+    return None
+
+
+def _evaluar_ecuacion(texto: str, operacion_pista: str | None = None) -> tuple[bool, int | float] | None:
+    """Evalúa si `texto` afirma un resultado aritmético cierto o falso, en
+    cualquiera de dos formas en las que el LLM las redacta:
+      - Ecuación con signo "=": "3458057 + 1875352 + 675374 = 6008783".
+      - Afirmación en prosa (sin "="): "La suma de 3458057, 1875352 y 675374
+        es 6008783" (operandos = todos los números menos el último).
+    Devuelve (es_cierta, resultado_real), o None si `texto` no tiene forma
+    evaluable (menos de 2 operandos + 1 resultado, u operación no detectada).
+    """
+    operacion = operacion_pista or _detectar_operacion(texto) or _detectar_operador_simbolo(texto)
+    if operacion is None:
+        return None
+    if "=" in texto:
+        izquierda, _, derecha = texto.partition("=")
+        operandos = _extraer_numeros(izquierda)
+        declarado = _valor_numerico_de(derecha)
+    else:
+        numeros = _extraer_numeros(texto)
+        if len(numeros) < 3:
+            return None
+        *operandos, declarado = numeros
+    if len(operandos) < 2 or declarado is None:
+        return None
+    real = _calcular(operacion, operandos)
+    if real is None:
+        return None
+    return (real == declarado, real)
+
+
+def _verificar_aritmetica(tipo: TipoActividad, result: dict) -> str | None:
+    """Guardrail determinístico: si la pregunta/afirmación/opciones plantean
+    una operación aritmética explícita (sumar/restar/multiplicar/dividir)
+    sobre 2+ números, se CALCULA con Python y se compara contra lo que el LLM
+    marcó como correcto.
+
+    Casos reales detectados:
+      - Opción múltiple con el resultado suelto en cada opción ("el
+        resultado de sumar 3458057, 1875352 y 675374" con 4 opciones
+        numéricas): NINGUNA coincidía con el resultado real — el LLM inventó
+        números cercanos entre sí y marcó uno como correcto.
+      - Opción múltiple con la ECUACIÓN COMPLETA en cada opción ("3458057 +
+        1875352 + 675374 = 6008783", "...= 6009000", ...): la pregunta sola
+        no tiene los operandos (están dentro de las opciones), así que hay
+        que evaluar cada opción como su propia ecuación. Caso real: el LLM
+        marcó como correcta una opción cuya ecuación es FALSA (dijo que el
+        resultado "aproximado" era el resultado real, confundiendo
+        aproximación con el cálculo exacto).
+      - Respuesta corta con "5000" para un cálculo cuyo resultado real era
+        distinto.
+    """
+    if tipo == TipoActividad.opcion_multiple:
+        opciones = result.get("opciones")
+        pregunta = result.get("pregunta") or ""
+        if isinstance(opciones, list):
+            # Cada opción trae SU PROPIA afirmación numérica completa
+            # (operandos + resultado), como ecuación ("A + B = R") o en
+            # prosa ("La suma de A y B es R"): se evalúa cada una por
+            # separado. Se exige que al menos 2 opciones sean evaluables así
+            # para no disparar con un número suelto que caiga por casualidad.
+            pista = _detectar_operacion(pregunta)
+            evaluaciones = [
+                (o, _evaluar_ecuacion(o, pista)) for o in opciones if isinstance(o, str)
+            ]
+            evaluables = [(o, ev) for o, ev in evaluaciones if ev is not None]
+            if len(evaluables) >= 2:
+                ciertas = [o for o, (es_cierta, _real) in evaluables if es_cierta]
+                if not ciertas:
+                    _, (_, real) = evaluables[0]
+                    return (
+                        f"ninguna opción es matemáticamente correcta "
+                        f"(resultado real: {real}); el LLM probablemente calculó mal"
+                    )
+                respuesta_correcta = result.get("respuesta_correcta")
+                if respuesta_correcta not in ciertas:
+                    return (
+                        f"la opción marcada como correcta ('{respuesta_correcta}') es una "
+                        f"afirmación FALSA; la(s) opción(es) matemáticamente correcta(s) "
+                        f"son: {ciertas}"
+                    )
+                return None
+            # Menos de 2 opciones evaluables como afirmación propia: seguir
+            # con el camino normal (números sueltos, operandos en la pregunta).
+
+    texto = _texto_pregunta(result)
+    if not texto:
+        return None
+    operacion = _detectar_operacion(texto)
+    if operacion is None:
+        return None
+
+    if tipo == TipoActividad.verdadero_falso:
+        # La afirmación suele declarar el resultado dentro del propio texto
+        # ("la suma de 3 y 4 es 8"): los operandos son todos los números
+        # menos el último (el resultado afirmado).
+        numeros = _extraer_numeros(texto)
+        if len(numeros) < 3:
+            return None
+        *operandos, resultado_afirmado = numeros
+        esperado = _calcular(operacion, operandos)
+        if esperado is None:
+            return None
+        es_verdadero_real = resultado_afirmado == esperado
+        respuesta_correcta = result.get("respuesta_correcta")
+        if isinstance(respuesta_correcta, bool) and respuesta_correcta != es_verdadero_real:
+            return (
+                f"la afirmación dice que el resultado es {resultado_afirmado}, pero el "
+                f"resultado real de la operación es {esperado}"
+            )
+        return None
+
+    numeros = _extraer_numeros(texto)
+    if len(numeros) < 2:
+        return None
+    esperado = _calcular(operacion, numeros)
+    if esperado is None:
+        return None
+
+    if tipo == TipoActividad.opcion_multiple:
+        opciones = result.get("opciones")
+        if not isinstance(opciones, list):
+            return None
+        valores = [_valor_numerico_de(o) for o in opciones if isinstance(o, str)]
+        if not any(v == esperado for v in valores):
+            return (
+                f"ninguna opción coincide con el resultado real de la operación "
+                f"({operacion} = {esperado}); el LLM probablemente calculó mal"
+            )
+        valor_marcado = _valor_numerico_de(result.get("respuesta_correcta"))
+        if valor_marcado is not None and valor_marcado != esperado:
+            return f"la opción marcada como correcta ({valor_marcado}) no es el resultado real ({esperado})"
+        return None
+
+    if tipo in (TipoActividad.completar, TipoActividad.respuesta_corta):
+        valor_marcado = _valor_numerico_de(result.get("respuesta_correcta"))
+        if valor_marcado is not None and valor_marcado != esperado:
+            return f"la respuesta marcada ({valor_marcado}) no es el resultado real de la operación ({esperado})"
+        return None
+
+    return None
+
+
+_PATRON_VALOR_POSICIONAL = re.compile(
+    r"valor\s+(?:del|de)\s+(\d)\s+en\s+(?:el\s+)?n[uú]mero\s+([\d.,]+)", re.IGNORECASE
+)
+
+
+def _verificar_valor_posicional(tipo: TipoActividad, result: dict) -> str | None:
+    """Guardrail determinístico: preguntas de valor posicional ("¿Cuál es el
+    valor del 5 en el número 5746252?"), donde el LLM se equivoca seguido.
+    Caso real: marcó "5000" como correcto cuando el 5 está en la posición de
+    los millones (valor real 5,000,000)."""
+    texto = _texto_pregunta(result)
+    if not texto:
+        return None
+    m = _PATRON_VALOR_POSICIONAL.search(texto)
+    if not m:
+        return None
+    digito = m.group(1)
+    numero_str = re.sub(r"[.,\s]", "", m.group(2))
+    if digito not in numero_str:
+        return None
+    posicion_desde_izq = numero_str.index(digito)
+    posicion_desde_derecha = len(numero_str) - 1 - posicion_desde_izq
+    valor_real = int(digito) * (10 ** posicion_desde_derecha)
+
+    if tipo == TipoActividad.opcion_multiple:
+        opciones = result.get("opciones")
+        if not isinstance(opciones, list):
+            return None
+        valores = [_valor_numerico_de(o) for o in opciones if isinstance(o, str)]
+        if not any(v == valor_real for v in valores):
+            return f"ninguna opción coincide con el valor posicional real ({valor_real})"
+        valor_marcado = _valor_numerico_de(result.get("respuesta_correcta"))
+        if valor_marcado is not None and valor_marcado != valor_real:
+            return f"la opción marcada ({valor_marcado}) no es el valor posicional real ({valor_real})"
+        return None
+
+    if tipo in (TipoActividad.completar, TipoActividad.respuesta_corta):
+        valor_marcado = _valor_numerico_de(result.get("respuesta_correcta"))
+        if valor_marcado is not None and valor_marcado != valor_real:
+            return f"la respuesta marcada ({valor_marcado}) no es el valor posicional real ({valor_real})"
+        return None
+
+    return None
+
+
+# Rango numérico máximo esperado por grado en Matemáticas (currículo de
+# Guatemala). Grados no listados (básico/diversificado) no se restringen:
+# ya incluyen álgebra, fracciones/decimales y números grandes legítimamente.
+_RANGO_MAX_PRIMARIA = {
+    1: (99_999, "decenas de millar (máximo 99,999)"),
+    2: (99_999, "decenas de millar (máximo 99,999)"),
+    3: (99_999, "decenas de millar (máximo 99,999)"),
+    4: (99_999, "decenas de millar (máximo 99,999)"),
+    5: (999_999, "centenas de millar (máximo 999,999)"),
+}
+_RANGO_MAX_PRIMARIA_6_EN_ADELANTE = (9_999_999, "millones (máximo 9,999,999)")
+
+
+def _grado_ordinal(grado_nombre: str | None) -> int | None:
+    if not grado_nombre:
+        return None
+    m = re.match(r"\s*(\d+)", grado_nombre)
+    return int(m.group(1)) if m else None
+
+
+def _rango_numerico_grado(
+    asignatura_nombre: str | None, grado_nombre: str | None
+) -> tuple[int, str] | None:
+    """Rango numérico máximo para Matemáticas según el grado, o None si no
+    aplica restricción (no es Matemáticas, es básico/diversificado —ya
+    trabajan números grandes, fracciones y decimales legítimamente—, o no se
+    pudo determinar el grado). Caso real: un ejercicio de 4to primaria pedía
+    sumar números de 7 dígitos (millones), fuera del currículo del grado."""
+    if not asignatura_nombre or "matematic" not in _normalizar_pregunta(asignatura_nombre):
+        return None
+    nombre = (grado_nombre or "").lower()
+    if "primaria" not in nombre:
+        return None
+    ordinal = _grado_ordinal(grado_nombre)
+    if ordinal is None:
+        return None
+    if ordinal in _RANGO_MAX_PRIMARIA:
+        return _RANGO_MAX_PRIMARIA[ordinal]
+    if ordinal >= 6:
+        return _RANGO_MAX_PRIMARIA_6_EN_ADELANTE
+    return None
+
+
+def _verificar_rango_numerico(result: dict, rango_max: tuple[int, str] | None) -> str | None:
+    """Guardrail determinístico: ningún número generado (operando, resultado
+    u opción) puede exceder el rango del grado del estudiante."""
+    if not rango_max:
+        return None
+    max_valor, _desc = rango_max
+    for texto in _textos_de_actividad(result):
+        for n in _extraer_numeros(texto):
+            if n > max_valor:
+                return f"contiene un número ({n:,}) que excede el rango numérico del grado (máximo {max_valor:,})"
+    return None
+
+
 _PATRON_INCISO = re.compile(r"^\s*[A-Da-d]\s*[\.\):]\s*")
 
 
@@ -163,7 +501,9 @@ def _ordenar_parece_categorico(instruccion: str | None, elementos: list | None) 
     return any(m in texto_instr for m in _MARCADORES_CATEGORICOS)
 
 
-def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
+def _actividad_invalida(
+    tipo: TipoActividad, result: dict, rango_max: tuple[int, str] | None = None
+) -> str | None:
     """Guardrail determinístico post-generación: devuelve la razón por la que
     la actividad NO sirve, o None si está bien.
 
@@ -190,8 +530,21 @@ def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
 
     Para TODOS los tipos: la actividad no puede depender de un
     ejemplo/ejercicio/diagrama específico del libro que el estudiante no
-    tiene a la vista — ver `_referencia_a_ejemplo_del_libro`.
+    tiene a la vista — ver `_referencia_a_ejemplo_del_libro`. Tampoco puede
+    tener errores aritméticos, de valor posicional, ni números fuera del
+    rango del grado (los LLM no saben hacer aritmética de forma confiable:
+    ver `_verificar_aritmetica`, `_verificar_valor_posicional`,
+    `_verificar_rango_numerico`).
     """
+    razon_rango = _verificar_rango_numerico(result, rango_max)
+    if razon_rango:
+        return razon_rango
+    razon_aritmetica = _verificar_aritmetica(tipo, result)
+    if razon_aritmetica:
+        return razon_aritmetica
+    razon_posicional = _verificar_valor_posicional(tipo, result)
+    if razon_posicional:
+        return razon_posicional
     frase_ejemplo = _referencia_a_ejemplo_del_libro(result)
     if frase_ejemplo:
         return f"la actividad depende de un ejercicio/ejemplo específico del libro ('{frase_ejemplo}')"
@@ -408,11 +761,31 @@ def _bloque_evitar_preguntas(evitar_preguntas: list[str]) -> str:
     )
 
 
+def _bloque_rango_numerico(rango_max: tuple[int, str] | None) -> str:
+    if not rango_max:
+        return ""
+    max_valor, desc = rango_max
+    return (
+        f"\nRESTRICCIÓN DE RANGO NUMÉRICO (currículo de Guatemala para este grado): "
+        f"todos los números que uses en la actividad (operandos, resultados, opciones) "
+        f"deben ser de {desc}. NUNCA generes ni uses números que excedan {max_valor:,}. "
+        "Si el libro menciona números más grandes como ejemplo, ADAPTA los ejercicios a "
+        "números dentro de este rango, aunque tengas que inventar cifras nuevas (mientras "
+        "el CONCEPTO evaluado siga siendo el del libro). "
+        "IMPORTANTE sobre aritmética: antes de responder, VERIFICA con cuidado que el "
+        "resultado de cualquier operación (suma, resta, multiplicación, división) que "
+        "generes sea matemáticamente correcto. Vuelve a sumar/restar dígito por dígito si "
+        "es necesario. NUNCA marques como correcta una opción cuyo resultado no hayas "
+        "verificado con certeza."
+    )
+
+
 def _llamar_llm(
     tipo: TipoActividad,
     context: str,
     tema: str | None = None,
     evitar_preguntas: list[str] | None = None,
+    rango_max: tuple[int, str] | None = None,
 ) -> dict | None:
     """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
     (sin separar contenido/respuesta_correcta) o None si falla."""
@@ -448,6 +821,7 @@ def _llamar_llm(
                 "ejemplo: 'Si A = {1, 2, 3} y B = {1, 2, 3, 4, 5}, ¿A es subconjunto de B?'). "
                 "Tampoco escribas 'según el ejemplo', 'en el ejercicio' ni 'en el diagrama' "
                 "en la explicación: explica el concepto, no el ejercicio del libro."
+                + _bloque_rango_numerico(rango_max)
             ),
         },
         {
@@ -503,6 +877,8 @@ def generar_actividad(
     context: str,
     tema: str | None = None,
     evitar_preguntas: list[str] | None = None,
+    asignatura_nombre: str | None = None,
+    grado_nombre: str | None = None,
 ) -> tuple[TipoActividad, dict | None]:
     """
     Genera una actividad usando el LLM.
@@ -522,25 +898,34 @@ def generar_actividad(
     se reintenta UNA vez; si vuelve a repetirse, se acepta con warning (una
     pregunta repetida es mejor que un hueco en la sesión de 5).
 
+    `asignatura_nombre`/`grado_nombre` habilitan, SOLO para Matemáticas, la
+    restricción de rango numérico por grado (ver `_rango_numerico_grado`) y
+    la verificación aritmética/de valor posicional en `_actividad_invalida`
+    (que en realidad corre para cualquier asignatura: un error de suma
+    también sería un error en otras materias, aunque en la práctica solo se
+    ha visto en Matemáticas).
+
     Devuelve `(tipo_efectivo, dict | None)`: `tipo_efectivo` puede diferir del
     `tipo` pedido si se forzó la regeneración; el dict es None si falló.
     """
     evitar = [p for p in (evitar_preguntas or []) if p and p.strip()]
-    result = _llamar_llm(tipo, context, tema, evitar)
+    rango_max = _rango_numerico_grado(asignatura_nombre, grado_nombre)
+    result = _llamar_llm(tipo, context, tema, evitar, rango_max)
 
     if result:
-        razon = _actividad_invalida(tipo, result)
+        razon = _actividad_invalida(tipo, result, rango_max)
         if not razon and tipo == TipoActividad.ordenar and not _verificar_ordenar_es_secuencia(result):
             razon = "verificación independiente: no es una secuencia con progresión real (parece una lista de hechos/propiedades)"
         if razon:
             logger.warning(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
-            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar)
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max)
             # La regeneración también se valida: podría volver a caer en un
             # defecto independiente del tipo (p. ej. citar "el ejemplo 2 del
-            # libro"). Mejor descartar que servir una actividad rota.
-            if result_omc and not _actividad_invalida(TipoActividad.opcion_multiple, result_omc):
+            # libro", o un error aritmético distinto). Mejor descartar que
+            # servir una actividad rota.
+            if result_omc and not _actividad_invalida(TipoActividad.opcion_multiple, result_omc, rango_max):
                 tipo = TipoActividad.opcion_multiple
                 result = result_omc
             else:
@@ -554,10 +939,10 @@ def generar_actividad(
         logger.warning(
             f"Actividad {tipo.value} repite una pregunta de la sesión; reintentando una vez"
         )
-        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""])
+        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max)
         if (
             reintento
-            and not _actividad_invalida(tipo, reintento)
+            and not _actividad_invalida(tipo, reintento, rango_max)
             and not _es_pregunta_repetida(reintento, evitar)
         ):
             result = reintento

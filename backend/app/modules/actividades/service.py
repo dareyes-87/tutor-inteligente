@@ -146,7 +146,9 @@ async def crear_actividad(
     # Generar actividad con el LLM. `tipo` puede cambiar si el guardrail forzó
     # opcion_multiple (ver generar_actividad): usar SIEMPRE el tipo efectivo
     # para dar forma a contenido/respuesta_correcta y para guardar la actividad.
-    tipo, result = generar_actividad(tipo, context, tema, evitar_preguntas)
+    tipo, result = generar_actividad(
+        tipo, context, tema, evitar_preguntas, asignatura.nombre, grado_nombre
+    )
     if not result:
         return None
 
