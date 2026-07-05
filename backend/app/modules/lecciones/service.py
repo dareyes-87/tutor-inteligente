@@ -432,6 +432,44 @@ def _corregir_preguntas(micro: MicroLeccionResponse) -> None:
             random.shuffle(tarjeta.pregunta.opciones)
 
 
+# Números "pegados" (sin coma ni punto alrededor) → con coma de miles. El
+# prompt ya pide comas (Bug 3), pero el modelo 7B las omite seguido cuando copia
+# números del libro (que vienen mal por el OCR): esta es la capa determinística.
+# Solo aplica a las micro-lecciones (texto de solo lectura); en las actividades
+# se evita porque tocaría la respuesta correcta y rompería la comparación exacta
+# al calificar.
+#   - En Matemáticas se formatean números de 4+ dígitos (1000 → 1,000).
+#   - En otras materias, solo 5+ dígitos: los de 4 dígitos incluyen años
+#     (1860, 1970) que NO deben llevar coma, y en historia/ciencias son comunes.
+_RE_NUMERO_PEGADO_4 = re.compile(r"(?<![\d.,])\d{4,}(?![\d.,])")
+_RE_NUMERO_PEGADO_5 = re.compile(r"(?<![\d.,])\d{5,}(?![\d.,])")
+
+
+def _con_coma_de_miles(texto: str | None, patron: re.Pattern) -> str | None:
+    if not texto:
+        return texto
+    return patron.sub(lambda m: f"{int(m.group()):,}", texto)
+
+
+def _formatear_miles(micro: MicroLeccionResponse, es_matematicas: bool) -> None:
+    """Inserta comas de miles en los números grandes de cada tarjeta (muta
+    `micro`). En las preguntas rápidas formatea opciones y respuesta_correcta
+    con la MISMA función, así el emparejamiento exacto opción↔respuesta no se
+    rompe."""
+    patron = _RE_NUMERO_PEGADO_4 if es_matematicas else _RE_NUMERO_PEGADO_5
+    fmt = lambda s: _con_coma_de_miles(s, patron)
+    for t in micro.tarjetas:
+        t.contenido = fmt(t.contenido)
+        t.titulo_concepto = fmt(t.titulo_concepto)
+        t.dato_curioso = fmt(t.dato_curioso)
+        p = t.pregunta
+        if p is not None:
+            p.texto = fmt(p.texto) or p.texto
+            p.explicacion = fmt(p.explicacion) or p.explicacion
+            p.opciones = [fmt(o) or o for o in p.opciones]
+            p.respuesta_correcta = fmt(p.respuesta_correcta) or p.respuesta_correcta
+
+
 def _asignar_emojis(micro: MicroLeccionResponse, tema_leccion: str, asignatura_nombre: str) -> None:
     """Asigna el emoji de cada tarjeta con el mapeo curado (muta `micro`).
 
@@ -571,6 +609,7 @@ async def generar_micro_leccion(
 
     if micro is None or not micro.tarjetas:
         raise HTTPException(status_code=502, detail="No se pudo generar la micro-lección.")
+    _formatear_miles(micro, es_matematicas="matem" in (asignatura_nombre or "").lower())
     tema_leccion = f"{leccion.tema_clave or ''} {leccion.nombre}".strip()
     _asignar_emojis(micro, tema_leccion, asignatura_nombre)
     micro.fragment_ids = fragment_ids
