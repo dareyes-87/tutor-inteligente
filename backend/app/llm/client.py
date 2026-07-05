@@ -11,6 +11,22 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Modelo más capaz (aritmética/razonamiento) para Matemáticas. El Qwen 7B por
+# defecto no calcula de forma confiable (ver 9 rondas de guardrails), así que
+# para Matemáticas se usa el 70B —el mismo que ya genera la ruta de lecciones—
+# en actividades, micro-lecciones, retroalimentación y chat. El resto de
+# asignaturas sigue con el Qwen 7B (más barato y suficiente para texto).
+MODELO_MATEMATICAS = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+
+
+def modelo_para_asignatura(asignatura_nombre: str | None) -> str | None:
+    """Modelo a usar según la asignatura: el 70B para Matemáticas, o None
+    (= modelo por defecto, Qwen 7B) para las demás. Se decide por NOMBRE
+    ("matem", robusto al acento y a cambios de asignatura_id)."""
+    if asignatura_nombre and "matem" in asignatura_nombre.lower():
+        return MODELO_MATEMATICAS
+    return None
+
 
 class LLMClient:
     def __init__(self) -> None:
@@ -30,13 +46,19 @@ class LLMClient:
         )
         return resp.choices[0].message.content
 
-    def chat(self, messages: list[dict], max_tokens: int = 1024, temperature: float = 0.7) -> str:
+    def chat(
+        self, messages: list[dict], max_tokens: int = 1024,
+        temperature: float = 0.7, model: str | None = None,
+    ) -> str:
         """
         Envía una conversación al LLM y devuelve la respuesta completa.
         Usado por el módulo de Chat para las respuestas del tutor.
+
+        `model` permite forzar un modelo distinto al por defecto (p. ej. el 70B
+        para el chat de Matemáticas). Si es None, usa `self.model`.
         """
         resp = self._client.chat.completions.create(
-            model=self.model,
+            model=model or self.model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,

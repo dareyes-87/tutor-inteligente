@@ -7,7 +7,7 @@ import random
 import re
 import unicodedata
 
-from app.llm.client import llm_client
+from app.llm.client import MODELO_MATEMATICAS, llm_client
 from app.models.actividad import TipoActividad
 
 logger = logging.getLogger(__name__)
@@ -1017,12 +1017,14 @@ def _llamar_llm(
         },
     ]
 
-    result = llm_client.generate_json(messages)
+    # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
+    modelo = MODELO_MATEMATICAS if es_matematicas else None
+    result = llm_client.generate_json(messages, model=modelo)
 
     if result is None:
         # Reintentar una vez con prompt más estricto
         messages[-1]["content"] += "\n\nIMPORTANTE: Responde SOLO con el JSON, sin markdown, sin explicaciones adicionales."
-        result = llm_client.generate_json(messages)
+        result = llm_client.generate_json(messages, model=modelo)
 
     if result and tipo == TipoActividad.opcion_multiple:
         # Guardrail determinístico: el prompt ya pide no anteponer incisos,

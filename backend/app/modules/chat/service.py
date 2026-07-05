@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.llm.client import llm_client
+from app.llm.client import llm_client, modelo_para_asignatura
 from app.models.conversacion import Conversacion
 from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
@@ -173,7 +173,8 @@ async def procesar_pregunta(
         logger.info(
             f"[Chat] Contexto relevante: enviando al LLM con {len(fragments)} fragmentos"
         )
-        respuesta = llm_client.chat(messages)
+        # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
+        respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
         fragments_referencia = fragments
     else:
         logger.info(
