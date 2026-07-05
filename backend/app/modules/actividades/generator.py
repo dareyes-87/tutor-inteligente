@@ -53,6 +53,47 @@ def _hueco_es_redundante(oracion: str | None, respuesta_correcta: str) -> bool:
     return False
 
 
+# Frases que delatan que el LLM se basó en un ejercicio/ejemplo/diagrama
+# ESPECÍFICO del libro (que el estudiante no tiene a la vista) en vez de en la
+# teoría del tema. "por ejemplo" NO matchea (es una muletilla legítima); lo que
+# se busca es la referencia a UN ejemplo concreto: "según el ejemplo 2",
+# "en el ejercicio", "del diagrama", etc.
+_PATRONES_EJEMPLO_LIBRO = (
+    re.compile(r"\bseg[uú]n el (ejemplo|ejercicio|diagrama)\b", re.IGNORECASE),
+    re.compile(r"\ben el (ejemplo|ejercicio|diagrama)\b", re.IGNORECASE),
+    re.compile(r"\bdel (ejemplo|ejercicio|diagrama)\b", re.IGNORECASE),
+    re.compile(r"\bejemplo\s+\d", re.IGNORECASE),
+)
+
+
+def _textos_de_actividad(result: dict):
+    """Todos los strings visibles/almacenables de la actividad generada
+    (pregunta, opciones, explicación, elementos, etc.)."""
+    for valor in result.values():
+        if isinstance(valor, str):
+            yield valor
+        elif isinstance(valor, list):
+            for elem in valor:
+                if isinstance(elem, str):
+                    yield elem
+
+
+def _referencia_a_ejemplo_del_libro(result: dict) -> str | None:
+    """Devuelve la frase que delata dependencia de un ejercicio específico del
+    libro, o None. Caso real: una actividad V/F sobre "los elementos de P
+    pertenecen a C" donde P y C eran conjuntos del diagrama de Venn de un
+    ejercicio del libro (imposible de responder sin el libro abierto), y la
+    explicación decía "Según el ejemplo 2 del libro...". El filtro
+    es_ejercicio_del_libro (pre-generación) no captura estos fragmentos porque
+    no llevan encabezados de ejercicio; esto revisa el OUTPUT del LLM."""
+    for texto in _textos_de_actividad(result):
+        for patron in _PATRONES_EJEMPLO_LIBRO:
+            m = patron.search(texto)
+            if m:
+                return m.group(0)
+    return None
+
+
 _PATRON_INCISO = re.compile(r"^\s*[A-Da-d]\s*[\.\):]\s*")
 
 
@@ -146,7 +187,14 @@ def _actividad_invalida(tipo: TipoActividad, result: dict) -> str | None:
     `_orden_tiene_conclusion_fuera_de_lugar` y `_ordenar_parece_categorico`
     (esta última generaliza a cualquier asignatura, no depende de palabras
     clave de un tema en particular).
+
+    Para TODOS los tipos: la actividad no puede depender de un
+    ejemplo/ejercicio/diagrama específico del libro que el estudiante no
+    tiene a la vista — ver `_referencia_a_ejemplo_del_libro`.
     """
+    frase_ejemplo = _referencia_a_ejemplo_del_libro(result)
+    if frase_ejemplo:
+        return f"la actividad depende de un ejercicio/ejemplo específico del libro ('{frase_ejemplo}')"
     if tipo == TipoActividad.ordenar:
         elementos = result.get("elementos_desordenados")
         orden = result.get("orden_correcto")
@@ -390,7 +438,16 @@ def _llamar_llm(
                 "célula, no cell). "
                 "NUNCA uses las palabras 'fragmento', 'contexto', 'chunk' ni ningún término "
                 "técnico de procesamiento de datos en tu respuesta: refiérete siempre al "
-                "material como 'el libro' o 'tu libro de texto'."
+                "material como 'el libro' o 'tu libro de texto'. "
+                "NUNCA generes preguntas que dependan de un ejemplo específico del libro "
+                "(como conjuntos con nombres de letras P, C, R, V de un diagrama particular, "
+                "o datos numéricos de un ejercicio resuelto): el estudiante responde SIN el "
+                "libro abierto y no puede saber a qué se refieren. La pregunta debe evaluar "
+                "la COMPRENSIÓN CONCEPTUAL del tema y entenderse completa por sí sola; si "
+                "necesitas un ejemplo, defínelo COMPLETO dentro de la misma pregunta (por "
+                "ejemplo: 'Si A = {1, 2, 3} y B = {1, 2, 3, 4, 5}, ¿A es subconjunto de B?'). "
+                "Tampoco escribas 'según el ejemplo', 'en el ejercicio' ni 'en el diagrama' "
+                "en la explicación: explica el concepto, no el ejercicio del libro."
             ),
         },
         {
@@ -480,11 +537,13 @@ def generar_actividad(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
             result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar)
-            if result_omc:
+            # La regeneración también se valida: podría volver a caer en un
+            # defecto independiente del tipo (p. ej. citar "el ejemplo 2 del
+            # libro"). Mejor descartar que servir una actividad rota.
+            if result_omc and not _actividad_invalida(TipoActividad.opcion_multiple, result_omc):
                 tipo = TipoActividad.opcion_multiple
                 result = result_omc
             else:
-                # No se pudo regenerar: mejor no devolver una actividad rota.
                 logger.warning("No se pudo regenerar como opcion_multiple; se descarta la actividad")
                 result = None
 
