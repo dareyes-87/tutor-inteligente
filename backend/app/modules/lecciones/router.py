@@ -115,6 +115,7 @@ async def post_completar_actividad(
             body.actividades_aprobadas,
             body.puntaje,
             db,
+            total_actividades=body.total_actividades,
         )
     return await service.completar_actividad_leccion(
         current_user.id, leccion_id, body.puntaje, db

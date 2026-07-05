@@ -102,7 +102,11 @@ class CompletarActividadRequest(BaseModel):
     # ambos, se evalúa el nivel completo; si no, se usa el comportamiento viejo.
     nivel: int | None = Field(None, ge=1, le=3, description="Nivel practicado (1-3)")
     actividades_aprobadas: int | None = Field(
-        None, ge=0, description="Cuántas de las 5 actividades superaron el umbral (>=70)"
+        None, ge=0, description="Cuántas actividades de la sesión superaron el umbral (>=70)"
+    )
+    total_actividades: int | None = Field(
+        None, ge=1, description="Cuántas actividades tuvo la sesión en total (para "
+        "calcular el umbral de aprobación de forma proporcional, no fija)."
     )
 
 

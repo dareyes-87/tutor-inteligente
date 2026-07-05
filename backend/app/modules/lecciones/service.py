@@ -6,6 +6,7 @@ lecciones, y la capa de gamificación (rachas + ranking) integrada con las
 lecciones. Las funciones son async y son dueñas del commit.
 """
 import logging
+import math
 import random
 import re
 from datetime import date, datetime, timezone
@@ -47,10 +48,25 @@ PUNTAJE_MINIMO_COMPLETAR = 70
 # --- Sistema de 3 niveles tipo Duolingo ---
 # Cuántos fragmentos (Top-K) usa la micro-lección en cada nivel.
 NIVEL_TOPK = {1: 5, 2: 8, 3: 10}
-# Cuántas de las 5 actividades de práctica hay que aprobar (>=70) para superar el nivel.
+# Fracción de la sesión que hay que aprobar (>=70) para superar el nivel. Es
+# PROPORCIONAL al nº de actividades REALMENTE generadas, no un conteo fijo: una
+# sesión puede generar menos de 5 (si algún tipo falla o el guardrail lo
+# descarta), y un umbral fijo mayor que el total hacía IMPOSIBLE aprobar (bug
+# real: 3/3 correctas pero "necesitas 4"). ceil(0.8·total): 3→3, 4→4, 5→4.
+FRACCION_APROBAR_NIVEL = 0.8
+# Fallback (solo si el cliente no envía total_actividades): conteo fijo viejo.
 NIVEL_APROBADAS_REQUERIDAS = {1: 3, 2: 4, 3: 4}
 # Tamaño del pool de candidatos del que se muestrea Top-K (da variedad por intento).
 POOL_CANDIDATOS_FRAGMENTOS = 15
+
+
+def _aprobadas_requeridas(nivel: int, total_actividades: int | None) -> int:
+    """Cuántas actividades hay que aprobar para superar el nivel. Proporcional
+    al total real de la sesión (ceil(0.8·total), mínimo 1) para que SIEMPRE sea
+    alcanzable; si el cliente no manda el total, cae al conteo fijo viejo."""
+    if total_actividades and total_actividades > 0:
+        return max(1, math.ceil(FRACCION_APROBAR_NIVEL * total_actividades))
+    return NIVEL_APROBADAS_REQUERIDAS.get(nivel, 3)
 
 
 def _seleccionar_fragmentos_nivel(
@@ -706,6 +722,7 @@ async def completar_nivel(
     actividades_aprobadas: int,
     puntaje: int,
     db: AsyncSession,
+    total_actividades: int | None = None,
 ) -> CompletarNivelResponse:
     """Evalúa el resultado de practicar un NIVEL y avanza/repite según el umbral.
 
@@ -724,7 +741,7 @@ async def completar_nivel(
     nivel = nivel if nivel in NIVEL_APROBADAS_REQUERIDAS else 1
     progreso = await _get_or_create_progreso(estudiante_id, leccion, db)
 
-    requeridas = NIVEL_APROBADAS_REQUERIDAS[nivel]
+    requeridas = _aprobadas_requeridas(nivel, total_actividades)
     tema = leccion.tema_clave or leccion.nombre
 
     if actividades_aprobadas < requeridas:

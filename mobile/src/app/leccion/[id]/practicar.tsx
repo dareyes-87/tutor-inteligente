@@ -198,7 +198,8 @@ export default function PracticarScreen() {
     const aprobadas = resultados.filter((r) => r.puntaje >= 70).length;
     const ultimoPuntaje = resultados.length ? resultados[resultados.length - 1].puntaje : 0;
     try {
-      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas);
+      // total real de la sesión: el umbral de aprobación es proporcional (no fijo).
+      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas, acts.length);
       setResultadoNivel(res);
     } catch {
       /* el resumen se muestra igual sin avance de nivel */

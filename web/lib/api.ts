@@ -371,10 +371,16 @@ export function completarNivel(
   puntaje: number,
   nivel: number,
   actividadesAprobadas: number,
+  totalActividades: number,
 ): Promise<CompletarNivelResponse> {
   return request<CompletarNivelResponse>(`/lecciones/${leccionId}/completar-actividad`, {
     method: "POST",
-    body: JSON.stringify({ puntaje, nivel, actividades_aprobadas: actividadesAprobadas }),
+    body: JSON.stringify({
+      puntaje,
+      nivel,
+      actividades_aprobadas: actividadesAprobadas,
+      total_actividades: totalActividades,
+    }),
   });
 }
 

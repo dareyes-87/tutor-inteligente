@@ -175,7 +175,9 @@ export default function PracticarPage() {
     const aprobadas = resultados.filter((r) => r.puntaje >= 70).length;
     const ultimoPuntaje = resultados.length ? resultados[resultados.length - 1].puntaje : 0;
     try {
-      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas);
+      // Se envía el total real de la sesión: el umbral de aprobación es
+      // proporcional (no fijo), para que menos de 5 actividades no lo vuelvan inaprobable.
+      const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas, acts.length);
       setResultadoNivel(res);
     } catch {
       /* el resumen se muestra igual sin avance de nivel */
