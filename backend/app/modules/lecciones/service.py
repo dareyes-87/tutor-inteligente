@@ -304,14 +304,27 @@ _ENFOQUE_NIVEL = {
 }
 
 
+# Bloque de reglas SOLO para Matemáticas: el LLM comete errores de posición
+# numérica y de aritmética que confunden al estudiante. La micro-lección es
+# texto libre (no JSON verificable como las actividades), así que reforzar el
+# prompt es la única capa disponible aquí. Cubre Bug 2 (nomenclatura posicional)
+# y Bug 5 (ejemplos matemáticos correctos + redondeo).
+_REGLAS_MATEMATICAS_MICRO = """
+- NOMENCLATURA POSICIONAL EXACTA: de derecha a izquierda las posiciones son unidades, decenas, centenas, unidades de millar (NO "mil"), decenas de millar, centenas de millar, unidades de millón. Una centena de millar vale 100,000 (NO 1,000). Al comparar dos números, identifica con cuidado la posición EXACTA donde difieren (ejemplo: 1,234 y 1,243 comparten millar y centena, pero difieren en las DECENAS: 3 vs 4)."""
+
+
 def _build_micro_leccion_messages(
-    nombre_leccion: str, fragmentos: str, nivel: int = 1
+    nombre_leccion: str, fragmentos: str, nivel: int = 1, asignatura_nombre: str | None = None
 ) -> list[dict]:
     """Prompt para generar la micro-lección (tarjetas educativas) de una lección.
 
     `nivel` (1-3) cambia el enfoque pedagógico (base / profundización / síntesis).
+    `asignatura_nombre` activa reglas extra para Matemáticas (posiciones, aritmética).
     """
     enfoque = _ENFOQUE_NIVEL.get(nivel, _ENFOQUE_NIVEL[1])
+    # "matem" evita el problema del acento ("Matemáticas".lower() conserva la á).
+    es_matematicas = bool(asignatura_nombre and "matem" in asignatura_nombre.lower())
+    reglas_matematicas = _REGLAS_MATEMATICAS_MICRO if es_matematicas else ""
     user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido del siguiente libro de texto.
 
 ENFOQUE DE ESTA LECCIÓN (NIVEL {nivel} de 3): {enfoque}
@@ -363,7 +376,7 @@ REGLAS:
 - IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en el libro. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
 - NO incluyas "emoji" en el JSON: se asigna aparte
 - NUNCA uses las palabras "fragmento", "contexto", "chunk" ni ningún término técnico de procesamiento de datos en el contenido: refiérete siempre al material como "el libro" o "tu libro de texto".
-- Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador de miles para facilitar la lectura a un niño (1000 → 1,000; 45678 → 45,678; 5746252 → 5,746,252; 1000000 → 1,000,000). NUNCA escribas números grandes sin separador de miles.
+- Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador de miles para facilitar la lectura a un niño (1000 → 1,000; 45678 → 45,678; 5746252 → 5,746,252; 1000000 → 1,000,000). NUNCA escribas números grandes sin separador de miles.{reglas_matematicas}
 - Responde SOLO con el JSON, sin texto adicional"""
     return [
         {
@@ -529,7 +542,7 @@ async def generar_micro_leccion(
     # pocas tarjetas válidas tras descartar las que no se apoyan en los fragmentos.
     micro: MicroLeccionResponse | None = None
     for intento in range(2):
-        messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel)
+        messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel, asignatura_nombre)
         if intento > 0:
             messages[-1]["content"] += "\n\nIMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones."
         data = llm_client.generate_json(messages, max_tokens=4096)

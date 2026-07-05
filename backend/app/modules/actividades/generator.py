@@ -808,6 +808,21 @@ _INSTRUCCIONES_NUMEROS_LEGIBLES = (
 )
 
 
+# Nomenclatura posicional EXACTA (solo Matemáticas): el LLM confunde seguido
+# la posición donde difieren dos números (dijo "centenas" cuando la diferencia
+# de 1234 vs 1243 está en las decenas). No hay forma barata de verificar en
+# prosa si una explicación posicional es correcta, así que se refuerza el prompt.
+_INSTRUCCIONES_MATEMATICAS_POSICIONES = (
+    " NOMENCLATURA POSICIONAL (respétala con exactitud): de derecha a izquierda, las "
+    "posiciones son unidades, decenas, centenas, unidades de millar, decenas de millar, "
+    "centenas de millar, unidades de millón. Una centena de millar vale 100,000 (NO 1,000). "
+    "Cuando compares dos números, identifica con CUIDADO la posición exacta donde difieren. "
+    "Ejemplo: al comparar 1,234 y 1,243, ambos tienen el mismo millar (1) y la misma centena "
+    "(2), pero difieren en las DECENAS (3 vs 4); NO digas 'centenas' cuando la diferencia "
+    "está en las decenas."
+)
+
+
 def _bloque_rango_numerico(rango_max: tuple[int, str] | None) -> str:
     if not rango_max:
         return ""
@@ -833,6 +848,7 @@ def _llamar_llm(
     tema: str | None = None,
     evitar_preguntas: list[str] | None = None,
     rango_max: tuple[int, str] | None = None,
+    es_matematicas: bool = False,
 ) -> dict | None:
     """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
     (sin separar contenido/respuesta_correcta) o None si falla."""
@@ -869,6 +885,7 @@ def _llamar_llm(
                 "Tampoco escribas 'según el ejemplo', 'en el ejercicio' ni 'en el diagrama' "
                 "en la explicación: explica el concepto, no el ejercicio del libro."
                 + _INSTRUCCIONES_NUMEROS_LEGIBLES
+                + (_INSTRUCCIONES_MATEMATICAS_POSICIONES if es_matematicas else "")
                 + _bloque_rango_numerico(rango_max)
             ),
         },
@@ -958,7 +975,8 @@ def generar_actividad(
     """
     evitar = [p for p in (evitar_preguntas or []) if p and p.strip()]
     rango_max = _rango_numerico_grado(asignatura_nombre, grado_nombre)
-    result = _llamar_llm(tipo, context, tema, evitar, rango_max)
+    es_mat = bool(asignatura_nombre and "matematic" in _normalizar_pregunta(asignatura_nombre))
+    result = _llamar_llm(tipo, context, tema, evitar, rango_max, es_mat)
 
     if result:
         razon = _actividad_invalida(tipo, result, rango_max)
@@ -968,7 +986,7 @@ def generar_actividad(
             logger.warning(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
-            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max)
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max, es_mat)
             # La regeneración también se valida: podría volver a caer en un
             # defecto independiente del tipo (p. ej. citar "el ejemplo 2 del
             # libro", o un error aritmético distinto). Mejor descartar que
@@ -987,7 +1005,7 @@ def generar_actividad(
         logger.warning(
             f"Actividad {tipo.value} repite una pregunta de la sesión; reintentando una vez"
         )
-        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max)
+        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max, es_mat)
         if (
             reintento
             and not _actividad_invalida(tipo, reintento, rango_max)
