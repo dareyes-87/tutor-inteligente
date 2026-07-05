@@ -9,6 +9,7 @@ import logging
 import random
 import re
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -727,6 +728,20 @@ async def completar_nivel(
     )
 
 
+ZONA_GUATEMALA = ZoneInfo("America/Guatemala")
+
+
+def hoy_guatemala() -> date:
+    """Fecha "de hoy" en hora de Guatemala (UTC-6), no la del servidor.
+
+    El servidor (Railway/Docker) corre en UTC. Si la racha se calculara con
+    `date.today()` del servidor, un estudiante que practica de noche en
+    Guatemala (después de las 6pm, que ya es el día siguiente en UTC) vería
+    su "día" cambiar antes de tiempo con respecto a su reloj real.
+    """
+    return datetime.now(ZONA_GUATEMALA).date()
+
+
 async def actualizar_racha(estudiante_id: int, db: AsyncSession) -> None:
     """Actualiza la racha del estudiante según su última actividad.
 
@@ -737,7 +752,7 @@ async def actualizar_racha(estudiante_id: int, db: AsyncSession) -> None:
         await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
     ).scalar_one()
 
-    hoy = date.today()
+    hoy = hoy_guatemala()
     ultima = usuario.ultima_actividad
 
     if ultima == hoy:
@@ -761,7 +776,7 @@ async def obtener_racha(estudiante_id: int, db: AsyncSession) -> RachaResponse:
     return RachaResponse(
         racha_actual=usuario.racha_actual,
         mejor_racha=usuario.mejor_racha,
-        activo_hoy=(usuario.ultima_actividad == date.today()),
+        activo_hoy=(usuario.ultima_actividad == hoy_guatemala()),
     )
 
 

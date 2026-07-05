@@ -9,7 +9,6 @@ import csv
 import io
 import re
 import unicodedata
-from datetime import date
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -22,6 +21,7 @@ from app.models.leccion import Leccion
 from app.models.libro import LibroTexto
 from app.models.progreso_leccion import ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
+from app.modules.lecciones.service import hoy_guatemala
 from app.modules.admin.schemas import (
     AsignaturaResumen,
     DashboardAdmin,
@@ -484,7 +484,7 @@ async def dashboard(db: AsyncSession) -> DashboardAdmin:
     estudiantes_activos_hoy = await _count(
         select(func.count()).select_from(Usuario).where(
             Usuario.rol == RolUsuario.estudiante,
-            Usuario.ultima_actividad == date.today(),
+            Usuario.ultima_actividad == hoy_guatemala(),
         )
     )
 
