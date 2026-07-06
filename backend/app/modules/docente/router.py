@@ -21,8 +21,11 @@ _docente = require_role(RolUsuario.docente, RolUsuario.administrador)
 
 
 @router.get("/libros", response_model=list[LibroDocente])
-async def get_libros(db: AsyncSession = Depends(get_db), _=Depends(_docente)):
-    return await service.listar_libros(db)
+async def get_libros(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(_docente),
+):
+    return await service.listar_libros(db, current_user.grado_id)
 
 
 @router.get("/asignaturas", response_model=list[AsignaturaOpcion])

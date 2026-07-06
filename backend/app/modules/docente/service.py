@@ -29,7 +29,11 @@ from app.modules.docente.schemas import (
 )
 
 
-async def listar_libros(db: AsyncSession) -> list[LibroDocente]:
+async def listar_libros(
+    db: AsyncSession, grado_id: int | None = None
+) -> list[LibroDocente]:
+    """Lista libros. Si `grado_id` viene (docente), se acota a ese grado;
+    si es None (administrador), son todos."""
     frag_count = (
         select(func.count(Fragmento.id))
         .where(Fragmento.libro_id == LibroTexto.id)
@@ -42,14 +46,15 @@ async def listar_libros(db: AsyncSession) -> list[LibroDocente]:
         .correlate(LibroTexto)
         .scalar_subquery()
     )
-    rows = (
-        await db.execute(
-            select(LibroTexto, Asignatura.nombre, Grado.nombre, frag_count, lec_count)
-            .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
-            .join(Grado, LibroTexto.grado_id == Grado.id)
-            .order_by(LibroTexto.fecha_subida.desc())
-        )
-    ).all()
+    stmt = (
+        select(LibroTexto, Asignatura.nombre, Grado.nombre, frag_count, lec_count)
+        .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
+        .join(Grado, LibroTexto.grado_id == Grado.id)
+        .order_by(LibroTexto.fecha_subida.desc())
+    )
+    if grado_id is not None:
+        stmt = stmt.where(LibroTexto.grado_id == grado_id)
+    rows = (await db.execute(stmt)).all()
     return [
         LibroDocente(
             id=libro.id,
