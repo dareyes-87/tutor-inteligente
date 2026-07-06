@@ -11,6 +11,7 @@ from app.llm.client import llm_client, modelo_para_asignatura
 from app.models.conversacion import Conversacion
 from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
+from app.models.fragmento import Fragmento
 from app.models.usuario import Usuario
 from app.models.grado import Grado
 from app.modules.rag.search import search_fragments, is_context_relevant
@@ -118,6 +119,7 @@ async def procesar_pregunta(
     conversacion_id: int | None,
     asignatura_id: int,
     estudiante: Usuario,
+    debug: bool = False,
 ) -> dict:
     """
     Pipeline completo del chat:
@@ -240,11 +242,47 @@ async def procesar_pregunta(
 
     await db.commit()
 
-    return {
+    resultado = {
         "conversacion_id": conv.id,
         "respuesta": respuesta,
         "referencias": referencias_json,
     }
+    # Modo debug (RAGAS): adjunta los fragmentos crudos que recuperó el RAG
+    # (con su `text` completo), no los que sobrevivieron al grounding. No afecta
+    # el flujo normal de /chat/preguntar (debug=False por defecto).
+    if debug:
+        resultado["contextos_recuperados"] = [
+            {
+                "text": f.get("text"),
+                "page_num": f.get("page_num"),
+                "libro_id": f.get("libro_id"),
+                "chunk_id": f.get("chunk_id"),
+                "distance": f.get("distance"),
+            }
+            for f in fragments
+        ]
+    return resultado
+
+
+async def listar_fragmentos_libro(db: AsyncSession, libro_id: int) -> list[dict]:
+    """Todos los fragmentos indexados de un libro, ordenados por página.
+
+    Temporal: alimenta la extracción de datos para la evaluación RAGAS de la
+    tesis. Solo accesible por admin/docente desde el router.
+    """
+    result = await db.execute(
+        select(Fragmento)
+        .where(Fragmento.libro_id == libro_id)
+        .order_by(Fragmento.numero_pagina)
+    )
+    return [
+        {
+            "contenido_texto": f.contenido_texto,
+            "numero_pagina": f.numero_pagina,
+            "tema": f.tema,
+        }
+        for f in result.scalars().all()
+    ]
 
 
 async def listar_conversaciones(db: AsyncSession, estudiante_id: int) -> list:

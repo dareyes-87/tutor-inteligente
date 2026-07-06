@@ -6,10 +6,12 @@ from app.database import get_db
 from app.models.usuario import RolUsuario
 from app.modules.auth.dependencies import get_current_user, require_role
 from app.modules.chat.schemas import (
-    ChatRequest, ChatResponse, ConversacionResponse,
+    ChatRequest, ChatResponse, ChatResponseDebug, ConversacionResponse,
+    FragmentoLibro,
 )
 from app.modules.chat.service import (
     procesar_pregunta, listar_conversaciones, obtener_conversacion_completa,
+    listar_fragmentos_libro,
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat del Tutor"])
@@ -34,6 +36,41 @@ async def preguntar(
         estudiante=current_user,
     )
     return resultado
+
+
+# --- Endpoints temporales para la evaluación RAGAS de la tesis (admin/docente) ---
+# Exponen los fragmentos textuales del libro para calcular métricas RAG.
+# Borrar cuando termine la evaluación.
+_docente = require_role(RolUsuario.administrador, RolUsuario.docente)
+
+
+@router.post("/preguntar-debug", response_model=ChatResponseDebug)
+async def preguntar_debug(
+    body: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(_docente),
+):
+    """Igual que /chat/preguntar pero devuelve además los contextos textuales
+    completos recuperados por el RAG (para RAGAS). Temporal, solo admin/docente."""
+    return await procesar_pregunta(
+        db=db,
+        pregunta=body.pregunta,
+        conversacion_id=body.conversacion_id,
+        asignatura_id=body.asignatura_id,
+        estudiante=current_user,
+        debug=True,
+    )
+
+
+@router.get("/debug/fragmentos/{libro_id}", response_model=list[FragmentoLibro])
+async def debug_fragmentos(
+    libro_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(_docente),
+):
+    """Todos los fragmentos indexados de un libro (texto + página + tema).
+    Temporal, solo admin/docente, para extracción de datos de RAGAS."""
+    return await listar_fragmentos_libro(db, libro_id)
 
 
 @router.get("/conversaciones", response_model=list[ConversacionResponse])

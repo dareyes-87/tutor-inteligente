@@ -23,6 +23,28 @@ class ChatResponse(BaseModel):
     referencias: list[ReferenciaFragment]
 
 
+class FragmentoDebug(BaseModel):
+    """Fragmento recuperado por RAG con su texto completo (solo para debug/RAGAS)."""
+    text: str
+    page_num: int | None
+    libro_id: int | None
+    chunk_id: str | None
+    distance: float | None
+
+
+class ChatResponseDebug(ChatResponse):
+    """Respuesta extendida para la evaluación RAGAS: incluye los contextos
+    textuales completos que recuperó el RAG (temporal, solo admin/docente)."""
+    contextos_recuperados: list[FragmentoDebug]
+
+
+class FragmentoLibro(BaseModel):
+    """Un fragmento indexado de un libro (para extracción de datos de RAGAS)."""
+    contenido_texto: str
+    numero_pagina: int
+    tema: str | None
+
+
 class ConversacionResponse(BaseModel):
     id: int
     titulo: str
