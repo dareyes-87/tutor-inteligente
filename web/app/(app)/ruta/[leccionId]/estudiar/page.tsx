@@ -13,6 +13,7 @@ import {
   type TarjetaEducativa,
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
+import { precargarActividades } from "@/lib/preload-actividades";
 import { Mascota } from "@/components/mascota";
 
 interface MiniMsg {
@@ -47,6 +48,8 @@ export default function EstudiarPage() {
       try {
         // Resolver el nivel actual del estudiante en esta lección (viene en /ruta).
         let nivelActual = 1;
+        let asignaturaIdLocal = ASIGNATURAS[0].id;
+        let tema = "";
         try {
           // Buscar la lección en la ruta de cada libro del grado para resolver su
           // asignatura real (no asumir Ciencias) y el nivel actual del estudiante.
@@ -56,6 +59,8 @@ export default function EstudiarPage() {
             const lec = ruta.lecciones.find((l) => l.id === leccionId);
             if (lec) {
               nivelActual = lec.nivel_actual || 1;
+              asignaturaIdLocal = lb.asignatura_id;
+              tema = lec.tema_clave || lec.nombre;
               if (activo) setAsignaturaId(lb.asignatura_id);
               break;
             }
@@ -77,6 +82,18 @@ export default function EstudiarPage() {
           sessionStorage.setItem(`nivel_${leccionId}`, String(nivelActual));
         } catch {
           /* sessionStorage no disponible: practicar caerá al rango de páginas */
+        }
+        // Pre-carga: mientras el estudiante lee las tarjetas, se generan en
+        // segundo plano las actividades de práctica (misma teoría/nivel), para
+        // que al tocar "Practicar" ya estén listas. Es una optimización: si
+        // falla, Practicar genera normalmente.
+        if (tema) {
+          precargarActividades(nivelActual, {
+            leccionId,
+            asignaturaId: asignaturaIdLocal,
+            tema,
+            fragmentIds: m.fragment_ids ?? [],
+          });
         }
       } catch (err) {
         if (!activo) return;

@@ -26,6 +26,7 @@ import {
   type TarjetaEducativa,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
+import { precargarActividades } from "@/lib/preload-actividades";
 import { Mascota } from "@/components/Mascota";
 
 export default function EstudiarScreen() {
@@ -56,6 +57,8 @@ export default function EstudiarScreen() {
         // la asignatura real del libro al que pertenece (no asumir Ciencias): se
         // busca la lección en la ruta de cada libro disponible del grado.
         let nivelActual = 1;
+        let asignaturaIdLocal = 1;
+        let tema = "";
         try {
           const libros = await obtenerMisLibros();
           for (const lb of libros) {
@@ -63,6 +66,8 @@ export default function EstudiarScreen() {
             const lec = ruta.lecciones.find((l) => l.id === leccionId);
             if (lec) {
               nivelActual = lec.nivel_actual || 1;
+              asignaturaIdLocal = lb.asignatura_id;
+              tema = lec.tema_clave || lec.nombre;
               if (activo) setAsignaturaId(lb.asignatura_id);
               break;
             }
@@ -75,6 +80,17 @@ export default function EstudiarScreen() {
         setMicro(m);
         setNivel(nivelActual);
         setError(false);
+        // Pre-carga: genera las actividades de práctica en segundo plano
+        // mientras el estudiante lee las tarjetas (misma teoría/nivel). Es una
+        // optimización: si falla, Practicar genera normalmente.
+        if (tema) {
+          precargarActividades(nivelActual, {
+            leccionId,
+            asignaturaId: asignaturaIdLocal,
+            tema,
+            fragmentIds: m.fragment_ids ?? [],
+          });
+        }
       } catch {
         if (activo) setError(true);
       } finally {

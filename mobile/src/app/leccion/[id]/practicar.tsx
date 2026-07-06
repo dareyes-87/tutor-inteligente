@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   completarNivel,
-  generarActividad,
   iniciarLeccion,
   obtenerMisLibros,
   obtenerRuta,
@@ -27,17 +26,12 @@ import {
   type CompletarNivelResponse,
   type LeccionEnRuta,
   type ResultadoResponse,
-  type TipoActividad,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
-
-const TIPOS: TipoActividad[] = [
-  "opcion_multiple",
-  "verdadero_falso",
-  "completar",
-  "ordenar",
-  "respuesta_corta",
-];
+import {
+  generarActividadesSesion,
+  tomarActividadesPrecargadas,
+} from "@/lib/preload-actividades";
 
 type Fase = "cargando" | "error" | "ejercicio" | "resultado";
 
@@ -98,23 +92,17 @@ export default function PracticarScreen() {
         } catch {
           fragmentIds = [];
         }
-        // Generación SECUENCIAL (no en paralelo): cada actividad se genera
-        // conociendo las preguntas anteriores de la sesión, para que el LLM
-        // no repita la misma pregunta 3 de 5 veces sobre los mismos fragmentos.
-        const generadas: ActividadResponse[] = [];
-        const preguntasPrevias: string[] = [];
-        for (const t of TIPOS) {
-          try {
-            const a = await generarActividad(
-              asignaturaId, t, tema, leccionId, fragmentIds, preguntasPrevias,
-            );
-            generadas.push(a);
-            const c = a.contenido as Record<string, unknown>;
-            const texto = (c.pregunta ?? c.afirmacion ?? c.oracion ?? c.instruccion) as string | undefined;
-            if (texto) preguntasPrevias.push(texto);
-          } catch {
-            /* una actividad fallida no rompe la sesión: se sigue con las demás */
-          }
+        // Si el estudiante pasó por Estudiar, las actividades ya se están
+        // generando (o están listas) en segundo plano: se consumen aquí. Si no
+        // hay pre-carga (entró directo) o quedó vacía, se generan sobre la
+        // marcha. La generación es SECUENCIAL para no repetir preguntas.
+        const precargadas = tomarActividadesPrecargadas(leccionId, nivel);
+        let generadas = precargadas
+          ? await precargadas
+          : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
+        if (!activo) return;
+        if (generadas.length === 0 && precargadas) {
+          generadas = await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
           if (!activo) return;
         }
         if (generadas.length === 0) {
