@@ -280,6 +280,26 @@ export default function PracticarPage() {
             </div>
           )}
 
+          {/* Puntos ganados + ranking (solo si aprobó) */}
+          {aprobado && (resultadoNivel?.puntos_ganados ?? 0) > 0 && (
+            <div className="animate-pop-in mt-2 flex flex-col items-center gap-2">
+              <div className="rounded-full bg-brand-orange px-6 py-2 text-2xl font-black text-white shadow-[0_6px_18px_rgba(249,115,22,.4)]">
+                +{resultadoNivel!.puntos_ganados} puntos ⭐
+              </div>
+              {(resultadoNivel?.posicion_ranking ?? 0) > 0 && (
+                <div className="text-sm font-extrabold text-white/80">
+                  Estás en el puesto #{resultadoNivel!.posicion_ranking} de tu grado
+                  {resultadoNivel!.cambio_posicion > 0 && (
+                    <span className="ml-1 text-brand-green">
+                      ¡Subiste {resultadoNivel!.cambio_posicion}{" "}
+                      {resultadoNivel!.cambio_posicion === 1 ? "puesto" : "puestos"}! 🚀
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-2 flex flex-wrap justify-center gap-3 sm:gap-4">
             {[
               { v: `${aciertos}/${total}`, l: "correctas", c: "#22C55E" },
@@ -311,6 +331,14 @@ export default function PracticarPage() {
                 className="btn-relief rounded-2xl bg-brand-orange px-10 py-4 text-lg font-black text-white"
               >
                 Intentar de nuevo 🔄
+              </button>
+            )}
+            {aprobado && (resultadoNivel?.posicion_ranking ?? 0) > 0 && (
+              <button
+                onClick={() => router.push("/ranking")}
+                className="rounded-2xl border-2 border-white/20 px-10 py-3 text-base font-extrabold text-white"
+              >
+                Ver ranking completo 🏆
               </button>
             )}
             <button

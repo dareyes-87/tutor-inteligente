@@ -56,6 +56,11 @@ NIVEL_TOPK = {1: 5, 2: 8, 3: 10}
 FRACCION_APROBAR_NIVEL = 0.8
 # Fallback (solo si el cliente no envía total_actividades): conteo fijo viejo.
 NIVEL_APROBADAS_REQUERIDAS = {1: 3, 2: 4, 3: 4}
+# Puntos por nivel superado (gratificación inmediata, no esperar a dominar la
+# lección completa). Suman 100 por lección, igual que el esquema viejo, pero
+# repartidos: el nivel 3 lleva un bonus por completar. Se otorgan UNA sola vez
+# por nivel (idempotente vía `nivel_completado`): rehacer un nivel no re-suma.
+PUNTOS_POR_NIVEL = {1: 30, 2: 30, 3: 40}
 # Tamaño del pool de candidatos del que se muestrea Top-K (da variedad por intento).
 POOL_CANDIDATOS_FRAGMENTOS = 15
 
@@ -715,6 +720,42 @@ async def completar_actividad_leccion(
     return _to_leccion_en_ruta(leccion, progreso)
 
 
+async def _posicion_en_ranking(
+    estudiante_id: int, grado_id: int | None, db: AsyncSession
+) -> int:
+    """Posición 1-based del estudiante en el ranking de su grado, con el MISMO
+    orden que `obtener_ranking` (puntos_totales, luego lecciones completadas).
+    Devuelve 0 si el estudiante no tiene grado. Se llama antes y después de
+    otorgar puntos para calcular el cambio de posición."""
+    if grado_id is None:
+        return 0
+    estudiantes = (
+        await db.execute(
+            select(Usuario.id, Usuario.puntos_totales).where(
+                Usuario.grado_id == grado_id,
+                Usuario.rol == RolUsuario.estudiante,
+            )
+        )
+    ).all()
+    comp_rows = (
+        await db.execute(
+            select(ProgresoLeccion.estudiante_id, func.count())
+            .where(ProgresoLeccion.estado == EstadoLeccion.completada)
+            .group_by(ProgresoLeccion.estudiante_id)
+        )
+    ).all()
+    completadas = {est_id: total for est_id, total in comp_rows}
+    ordenados = sorted(
+        estudiantes,
+        key=lambda r: (r.puntos_totales, completadas.get(r.id, 0)),
+        reverse=True,
+    )
+    for pos, r in enumerate(ordenados, start=1):
+        if r.id == estudiante_id:
+            return pos
+    return 0
+
+
 async def completar_nivel(
     estudiante_id: int,
     leccion_id: int,
@@ -726,11 +767,13 @@ async def completar_nivel(
 ) -> CompletarNivelResponse:
     """Evalúa el resultado de practicar un NIVEL y avanza/repite según el umbral.
 
-    - Aprueba el nivel si `actividades_aprobadas >= NIVEL_APROBADAS_REQUERIDAS[nivel]`.
+    - Aprueba el nivel si `actividades_aprobadas >= _aprobadas_requeridas(...)`.
+    - Cada nivel superado por PRIMERA vez otorga puntos (30/30/40) de forma
+      inmediata (idempotente vía `nivel_completado`: rehacerlo no re-suma).
     - Niveles 1/2 aprobados: sube `nivel_actual`, la lección sigue en_progreso.
-    - Nivel 3 aprobado: lección `completada` (corona 👑), desbloquea la siguiente y
-      otorga racha + puntos (la gamificación solo avanza al dominar).
-    - No aprobado: `intentos_nivel += 1`, sin avanzar de nivel.
+    - Nivel 3 aprobado: lección `completada` (corona 👑), desbloquea la siguiente
+      y otorga racha.
+    - No aprobado: `intentos_nivel += 1`, sin avanzar de nivel ni sumar puntos.
     """
     leccion = (
         await db.execute(select(Leccion).where(Leccion.id == leccion_id))
@@ -757,9 +800,19 @@ async def completar_nivel(
             ),
         )
 
+    usuario = (
+        await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
+    ).scalar_one()
+    posicion_antes = await _posicion_en_ranking(estudiante_id, usuario.grado_id, db)
+
     # Aprobado: registrar el nivel superado (sin regresar si ya iba más adelante).
+    # Solo se otorgan puntos si es un nivel NUEVO (no rehacer uno ya aprobado).
+    es_nivel_nuevo = nivel > progreso.nivel_completado
     progreso.nivel_completado = max(progreso.nivel_completado, nivel)
     progreso.intentos_nivel = 0
+    puntos_ganados = PUNTOS_POR_NIVEL.get(nivel, 0) if es_nivel_nuevo else 0
+    if puntos_ganados:
+        usuario.puntos_totales += puntos_ganados
 
     if nivel >= max(NIVEL_APROBADAS_REQUERIDAS):  # nivel 3 → dominada
         progreso.nivel_actual = nivel
@@ -782,10 +835,6 @@ async def completar_nivel(
                     prog_sig.estado = EstadoLeccion.disponible
 
             await actualizar_racha(estudiante_id, db)
-            usuario = (
-                await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
-            ).scalar_one()
-            usuario.puntos_totales += puntaje
         mensaje = f"¡Lección dominada! Eres un experto en {tema} 👑"
     else:
         progreso.nivel_actual = max(progreso.nivel_actual, nivel + 1)
@@ -794,11 +843,19 @@ async def completar_nivel(
         mensaje = f"¡Nivel {nivel} completado! Ahora profundizaremos más 🚀"
 
     await db.commit()
+
+    posicion_despues = await _posicion_en_ranking(estudiante_id, usuario.grado_id, db)
+    # cambio positivo = subió puestos (la posición numérica bajó).
+    cambio = (posicion_antes - posicion_despues) if (posicion_antes and posicion_despues) else 0
     return CompletarNivelResponse(
         nivel_completado=progreso.nivel_completado,
         nivel_actual=progreso.nivel_actual,
         aprobado=True,
         mensaje_feedback=mensaje,
+        puntos_ganados=puntos_ganados,
+        puntos_totales=usuario.puntos_totales,
+        posicion_ranking=posicion_despues,
+        cambio_posicion=cambio,
     )
 
 

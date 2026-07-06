@@ -115,6 +115,11 @@ class CompletarNivelResponse(BaseModel):
     nivel_actual: int
     aprobado: bool
     mensaje_feedback: str
+    # Gamificación (solo tienen valor útil cuando aprobado=True):
+    puntos_ganados: int = 0  # puntos otorgados por ESTE nivel (0 si ya se habían dado)
+    puntos_totales: int = 0  # acumulado del estudiante tras este nivel
+    posicion_ranking: int = 0  # posición actual en el ranking de su grado (0 = sin grado)
+    cambio_posicion: int = 0  # cuántos puestos subió con este nivel (positivo = subió)
 
 
 # ----------------------- Gamificación -----------------------

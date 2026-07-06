@@ -363,6 +363,10 @@ export interface CompletarNivelResponse {
   nivel_actual: number;
   aprobado: boolean;
   mensaje_feedback: string;
+  puntos_ganados: number;
+  puntos_totales: number;
+  posicion_ranking: number;
+  cambio_posicion: number;
 }
 
 /** Envía el resultado de practicar un nivel (cuántas actividades se aprobaron). */

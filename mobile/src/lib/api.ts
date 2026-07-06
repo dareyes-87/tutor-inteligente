@@ -221,6 +221,10 @@ export interface CompletarNivelResponse {
   nivel_actual: number;
   aprobado: boolean;
   mensaje_feedback: string;
+  puntos_ganados: number;
+  puntos_totales: number;
+  posicion_ranking: number;
+  cambio_posicion: number;
 }
 export function completarNivel(
   leccionId: number,

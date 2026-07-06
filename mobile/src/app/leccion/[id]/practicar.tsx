@@ -278,6 +278,22 @@ export default function PracticarScreen() {
           <Text style={styles.resultMensaje}>{resultadoNivel.mensaje_feedback}</Text>
         )}
 
+        {aprobado && (resultadoNivel?.puntos_ganados ?? 0) > 0 && (
+          <View style={{ alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <View style={styles.puntosBadge}>
+              <Text style={styles.puntosBadgeText}>+{resultadoNivel!.puntos_ganados} puntos ⭐</Text>
+            </View>
+            {(resultadoNivel?.posicion_ranking ?? 0) > 0 && (
+              <Text style={styles.rankingText}>
+                Estás en el puesto #{resultadoNivel!.posicion_ranking} de tu grado
+                {resultadoNivel!.cambio_posicion > 0
+                  ? `  ¡Subiste ${resultadoNivel!.cambio_posicion} ${resultadoNivel!.cambio_posicion === 1 ? "puesto" : "puestos"}! 🚀`
+                  : ""}
+              </Text>
+            )}
+          </View>
+        )}
+
         <View style={styles.statsRow}>
           {[
             { v: `${aciertos}/${total}`, l: "correctas", c: Colors.green },
@@ -299,6 +315,15 @@ export default function PracticarScreen() {
         {!aprobado && (
           <Pressable onPress={irEstudiar} style={[styles.botonGrande, { backgroundColor: Colors.orange, marginTop: 24, paddingHorizontal: 32 }]}>
             <Text style={[styles.botonGrandeText, { fontSize: 16 }]}>Intentar de nuevo 🔄</Text>
+          </Pressable>
+        )}
+
+        {aprobado && (resultadoNivel?.posicion_ranking ?? 0) > 0 && (
+          <Pressable
+            onPress={() => router.replace("/(tabs)/ranking")}
+            style={{ marginTop: 14, paddingVertical: 10 }}
+          >
+            <Text style={{ color: Colors.white, fontWeight: "800", fontSize: 14 }}>Ver ranking completo 🏆</Text>
           </Pressable>
         )}
 
@@ -511,6 +536,15 @@ const styles = StyleSheet.create({
   starsRow: { fontSize: 40, marginBottom: 8 },
   resultTitulo: { fontSize: 30, fontWeight: "900", color: Colors.white, textAlign: "center" },
   resultMensaje: { fontSize: 14, fontWeight: "700", color: "rgba(255,255,255,0.7)", textAlign: "center", marginTop: 8 },
+  puntosBadge: {
+    backgroundColor: Colors.orange,
+    borderRadius: 999,
+    paddingHorizontal: 22,
+    paddingVertical: 8,
+    marginTop: 14,
+  },
+  puntosBadgeText: { fontSize: 20, fontWeight: "900", color: Colors.white },
+  rankingText: { fontSize: 13, fontWeight: "800", color: "rgba(255,255,255,0.85)", textAlign: "center" },
   statsRow: { flexDirection: "row", gap: 12, marginTop: 22 },
   statBox: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 16, paddingHorizontal: 22, paddingVertical: 14, alignItems: "center" },
   statVal: { fontSize: 26, fontWeight: "900" },
