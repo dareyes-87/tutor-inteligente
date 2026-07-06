@@ -20,11 +20,13 @@ import {
   completarNivel,
   iniciarLeccion,
   obtenerMisLibros,
+  obtenerRanking,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
   type CompletarNivelResponse,
   type LeccionEnRuta,
+  type RankingResponse,
   type ResultadoResponse,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
@@ -57,6 +59,7 @@ export default function PracticarScreen() {
   const [inicio, setInicio] = useState(0);
   const [duracion, setDuracion] = useState(0);
   const [resultadoNivel, setResultadoNivel] = useState<CompletarNivelResponse | null>(null);
+  const [ranking, setRanking] = useState<RankingResponse | null>(null);
   const [intento, setIntento] = useState(0);
 
   const panelAnim = useRef(new Animated.Value(0)).current;
@@ -189,6 +192,14 @@ export default function PracticarScreen() {
       // total real de la sesión: el umbral de aprobación es proporcional (no fijo).
       const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas, acts.length);
       setResultadoNivel(res);
+      // Solo si aprobó: traer el ranking para la mini-tabla del resultado.
+      if (res.aprobado) {
+        obtenerRanking()
+          .then(setRanking)
+          .catch(() => {
+            /* si falla, el resultado se muestra sin la preview del ranking */
+          });
+      }
     } catch {
       /* el resumen se muestra igual sin avance de nivel */
     }
@@ -255,6 +266,16 @@ export default function PracticarScreen() {
         : "¡Sigue intentando! 💪";
     const irEstudiar = () =>
       router.replace({ pathname: "/leccion/[id]/estudiar", params: { id: String(leccionId) } });
+    // Ventana de 5 filas del ranking centrada en el estudiante (2 arriba, 2
+    // abajo), recortada a los extremos de la lista.
+    const filasRanking = (() => {
+      if (!ranking || ranking.mi_posicion < 1) return [];
+      const list = ranking.ranking;
+      if (list.length <= 5) return list;
+      const miIdx = ranking.mi_posicion - 1;
+      const inicio = Math.min(Math.max(miIdx - 2, 0), list.length - 5);
+      return list.slice(inicio, inicio + 5);
+    })();
     return (
       <View style={[styles.centro, { paddingHorizontal: 28 }]}>
         <StatusBar style="light" />
@@ -267,18 +288,45 @@ export default function PracticarScreen() {
         )}
 
         {aprobado && (resultadoNivel?.puntos_ganados ?? 0) > 0 && (
-          <View style={{ alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <View style={styles.puntosBadge}>
-              <Text style={styles.puntosBadgeText}>+{resultadoNivel!.puntos_ganados} puntos ⭐</Text>
-            </View>
-            {(resultadoNivel?.posicion_ranking ?? 0) > 0 && (
-              <Text style={styles.rankingText}>
-                Estás en el puesto #{resultadoNivel!.posicion_ranking} de tu grado
-                {resultadoNivel!.cambio_posicion > 0
-                  ? `  ¡Subiste ${resultadoNivel!.cambio_posicion} ${resultadoNivel!.cambio_posicion === 1 ? "puesto" : "puestos"}! 🚀`
-                  : ""}
-              </Text>
-            )}
+          <View style={styles.puntosBadge}>
+            <Text style={styles.puntosBadgeText}>+{resultadoNivel!.puntos_ganados} puntos ⭐</Text>
+          </View>
+        )}
+
+        {/* Mini-tabla del ranking (solo si aprobó y hay datos) */}
+        {aprobado && filasRanking.length > 0 && (
+          <View style={styles.rankingCard}>
+            <Text style={styles.rankingCardTitulo}>🏆 Tu posición en el ranking</Text>
+            {filasRanking.map((e) => {
+              const esYo = e.posicion === ranking!.mi_posicion;
+              const subio = esYo && (resultadoNivel?.cambio_posicion ?? 0) > 0;
+              return (
+                <View
+                  key={e.posicion}
+                  style={[styles.rankingFila, esYo ? styles.rankingFilaYo : styles.rankingFilaOtro]}
+                >
+                  <Text style={[styles.rankingPos, { color: esYo ? Colors.white : "rgba(255,255,255,0.5)" }]}>
+                    #{e.posicion}
+                  </Text>
+                  <Text
+                    style={[styles.rankingNombre, { color: esYo ? Colors.white : "rgba(255,255,255,0.75)", fontWeight: esYo ? "900" : "700" }]}
+                    numberOfLines={1}
+                  >
+                    {esYo ? "► " : ""}
+                    {e.nombre} {e.apellido}
+                    {esYo ? " ◄" : ""}
+                  </Text>
+                  {subio && (
+                    <View style={styles.rankingUp}>
+                      <Text style={styles.rankingUpText}>↑{resultadoNivel!.cambio_posicion}</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.rankingPts, { color: esYo ? Colors.white : "rgba(255,255,255,0.75)" }]}>
+                    ⭐ {e.puntos_totales}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -532,7 +580,36 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   puntosBadgeText: { fontSize: 20, fontWeight: "900", color: Colors.white },
-  rankingText: { fontSize: 13, fontWeight: "800", color: "rgba(255,255,255,0.85)", textAlign: "center" },
+  rankingCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 14,
+    gap: 6,
+  },
+  rankingCardTitulo: { fontSize: 13, fontWeight: "900", color: "rgba(255,255,255,0.8)", marginBottom: 4 },
+  rankingFila: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  rankingFilaYo: { backgroundColor: Colors.orange },
+  rankingFilaOtro: { backgroundColor: "rgba(255,255,255,0.05)" },
+  rankingPos: { width: 30, fontSize: 14, fontWeight: "800" },
+  rankingNombre: { flex: 1, fontSize: 14 },
+  rankingPts: { fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  rankingUp: {
+    backgroundColor: Colors.green,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  rankingUpText: { fontSize: 11, fontWeight: "900", color: Colors.white },
   statsRow: { flexDirection: "row", gap: 12, marginTop: 22 },
   statBox: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 16, paddingHorizontal: 22, paddingVertical: 14, alignItems: "center" },
   statVal: { fontSize: 26, fontWeight: "900" },

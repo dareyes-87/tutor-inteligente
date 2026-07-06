@@ -8,11 +8,13 @@ import {
   completarNivel,
   iniciarLeccion,
   obtenerMisLibros,
+  obtenerRanking,
   obtenerRuta,
   responderActividad,
   type ActividadResponse,
   type CompletarNivelResponse,
   type LeccionEnRuta,
+  type RankingResponse,
   type ResultadoResponse,
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
@@ -54,6 +56,7 @@ export default function PracticarPage() {
   const [intento, setIntento] = useState(0);
   const [nivel, setNivel] = useState(1);
   const [resultadoNivel, setResultadoNivel] = useState<CompletarNivelResponse | null>(null);
+  const [ranking, setRanking] = useState<RankingResponse | null>(null);
 
   // Carga: asegura en_progreso y genera las 5 actividades.
   useEffect(() => {
@@ -168,6 +171,14 @@ export default function PracticarPage() {
       // proporcional (no fijo), para que menos de 5 actividades no lo vuelvan inaprobable.
       const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas, acts.length);
       setResultadoNivel(res);
+      // Solo si aprobó: traer el ranking para la mini-tabla del resultado.
+      if (res.aprobado) {
+        obtenerRanking()
+          .then(setRanking)
+          .catch(() => {
+            /* si falla, el resultado se muestra sin la preview del ranking */
+          });
+      }
     } catch {
       /* el resumen se muestra igual sin avance de nivel */
     }
@@ -238,6 +249,16 @@ export default function PracticarPage() {
       : aprobado
         ? `¡Nivel ${nivel} completado! 🎉`
         : "¡Sigue intentando! 💪";
+    // Ventana de 5 filas del ranking centrada en el estudiante (2 arriba, 2
+    // abajo), recortada a los extremos de la lista.
+    const filasRanking = (() => {
+      if (!ranking || ranking.mi_posicion < 1) return [];
+      const list = ranking.ranking;
+      if (list.length <= 5) return list;
+      const miIdx = ranking.mi_posicion - 1;
+      const inicio = Math.min(Math.max(miIdx - 2, 0), list.length - 5);
+      return list.slice(inicio, inicio + 5);
+    })();
     return (
       <Overlay>
         {/* confetti */}
@@ -269,23 +290,50 @@ export default function PracticarPage() {
             </div>
           )}
 
-          {/* Puntos ganados + ranking (solo si aprobó) */}
+          {/* Puntos ganados (solo si aprobó) */}
           {aprobado && (resultadoNivel?.puntos_ganados ?? 0) > 0 && (
-            <div className="animate-pop-in mt-2 flex flex-col items-center gap-2">
-              <div className="rounded-full bg-brand-orange px-6 py-2 text-2xl font-black text-white shadow-[0_6px_18px_rgba(249,115,22,.4)]">
-                +{resultadoNivel!.puntos_ganados} puntos ⭐
+            <div className="animate-pop-in mt-2 rounded-full bg-brand-orange px-6 py-2 text-2xl font-black text-white shadow-[0_6px_18px_rgba(249,115,22,.4)]">
+              +{resultadoNivel!.puntos_ganados} puntos ⭐
+            </div>
+          )}
+
+          {/* Mini-tabla del ranking (solo si aprobó y hay datos) */}
+          {aprobado && filasRanking.length > 0 && (
+            <div className="animate-pop-in mt-1 w-full max-w-sm rounded-[20px] bg-white/10 p-4 backdrop-blur-sm">
+              <div className="mb-2.5 text-[13px] font-black text-white/80">
+                🏆 Tu posición en el ranking
               </div>
-              {(resultadoNivel?.posicion_ranking ?? 0) > 0 && (
-                <div className="text-sm font-extrabold text-white/80">
-                  Estás en el puesto #{resultadoNivel!.posicion_ranking} de tu grado
-                  {resultadoNivel!.cambio_posicion > 0 && (
-                    <span className="ml-1 text-brand-green">
-                      ¡Subiste {resultadoNivel!.cambio_posicion}{" "}
-                      {resultadoNivel!.cambio_posicion === 1 ? "puesto" : "puestos"}! 🚀
-                    </span>
-                  )}
-                </div>
-              )}
+              <div className="flex flex-col gap-1.5">
+                {filasRanking.map((e) => {
+                  const esYo = e.posicion === ranking!.mi_posicion;
+                  const subio = esYo && (resultadoNivel?.cambio_posicion ?? 0) > 0;
+                  return (
+                    <div
+                      key={e.posicion}
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[14px] ${
+                        esYo
+                          ? "bg-brand-orange font-black text-white"
+                          : "bg-white/5 font-bold text-white/75"
+                      }`}
+                    >
+                      <span className={`w-7 flex-none ${esYo ? "text-white" : "text-white/50"}`}>
+                        #{e.posicion}
+                      </span>
+                      <span className="flex-1 truncate text-left">
+                        {esYo ? "► " : ""}
+                        {e.nombre} {e.apellido}
+                        {esYo ? " ◄" : ""}
+                      </span>
+                      {subio && (
+                        <span className="flex-none rounded-full bg-brand-green px-2 py-0.5 text-[11px] font-black text-white">
+                          ↑{resultadoNivel!.cambio_posicion}
+                        </span>
+                      )}
+                      <span className="flex-none tabular-nums">⭐ {e.puntos_totales}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
