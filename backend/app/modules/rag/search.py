@@ -30,40 +30,35 @@ MIN_FRAGMENTOS_AMPLIO = 2
 MAX_DISTANCE = 1.55
 
 
-def search_fragments(
-    query: str,
-    asignatura: str | None = None,
-    grado: str | None = None,
-    top_k: int = TOP_K,
-) -> list[dict]:
-    """
-    Busca los fragmentos más relevantes para una pregunta.
+def _where_metadatos(
+    asignatura: str | None,
+    grado: str | None,
+    page_cond: dict | None = None,
+) -> dict | None:
+    """Construye el filtro de metadatos de ChromaDB (AND) a partir de
+    asignatura/grado y una condición opcional de página. Devuelve None si no
+    hay ninguna condición."""
+    conds: list[dict] = []
+    if asignatura:
+        conds.append({"asignatura": asignatura})
+    if grado:
+        conds.append({"grado": grado})
+    if page_cond is not None:
+        conds.append(page_cond)
+    if not conds:
+        return None
+    if len(conds) == 1:
+        return conds[0]
+    return {"$and": conds}
 
-    1. Convierte la pregunta a un vector (embedding).
-    2. Busca en ChromaDB los fragmentos más cercanos.
-    3. Filtra por asignatura/grado si se proporcionan.
-    4. Devuelve los fragmentos con su texto, metadatos y distancia.
-    """
-    # Generar embedding de la pregunta
-    query_embedding = generate_embeddings([query])[0]
 
-    collection = get_collection()
+def _consultar(collection, query_embedding, where_filter, top_k, aplicar_max_distance):
+    """Ejecuta el query a ChromaDB y arma la lista de fragmentos.
 
-    # Construir filtro de metadatos (AND)
-    where_filter = {}
-    if asignatura and grado:
-        where_filter = {
-            "$and": [
-                {"asignatura": asignatura},
-                {"grado": grado},
-            ]
-        }
-    elif asignatura:
-        where_filter = {"asignatura": asignatura}
-    elif grado:
-        where_filter = {"grado": grado}
-
-    # Buscar en ChromaDB
+    `aplicar_max_distance=False` conserva TODOS los resultados del filtro (se usa
+    en la búsqueda por número de página: ahí el contenido de la página importa
+    aunque no tenga solape semántico con "explícame la página X", así que el
+    corte por distancia semántica no debe descartarlo)."""
     query_params = {
         "query_embeddings": [query_embedding],
         "n_results": top_k,
@@ -73,7 +68,6 @@ def search_fragments(
 
     results = collection.query(**query_params)
 
-    # Procesar resultados
     fragments = []
     if results and results["documents"] and results["documents"][0]:
         ids = results.get("ids", [[]])
@@ -81,8 +75,8 @@ def search_fragments(
             distance = results["distances"][0][i] if results["distances"] else None
             metadata = results["metadatas"][0][i] if results["metadatas"] else {}
 
-            # Filtrar por distancia máxima
-            if distance is not None and distance > MAX_DISTANCE:
+            # Filtrar por distancia máxima (solo en la búsqueda semántica normal)
+            if aplicar_max_distance and distance is not None and distance > MAX_DISTANCE:
                 continue
 
             fragments.append({
@@ -97,6 +91,61 @@ def search_fragments(
                 "confidence": metadata.get("confidence"),
                 "distance": round(distance, 4) if distance else None,
             })
+    return fragments
+
+
+def search_fragments(
+    query: str,
+    asignatura: str | None = None,
+    grado: str | None = None,
+    top_k: int = TOP_K,
+    page_num: int | None = None,
+) -> list[dict]:
+    """
+    Busca los fragmentos más relevantes para una pregunta.
+
+    1. Convierte la pregunta a un vector (embedding).
+    2. Busca en ChromaDB los fragmentos más cercanos.
+    3. Filtra por asignatura/grado si se proporcionan.
+    4. Devuelve los fragmentos con su texto, metadatos y distancia.
+
+    Si `page_num` viene, hace una búsqueda FILTRADA por ese número de página
+    (para consultas del tipo "explícame la página 12"), sin aplicar el corte por
+    distancia semántica. Si esa página no tiene fragmentos, reintenta con las
+    páginas adyacentes (±1, por posibles desalineaciones del OCR). Si aun así no
+    hay resultados, devuelve lista vacía y el llamador decide el fallback.
+    """
+    # Generar embedding de la pregunta
+    query_embedding = generate_embeddings([query])[0]
+
+    collection = get_collection()
+
+    # --- Búsqueda por número de página (filtro exacto, sin corte por distancia) ---
+    if page_num is not None:
+        where_pagina = _where_metadatos(asignatura, grado, {"page_num": page_num})
+        fragments = _consultar(
+            collection, query_embedding, where_pagina, top_k, aplicar_max_distance=False
+        )
+        if not fragments:
+            # OCR puede haber asignado la página ±1: reintentar con adyacentes.
+            adyacentes = [p for p in (page_num - 1, page_num + 1) if p > 0]
+            where_adj = _where_metadatos(
+                asignatura, grado, {"page_num": {"$in": adyacentes}}
+            )
+            fragments = _consultar(
+                collection, query_embedding, where_adj, top_k, aplicar_max_distance=False
+            )
+        logger.info(
+            f"RAG query='{query[:50]}' page_num={page_num} "
+            f"({len(fragments)} frags por página)"
+        )
+        return fragments
+
+    # --- Búsqueda semántica normal (con corte por distancia) ---
+    where_filter = _where_metadatos(asignatura, grado)
+    fragments = _consultar(
+        collection, query_embedding, where_filter, top_k, aplicar_max_distance=True
+    )
 
     best_dist = min(
         (f["distance"] for f in fragments if f["distance"] is not None),

@@ -49,6 +49,29 @@ def _es_rechazo(respuesta: str) -> bool:
     return any(p in texto for p in PALABRAS_RECHAZO)
 
 
+# Detección de referencias a una página concreta ("explícame la página 12").
+# Cubre: página / pagina / pág / pag / pág. / pag. / page / p. / p, seguido de un
+# número de 1 a 3 dígitos. La búsqueda semántica no entiende estas referencias,
+# así que cuando se detectan se filtra por page_num en ChromaDB.
+_RE_PAGINA = re.compile(
+    r"\b(?:p[aá]g(?:ina)?\.?|page|p\.?)\s*(\d{1,3})\b",
+    re.IGNORECASE,
+)
+
+
+def _detectar_pagina(texto: str) -> int | None:
+    """Devuelve el número de página (1-999) mencionado en el texto, o None.
+
+    Reconoce 'página X', 'la página X', 'pág X', 'pág. X', 'pag X', 'page X',
+    'p. X' y 'p X'.
+    """
+    m = _RE_PAGINA.search(texto or "")
+    if not m:
+        return None
+    n = int(m.group(1))
+    return n if 1 <= n <= 999 else None
+
+
 def _paginas_citadas(respuesta: str) -> list[int]:
     """Extrae los números de página citados en el texto, formato '(página X)'."""
     return [int(n) for n in re.findall(r"p[aá]gina\s+(\d+)", respuesta, re.IGNORECASE)]
@@ -151,11 +174,42 @@ async def procesar_pregunta(
         grado_nombre = grado.nombre if grado else None
 
     # 2. Búsqueda RAG
-    fragments = search_fragments(
-        query=pregunta,
-        asignatura=asignatura_nombre,
-        grado=grado_nombre,
-    )
+    # Si el estudiante se refiere a una página concreta ("explícame la página
+    # 12"), se busca FILTRANDO por page_num (la búsqueda semántica no entiende
+    # referencias a páginas). Si esa página no existe, se cae a la búsqueda
+    # semántica normal para no romper el flujo.
+    pagina_solicitada = _detectar_pagina(pregunta)
+    consulta_por_pagina = False
+    if pagina_solicitada is not None:
+        fragments = search_fragments(
+            query=pregunta,
+            asignatura=asignatura_nombre,
+            grado=grado_nombre,
+            page_num=pagina_solicitada,
+        )
+        if fragments:
+            consulta_por_pagina = True
+            logger.info(
+                f"[Chat] Consulta por página {pagina_solicitada}: "
+                f"{len(fragments)} fragmentos por filtro de page_num"
+            )
+        else:
+            logger.info(
+                f"[Chat] Página {pagina_solicitada} sin fragmentos; "
+                "fallback a búsqueda semántica normal"
+            )
+            pagina_solicitada = None
+            fragments = search_fragments(
+                query=pregunta,
+                asignatura=asignatura_nombre,
+                grado=grado_nombre,
+            )
+    else:
+        fragments = search_fragments(
+            query=pregunta,
+            asignatura=asignatura_nombre,
+            grado=grado_nombre,
+        )
 
     # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
@@ -163,10 +217,24 @@ async def procesar_pregunta(
     # 3-4. Grounding determinístico: si el contexto NO es relevante, no se
     # llama al LLM y se devuelve un mensaje fijo de rechazo. Así la garantía
     # no depende de que el modelo obedezca el prompt.
-    if is_context_relevant(fragments):
+    # Una consulta por página se considera relevante aunque no haya solape
+    # semántico: el estudiante pidió explícitamente esa página y ya tenemos su
+    # contenido filtrado por page_num (el grounding se mantiene: el contexto
+    # sigue siendo SOLO el del libro).
+    if consulta_por_pagina or is_context_relevant(fragments):
         context = build_context_prompt(fragments)
+        # Para consultas por página, se refuerza el prompt del LLM sin modificar
+        # build_messages: se guarda la pregunta ORIGINAL en la BD, pero al LLM se
+        # le envía una versión con la instrucción de explicar esa página.
+        pregunta_llm = pregunta
+        if consulta_por_pagina:
+            pregunta_llm = (
+                f"{pregunta}\n\n[El estudiante pregunta sobre el contenido de la "
+                f"página {pagina_solicitada}. Explícale el contenido de esa página "
+                f"de forma clara y pedagógica, usando ÚNICAMENTE el contexto anterior.]"
+            )
         messages = build_messages(
-            context, history, pregunta, grado_nombre, asignatura_nombre
+            context, history, pregunta_llm, grado_nombre, asignatura_nombre
         )
         logger.info(
             f"[Chat] System prompt adaptado a grado='{grado_nombre}', "
