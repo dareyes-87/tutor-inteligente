@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
 import { preguntar, ApiError, type ReferenciaFragment } from "@/lib/api";
@@ -12,6 +13,30 @@ interface ChatMessage {
   contenido: string;
   referencias?: ReferenciaFragment[];
 }
+
+// Estilos del markdown del tutor. Tailwind resetea listas (sin viñetas/números)
+// y márgenes, así que hay que declararlos aquí para que se vean dentro de la
+// burbuja. `last:mb-0` evita un margen extra al final del mensaje.
+const mdComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 last:mb-0">{children}</p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-black text-navy">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic">{children}</em>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+};
 
 function Referencias({ refs }: { refs: ReferenciaFragment[] }) {
   const conPagina = refs.filter((r) => r.page_num != null);
@@ -156,13 +181,19 @@ export default function ChatPage() {
                 )}
                 <div className="max-w-[85%] sm:max-w-[60%]">
                   <div
-                    className={`whitespace-pre-wrap px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed shadow-[0_3px_10px_rgba(30,43,77,.06)] ${
+                    className={`px-[18px] py-3.5 text-[15.5px] font-semibold leading-relaxed shadow-[0_3px_10px_rgba(30,43,77,.06)] ${
                       tutor
                         ? "rounded-[6px_18px_18px_18px] border border-border bg-white text-[#1F2433]"
-                        : "rounded-[18px_18px_6px_18px] bg-[#E0ECFF] text-[#1E3A8A]"
+                        : "whitespace-pre-wrap rounded-[18px_18px_6px_18px] bg-[#E0ECFF] text-[#1E3A8A]"
                     }`}
                   >
-                    {m.contenido}
+                    {tutor ? (
+                      <ReactMarkdown components={mdComponents}>
+                        {m.contenido}
+                      </ReactMarkdown>
+                    ) : (
+                      m.contenido
+                    )}
                   </div>
                   {tutor && m.referencias && <Referencias refs={m.referencias} />}
                 </div>
