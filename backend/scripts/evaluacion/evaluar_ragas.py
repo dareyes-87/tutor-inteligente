@@ -35,6 +35,7 @@ import requests
 # --- Rutas relativas a la carpeta del script (no dependen del cwd) ---
 DIR = Path(__file__).resolve().parent
 PREGUNTAS_PATH = DIR / "preguntas_ragas.json"
+CACHE_PATH = DIR / "respuestas_cache.json"
 CSV_PATH = DIR / "resultados_ragas.csv"
 RESUMEN_PATH = DIR / "resumen_ragas.json"
 
@@ -301,8 +302,22 @@ def main() -> None:
     preguntas = json.loads(PREGUNTAS_PATH.read_text(encoding="utf-8"))
     print(f"Cargadas {len(preguntas)} preguntas desde {PREGUNTAS_PATH.name}")
 
-    token = login()
-    resultados = recolectar_respuestas(token, preguntas)
+    # Cache: si ya se recolectaron las respuestas del tutor en una corrida
+    # previa, se reutilizan y NO se vuelve a consultar el API (las 50 llamadas
+    # al tutor son la parte lenta/costosa). Borra respuestas_cache.json para
+    # forzar una recolección nueva.
+    if CACHE_PATH.exists():
+        resultados = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        print(f"Cargadas {len(resultados)} respuestas desde cache (no se consultó el API)")
+    else:
+        print("Consultando API... (las respuestas se guardarán en cache)")
+        token = login()
+        resultados = recolectar_respuestas(token, preguntas)
+        CACHE_PATH.write_text(
+            json.dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"Respuestas guardadas en cache: {CACHE_PATH}")
+
     evaluar_faithfulness(resultados)
     exportar_y_resumir(resultados)
 
