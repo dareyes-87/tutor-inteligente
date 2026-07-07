@@ -14,7 +14,11 @@ from app.models.asignatura import Asignatura
 from app.models.fragmento import Fragmento
 from app.models.usuario import Usuario
 from app.models.grado import Grado
-from app.modules.rag.search import search_fragments, is_context_relevant
+from app.modules.rag.search import (
+    es_ejercicio_del_libro,
+    is_context_relevant,
+    search_fragments,
+)
 from app.modules.chat.prompts import build_context_prompt, build_messages
 from app.modules.lecciones.service import actualizar_racha
 
@@ -210,6 +214,17 @@ async def procesar_pregunta(
             asignatura=asignatura_nombre,
             grado=grado_nombre,
         )
+
+    # Filtro de ejercicios SOLO en búsqueda semántica (sin página específica):
+    # en el chat conceptual no queremos que un ejercicio del libro ("Mesa lista",
+    # "Ahora es tu turno"…) se cuele como si fuera teoría. Con página específica
+    # NO se filtra: el estudiante pidió esa página tal cual, sea teoría o
+    # ejercicio. Si el filtro dejara la lista vacía, se conservan los originales
+    # para no dejar al estudiante sin respuesta.
+    if pagina_solicitada is None:
+        filtrados = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
+        if filtrados:
+            fragments = filtrados
 
     # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
