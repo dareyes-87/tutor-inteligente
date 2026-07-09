@@ -619,7 +619,21 @@ async def generar_micro_leccion(
         if not candidato.tarjetas:
             continue
         _corregir_preguntas(candidato)
+        # La cobertura es una red SECUNDARIA (el prompt ya obliga a usar solo el
+        # libro). Si dejara la lección con CERO tarjetas, es peor el remedio que
+        # la enfermedad: mejor devolver las tarjetas sin filtrar que un 502. Pasa
+        # en rangos de portada/índice/presentación (p. ej. la lección 1 de un
+        # libro completo, páginas 2-6), donde la teoría no aparece textualmente
+        # en el rango y el filtro descarta todo.
+        tarjetas_corregidas = list(candidato.tarjetas)
         candidato.tarjetas = _filtrar_tarjetas_por_cobertura(candidato.tarjetas, fragmentos_texto)
+        if not candidato.tarjetas:
+            logger.warning(
+                "[MicroLeccion] Lección %s: la cobertura descartó TODAS las tarjetas; "
+                "usando las %d sin filtrar para no devolver 502.",
+                leccion_id, len(tarjetas_corregidas),
+            )
+            candidato.tarjetas = tarjetas_corregidas
         # Nos quedamos con el mejor candidato visto hasta ahora.
         if micro is None or len(candidato.tarjetas) > len(micro.tarjetas):
             micro = candidato

@@ -28,10 +28,23 @@ def modelo_para_asignatura(asignatura_nombre: str | None) -> str | None:
     return None
 
 
+# Timeout (segundos) por llamada al API de Together. Sin esto, el SDK usa un
+# timeout por defecto muy alto (~600s): si Together se cuelga, la petición queda
+# colgada hasta que el gateway de Railway la corta y devuelve un 502 opaco al
+# estudiante. Con un timeout acotado + 1 reintento del SDK, una llamada lenta
+# falla rápido y de forma controlada (la capa de arriba reintenta o degrada).
+LLM_TIMEOUT_SEGUNDOS = 45.0
+LLM_MAX_REINTENTOS = 1
+
+
 class LLMClient:
     def __init__(self) -> None:
         self.model = settings.LLM_MODEL
-        self._client = Together(api_key=settings.TOGETHER_API_KEY)
+        self._client = Together(
+            api_key=settings.TOGETHER_API_KEY,
+            timeout=LLM_TIMEOUT_SEGUNDOS,
+            max_retries=LLM_MAX_REINTENTOS,
+        )
 
     def hello(self) -> str:
         """Llamada de prueba (Sprint 0)."""
@@ -75,13 +88,22 @@ class LLMClient:
         `model` permite usar un modelo distinto al por defecto (p. ej. uno más
         potente para la generación de la ruta de lecciones, que ocurre una sola
         vez por libro). Si es None, usa el modelo por defecto (`self.model`).
+
+        Cualquier error del API (timeout, red, 5xx tras agotar reintentos) se
+        captura y devuelve None: el llamador ya trata None como "no se pudo
+        generar" y reintenta/degrada, en vez de propagar una excepción que se
+        convertiría en un 500 opaco para el estudiante.
         """
-        resp = self._client.chat.completions.create(
-            model=model or self.model,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=0.3,  # Baja temperatura para JSON más consistente
-        )
+        try:
+            resp = self._client.chat.completions.create(
+                model=model or self.model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.3,  # Baja temperatura para JSON más consistente
+            )
+        except Exception as e:  # noqa: BLE001 — degradar ante cualquier fallo del API
+            logger.warning(f"Fallo al llamar al LLM (generate_json): {e}")
+            return None
         raw = resp.choices[0].message.content.strip()
 
         # Limpiar si viene envuelto en ```json ... ```
