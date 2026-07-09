@@ -161,7 +161,38 @@ def search_fragments(
     return fragments
 
 
-_MARCADORES_EJERCICIO = ("mesa lista", "ahora es tu turno", "ejercicio", "practica")
+# Marcadores de texto que identifican un fragmento como EJERCICIO (no teoría).
+# Los 4 primeros venían afinados para el libro de Matemáticas 4to ("¡Mesa lista!",
+# "Ahora es tu turno"); los demás son cabeceras de instrucción inequívocas del
+# libro de Ciencias ("Instrucciones:", "Realiza lo que se indica", "Resuelve
+# cada…"). Se eligieron ANCLADAS y multi-palabra a propósito: marcadores sueltos
+# como "encierra", "resuelve" o "instrucciones" (sin ":") marcaban teoría real
+# (células, fotosíntesis) como falso positivo. Validado por simulación contra los
+# fragmentos reales de los 3 libros: +17 ejercicios reales capturados en Ciencias
+# 6to (todos verdaderos positivos), 0 cambios en Ciencias/Mate 4to (cero
+# regresión), 0 lecciones vacías. Ver scripts/debug/simular_filtro.py.
+_MARCADORES_EJERCICIO = (
+    "mesa lista",
+    "ahora es tu turno",
+    "ejercicio",
+    "practica",
+    "instrucciones:",
+    "realiza lo que se indica",
+    "¿cómo lo aprendo",
+    "lee y realiza lo",
+    "resuelve cada",
+    "resuelve los siguientes",
+    "resuelve las siguientes",
+    "contesta lo siguiente",
+    "contesta las siguientes",
+    "contesta las preguntas",
+    "marca con una",
+    "completa la tabla",
+    "completa el cuadro",
+    "completa las siguientes",
+    "observa y responde",
+    "observa la imagen y responde",
+)
 
 
 def es_ejercicio_del_libro(texto: str) -> bool:
