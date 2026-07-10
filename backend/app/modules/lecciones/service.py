@@ -336,6 +336,15 @@ _REGLAS_MATEMATICAS_MICRO = """
 - REDONDEO/APROXIMACIÓN, mira SIEMPRE el dígito de la posición inmediatamente menor (0-4 se redondea hacia abajo, 5-9 hacia arriba): a la decena → mira las unidades; a la centena → mira las decenas; a la unidad de millar → mira las centenas; a la decena de millar → mira las unidades de millar. Ejemplo CORRECTO: 45,678 a la decena de millar más cercana → miramos las unidades de millar (5); como 5 ≥ 5, redondeamos hacia arriba: 50,000 (NO 45,000 ni 87,000)."""
 
 
+# Bloque SOLO para Ciencias Naturales: refuerza el vocabulario descriptivo del
+# libro y evita que el 7B use terminología matemática (conjuntos, subconjuntos)
+# al explicar temas de Ciencias — espejo de la regla del chat y del guardrail de
+# actividades. Ver [[fuga-vocab-matematico-prompts]].
+_REGLAS_CIENCIAS_MICRO = """
+- Usa el vocabulario descriptivo y narrativo del libro (procesos, ciclos, sistemas, organismos, funciones). NUNCA uses terminología de matemáticas (conjuntos, subconjuntos, "A contenido en B", ecuaciones, variables) para explicar Ciencias Naturales.
+- Si el tema es una jerarquía o clasificación, usa los términos biológicos del libro (dominio, reino, filo, clase, orden, familia, género, especie), no analogías matemáticas."""
+
+
 def _build_micro_leccion_messages(
     nombre_leccion: str, fragmentos: str, nivel: int = 1, asignatura_nombre: str | None = None
 ) -> list[dict]:
@@ -347,7 +356,9 @@ def _build_micro_leccion_messages(
     enfoque = _ENFOQUE_NIVEL.get(nivel, _ENFOQUE_NIVEL[1])
     # "matem" evita el problema del acento ("Matemáticas".lower() conserva la á).
     es_matematicas = bool(asignatura_nombre and "matem" in asignatura_nombre.lower())
+    es_ciencias = bool(asignatura_nombre and "ciencia" in asignatura_nombre.lower())
     reglas_matematicas = _REGLAS_MATEMATICAS_MICRO if es_matematicas else ""
+    reglas_ciencias = _REGLAS_CIENCIAS_MICRO if es_ciencias else ""
     user = f"""Eres un tutor para niños de 8-12 años. Genera una micro-lección estructurada sobre el tema "{nombre_leccion}" usando EXCLUSIVAMENTE el contenido del siguiente libro de texto.
 
 ENFOQUE DE ESTA LECCIÓN (NIVEL {nivel} de 3): {enfoque}
@@ -399,7 +410,7 @@ REGLAS:
 - IGNORA cualquier ejercicio, actividad resuelta, ejemplo resuelto o sección tipo "Mesa lista", "Ahora es tu turno", "Ejercicio", "Practica" que aparezca en el libro. Explica ÚNICAMENTE la TEORÍA: definiciones, conceptos y explicaciones del tema. NO copies ni reformules un ejercicio del libro como si fuera un concepto.
 - NO incluyas "emoji" en el JSON: se asigna aparte
 - NUNCA uses las palabras "fragmento", "contexto", "chunk" ni ningún término técnico de procesamiento de datos en el contenido: refiérete siempre al material como "el libro" o "tu libro de texto".
-- Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador de miles para facilitar la lectura a un niño (1000 → 1,000; 45678 → 45,678; 5746252 → 5,746,252; 1000000 → 1,000,000). NUNCA escribas números grandes sin separador de miles.{reglas_matematicas}
+- Cuando escribas números de 4 o más dígitos, SIEMPRE usa comas como separador de miles para facilitar la lectura a un niño (1000 → 1,000; 45678 → 45,678; 5746252 → 5,746,252; 1000000 → 1,000,000). NUNCA escribas números grandes sin separador de miles.{reglas_matematicas}{reglas_ciencias}
 - Responde SOLO con el JSON, sin texto adicional"""
     return [
         {

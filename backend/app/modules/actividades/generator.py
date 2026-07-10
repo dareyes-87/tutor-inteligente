@@ -861,6 +861,40 @@ Responde SOLO con JSON válido, sin texto adicional:
 }
 
 
+# Ejemplos de actividades POR ASIGNATURA. Se anexan al prompt del tipo según la
+# asignatura (en vez de duplicar los 5 ACTIVITY_PROMPTS). Cada asignatura ve SOLO
+# sus propios ejemplos: así el vocabulario de conjuntos (Matemáticas) no se filtra
+# a Ciencias (ver `_INSTRUCCIONES_EVITAR_VOCAB_MATEMATICO` y el commit f136c66).
+_EJEMPLOS_CIENCIAS = {
+    TipoActividad.opcion_multiple: 'Ejemplos de buenas preguntas de Ciencias: "¿Qué función cumple el cloroplasto en la célula vegetal?", "¿Cuál de los siguientes es un animal vertebrado?". Los distractores deben ser conceptos biológicos plausibles, nunca operaciones matemáticas.',
+    TipoActividad.verdadero_falso: 'Ejemplos de buenas afirmaciones de Ciencias: "Los hongos son organismos autótrofos" (falso), "El sistema nervioso coordina las funciones del cuerpo" (verdadero).',
+    TipoActividad.completar: 'Ejemplo de Ciencias: "La ___ es el proceso por el cual las plantas producen su alimento usando la luz del sol" (respuesta: fotosíntesis).',
+    TipoActividad.ordenar: 'Ejemplo de Ciencias: "Ordena los niveles de organización de los seres vivos de menor a mayor" (solo si el libro describe esa secuencia).',
+    TipoActividad.respuesta_corta: 'Ejemplo de Ciencias: "¿Cómo se llama el proceso por el que las plantas fabrican su alimento?" (respuesta: fotosíntesis).',
+}
+_EJEMPLOS_MATEMATICAS = {
+    TipoActividad.opcion_multiple: 'Ejemplos de buenas preguntas de Matemáticas: "¿Qué se dice de dos conjuntos que no tienen ningún elemento en común?", "¿Cuál es el resultado de sumar 12 y 8?". Los distractores deben ser errores aritméticos comunes o confusiones de concepto.',
+    TipoActividad.verdadero_falso: 'Ejemplo de Matemáticas: "El número 7 es un número primo" (verdadero).',
+    TipoActividad.completar: 'Ejemplo de Matemáticas: "El resultado de una división se llama ___" (respuesta: cociente).',
+    TipoActividad.ordenar: 'Ejemplo de Matemáticas: "Ordena los pasos para resolver una resta con préstamo" (solo si el libro describe ese procedimiento).',
+    TipoActividad.respuesta_corta: 'Ejemplo de Matemáticas: "¿Cómo se llaman los conjuntos que no tienen ningún elemento en común?" (respuesta: disjuntos).',
+}
+
+
+def _bloque_ejemplos_asignatura(
+    tipo: TipoActividad, es_matematicas: bool, es_ciencias: bool
+) -> str:
+    """Ejemplos del tipo de actividad específicos de la asignatura (o "" si es
+    una asignatura sin ejemplos curados → se usa el prompt genérico tal cual)."""
+    if es_matematicas:
+        ejemplo = _EJEMPLOS_MATEMATICAS.get(tipo)
+    elif es_ciencias:
+        ejemplo = _EJEMPLOS_CIENCIAS.get(tipo)
+    else:
+        ejemplo = None
+    return f"\n{ejemplo}" if ejemplo else ""
+
+
 def _texto_pregunta(result: dict) -> str | None:
     """El texto visible que "es" la pregunta de la actividad, según su forma:
     pregunta (opción múltiple / respuesta corta), afirmación (V/F), oración
@@ -970,10 +1004,13 @@ def _llamar_llm(
     evitar_preguntas: list[str] | None = None,
     rango_max: tuple[int, str] | None = None,
     es_matematicas: bool = False,
+    es_ciencias: bool = False,
 ) -> dict | None:
     """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
     (sin separar contenido/respuesta_correcta) o None si falla."""
-    activity_prompt = ACTIVITY_PROMPTS[tipo]
+    activity_prompt = ACTIVITY_PROMPTS[tipo] + _bloque_ejemplos_asignatura(
+        tipo, es_matematicas, es_ciencias
+    )
 
     tema_str = f" sobre el tema: {tema}" if tema else ""
     messages = [
@@ -1101,7 +1138,8 @@ def generar_actividad(
     evitar = [p for p in (evitar_preguntas or []) if p and p.strip()]
     rango_max = _rango_numerico_grado(asignatura_nombre, grado_nombre)
     es_mat = bool(asignatura_nombre and "matematic" in _normalizar_pregunta(asignatura_nombre))
-    result = _llamar_llm(tipo, context, tema, evitar, rango_max, es_mat)
+    es_cie = bool(asignatura_nombre and "ciencia" in _normalizar_pregunta(asignatura_nombre))
+    result = _llamar_llm(tipo, context, tema, evitar, rango_max, es_mat, es_cie)
 
     if result:
         razon = _actividad_invalida(tipo, result, rango_max)
@@ -1111,7 +1149,7 @@ def generar_actividad(
             logger.warning(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
-            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max, es_mat)
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max, es_mat, es_cie)
             # La regeneración también se valida: podría volver a caer en un
             # defecto independiente del tipo (p. ej. citar "el ejemplo 2 del
             # libro", o un error aritmético distinto). Mejor descartar que
@@ -1130,7 +1168,7 @@ def generar_actividad(
         logger.warning(
             f"Actividad {tipo.value} repite una pregunta de la sesión; reintentando una vez"
         )
-        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max, es_mat)
+        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max, es_mat, es_cie)
         if (
             reintento
             and not _actividad_invalida(tipo, reintento, rango_max)
