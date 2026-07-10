@@ -26,7 +26,7 @@ import {
   type TarjetaEducativa,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
-import { precargarActividades } from "@/lib/preload-actividades";
+import { conceptosDeTarjetas, precargarActividades } from "@/lib/preload-actividades";
 import { Mascota } from "@/components/Mascota";
 
 export default function EstudiarScreen() {
@@ -81,14 +81,17 @@ export default function EstudiarScreen() {
         setNivel(nivelActual);
         setError(false);
         // Pre-carga: genera las actividades de práctica en segundo plano
-        // mientras el estudiante lee las tarjetas (misma teoría/nivel). Es una
-        // optimización: si falla, Practicar genera normalmente.
+        // mientras el estudiante lee las tarjetas (misma teoría/nivel/conceptos).
+        // Es una optimización: si falla, Practicar genera normalmente.
         if (tema) {
           precargarActividades(nivelActual, {
             leccionId,
             asignaturaId: asignaturaIdLocal,
             tema,
             fragmentIds: m.fragment_ids ?? [],
+            // Conceptos que el tutor explica aquí: la práctica se acota a ellos
+            // (Enfoque A) para no evaluar detalles/trivia que la lección omitió.
+            conceptos: conceptosDeTarjetas(m.tarjetas ?? []),
           });
         }
       } catch {
@@ -139,14 +142,15 @@ export default function EstudiarScreen() {
   function avanzar() {
     Speech.stop();
     if (esUltima) {
-      // Pasar los fragmentos usados para que /practicar genere actividades con
-      // la MISMA teoría explicada aquí.
+      // Pasar los fragmentos + conceptos usados para que /practicar genere
+      // actividades con la MISMA teoría y alcance de conceptos explicados aquí.
       router.push({
         pathname: "/leccion/[id]/practicar",
         params: {
           id: String(leccionId),
           fragmentIds: JSON.stringify(micro?.fragment_ids ?? []),
           nivel: String(nivel),
+          conceptos: JSON.stringify(conceptosDeTarjetas(micro?.tarjetas ?? [])),
         },
       });
       return;

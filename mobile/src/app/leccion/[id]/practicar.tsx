@@ -38,10 +38,16 @@ import {
 type Fase = "cargando" | "error" | "ejercicio" | "resultado";
 
 export default function PracticarScreen() {
-  const { id, fragmentIds: fragmentIdsParam, nivel: nivelParam } = useLocalSearchParams<{
+  const {
+    id,
+    fragmentIds: fragmentIdsParam,
+    nivel: nivelParam,
+    conceptos: conceptosParam,
+  } = useLocalSearchParams<{
     id: string;
     fragmentIds?: string;
     nivel?: string;
+    conceptos?: string;
   }>();
   const leccionId = Number(id);
   const nivel = Number(nivelParam) || 1;
@@ -95,6 +101,14 @@ export default function PracticarScreen() {
         } catch {
           fragmentIds = [];
         }
+        // Conceptos que vio el estudiante en Estudiar (Enfoque A): acotan la
+        // práctica a lo explicado. Vacío si entró directo → flujo actual.
+        let conceptos: string[] = [];
+        try {
+          conceptos = conceptosParam ? JSON.parse(conceptosParam) : [];
+        } catch {
+          conceptos = [];
+        }
         // Si el estudiante pasó por Estudiar, las actividades ya se están
         // generando (o están listas) en segundo plano: se consumen aquí. Si no
         // hay pre-carga (entró directo) o quedó vacía, se generan sobre la
@@ -102,10 +116,10 @@ export default function PracticarScreen() {
         const precargadas = tomarActividadesPrecargadas(leccionId, nivel);
         let generadas = precargadas
           ? await precargadas
-          : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
+          : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds, conceptos });
         if (!activo) return;
         if (generadas.length === 0 && precargadas) {
-          generadas = await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
+          generadas = await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds, conceptos });
           if (!activo) return;
         }
         if (generadas.length === 0) {

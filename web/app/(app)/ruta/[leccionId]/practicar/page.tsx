@@ -91,6 +91,14 @@ export default function PracticarPage() {
         } catch {
           fragmentIds = [];
         }
+        // Conceptos que vio el estudiante en Estudiar (Enfoque A): acotan la
+        // práctica a lo explicado. Vacío si entró directo → flujo actual.
+        let conceptos: string[] = [];
+        try {
+          conceptos = JSON.parse(sessionStorage.getItem(`conceptos_${leccionId}`) || "[]");
+        } catch {
+          conceptos = [];
+        }
         const nivelGuardado = Number(sessionStorage.getItem(`nivel_${leccionId}`)) || leccion.nivel_actual || 1;
         if (activo) setNivel(nivelGuardado);
         // Si el estudiante pasó por Estudiar, las actividades ya se están
@@ -100,11 +108,11 @@ export default function PracticarPage() {
         const precargadas = tomarActividadesPrecargadas(leccionId, nivelGuardado);
         let generadas = precargadas
           ? await precargadas
-          : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
+          : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds, conceptos });
         if (!activo) return;
         if (generadas.length === 0 && precargadas) {
           // La pre-carga falló entera (red/timeout): reintentar sin ella.
-          generadas = await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds });
+          generadas = await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds, conceptos });
           if (!activo) return;
         }
         if (generadas.length === 0) {

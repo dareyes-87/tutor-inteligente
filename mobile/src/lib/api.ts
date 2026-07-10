@@ -297,6 +297,7 @@ export function generarActividad(
   leccionId: number | null = null,
   fragmentIds: number[] = [],
   evitarPreguntas: string[] = [],
+  conceptosEstudiados: string[] = [],
 ): Promise<ActividadResponse> {
   return request<ActividadResponse>("/actividades/generar", {
     method: "POST",
@@ -307,6 +308,7 @@ export function generarActividad(
       leccion_id: leccionId,
       fragment_ids: fragmentIds,
       evitar_preguntas: evitarPreguntas,
+      conceptos_estudiados: conceptosEstudiados,
     }),
   });
 }

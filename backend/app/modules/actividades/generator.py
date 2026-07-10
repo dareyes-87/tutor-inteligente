@@ -53,6 +53,37 @@ def _hueco_es_redundante(oracion: str | None, respuesta_correcta: str) -> bool:
     return False
 
 
+# Máximo de palabras de una oración de "completar". Una oración larga con varias
+# cláusulas es imposible de completar para un niño (Bug 2: caso real de una
+# oración-trampa de 30+ palabras con una analogía inventada). El prompt ya lo
+# pide, pero el 7B lo incumple; este es el guard determinístico.
+MAX_PALABRAS_COMPLETAR = 20
+
+
+def _oracion_demasiado_larga(oracion: str | None) -> bool:
+    """True si la oración de un 'completar' supera MAX_PALABRAS_COMPLETAR
+    palabras (el hueco ___ no cuenta como palabra)."""
+    if not oracion:
+        return False
+    palabras = [w for w in oracion.split() if w != "___"]
+    return len(palabras) > MAX_PALABRAS_COMPLETAR
+
+
+# Máximo de palabras de la respuesta esperada en 'respuesta_corta' y 'completar'.
+# El estudiante la teclea a mano: una respuesta-oración es imposible de acertar
+# aunque entienda el concepto (la validación compara texto). El prompt pide <=4;
+# el guard da margen a 6 para no ser demasiado agresivo.
+MAX_PALABRAS_RESPUESTA = 6
+
+
+def _respuesta_demasiado_larga(respuesta: str | None) -> bool:
+    """True si la respuesta esperada supera MAX_PALABRAS_RESPUESTA palabras
+    (es una frase/oración en vez de un término clave)."""
+    if not respuesta:
+        return False
+    return len(respuesta.split()) > MAX_PALABRAS_RESPUESTA
+
+
 def _respuesta_es_fragmento_de_palabra(oracion: str | None, respuesta: str | None) -> bool:
     """True si la respuesta de un 'completar' es un PEDAZO de palabra en vez de
     una palabra completa. Caso real: oración "...se encuentra ___ a la
@@ -639,6 +670,36 @@ def _ordenar_parece_categorico(instruccion: str | None, elementos: list | None) 
     return any(m in texto_instr for m in _MARCADORES_CATEGORICOS)
 
 
+# Palabras de negación para detectar doble negación (Bug 3).
+_NEGACIONES = {"no", "ni", "nunca", "jamas", "tampoco", "sin"}
+
+
+def _tiene_doble_negacion(texto: str | None) -> bool:
+    """True si el texto visible tiene 2+ palabras de negación (Bug 3). La doble
+    negación ("¿cuál NO está en X y NO ayuda a Y?") es cognitivamente muy difícil
+    para un niño. El prompt ya pide evitarla, pero el 7B reincide; este es el
+    guard determinístico que fuerza la regeneración."""
+    if not texto:
+        return False
+    toks = _normalizar_pregunta(texto).split()
+    return sum(1 for t in toks if t in _NEGACIONES) >= 2
+
+
+# Marcadores de analogía/metáfora (Bug 2): normalizados (sin tildes/puntuación),
+# con espacio final para no matchear "como un" dentro de "como unico".
+_MARCADORES_ANALOGIA = ("como un ", "como una ", "como los ", "como las ", "es como ", "son como ")
+
+
+def _completar_tiene_analogia(oracion: str | None) -> bool:
+    """True si la oración de 'completar' introduce una analogía/metáfora inventada
+    (Bug 2b: "el tejido sanguíneo es como un río…"). El libro rara vez usa esas
+    comparaciones; el 7B las inventa y vuelven el hueco imposible de deducir."""
+    if not oracion:
+        return False
+    n = f" {_normalizar_pregunta(oracion)} "
+    return any(m in n for m in _MARCADORES_ANALOGIA)
+
+
 def _actividad_invalida(
     tipo: TipoActividad, result: dict, rango_max: tuple[int, str] | None = None
 ) -> str | None:
@@ -689,6 +750,10 @@ def _actividad_invalida(
     frase_ejemplo = _referencia_a_ejemplo_del_libro(result)
     if frase_ejemplo:
         return f"la actividad depende de un ejercicio/ejemplo específico del libro ('{frase_ejemplo}')"
+    # Doble negación en el texto visible (cualquier tipo): imposible de procesar
+    # para un niño (Bug 3).
+    if _tiene_doble_negacion(_texto_pregunta(result)):
+        return "la pregunta usa doble negación (difícil de procesar para un niño)"
     if tipo == TipoActividad.ordenar:
         elementos = result.get("elementos_desordenados")
         orden = result.get("orden_correcto")
@@ -725,6 +790,10 @@ def _actividad_invalida(
     texto_visible = result.get("oracion") if tipo == TipoActividad.completar else result.get("pregunta")
     if _contiene_simbolo_especial(respuesta_str) or _contiene_simbolo_especial(texto_visible):
         return "la pregunta gira en torno a un símbolo matemático especial (no se puede teclear)"
+    # La respuesta esperada debe ser un término clave, no una oración: si es
+    # larga, el estudiante no puede reproducirla a mano aunque entienda el tema.
+    if _respuesta_demasiado_larga(respuesta_str):
+        return f"la respuesta esperada supera {MAX_PALABRAS_RESPUESTA} palabras (es una frase, no un término clave)"
     if tipo == TipoActividad.completar and _hueco_es_redundante(
         result.get("oracion"), respuesta_str or ""
     ):
@@ -733,6 +802,10 @@ def _actividad_invalida(
         result.get("oracion"), respuesta_str
     ):
         return "la respuesta es un fragmento de palabra o demasiado corta (ej. 'ás' de 'más')"
+    if tipo == TipoActividad.completar and _oracion_demasiado_larga(result.get("oracion")):
+        return f"la oración de completar supera {MAX_PALABRAS_COMPLETAR} palabras (demasiado larga para deducir el hueco)"
+    if tipo == TipoActividad.completar and _completar_tiene_analogia(result.get("oracion")):
+        return "la oración de completar usa una analogía/metáfora inventada ('es como un…') que no está en el libro"
     return None
 
 
@@ -804,6 +877,7 @@ REGLAS CRÍTICAS para los distractores (las opciones incorrectas):
 - Los distractores deben ser plausibles (no absurdos) pero inequívocamente incorrectos.
 - ANTES de responder, verifica que SOLO UNA opción sea defendible como correcta.
 - Evita preguntas tipo "¿Cuál de las siguientes afirmaciones es correcta?" con varias opciones que podrían defenderse como ciertas. Prefiere preguntas específicas y concretas (por ejemplo, preguntar por la función, la característica o la definición de un concepto puntual del libro) en vez de pedir juzgar afirmaciones abstractas.
+- FORMULA LA PREGUNTA DE FORMA POSITIVA Y DIRECTA. Evita la doble negación: NUNCA combines dos "no" (ni "no… sin…", "no… tampoco…") en una misma pregunta, porque para un niño es muy difícil de procesar. Ejemplo INCORRECTO (doble negación): "¿Cuál de los siguientes tejidos NO está en la nariz y NO ayuda a moverse sin dolor?". Ejemplo CORRECTO (positivo): "¿Qué función cumple el tejido sanguíneo?" o "¿Cuál de los siguientes tejidos transporta nutrientes y oxígeno?". Como máximo usa UNA sola negación, y solo si es imprescindible.
 Responde SOLO con JSON válido, sin texto adicional:
 {
     "pregunta": "la pregunta",
@@ -820,11 +894,14 @@ Responde SOLO con JSON válido, sin texto adicional:
     "explicacion": "por qué es verdadero o falso"
 }""",
 
-    TipoActividad.completar: """Genera UNA oración para completar. La oración debe salir TEXTUALMENTE del libro (toma una frase real del contenido y reemplaza por ___ la palabra o término clave que el estudiante debe recordar). Usa ___ donde va la palabra faltante.
-El espacio en blanco (___) DEBE reemplazar un TÉRMINO CLAVE del tema (nombre de estructura, órgano, proceso, concepto científico). NUNCA pongas el blank en verbos comunes (significa, tiene, es, son), artículos, preposiciones o conectores.
-Ejemplo CORRECTO: "La ___ es la unidad básica de los seres vivos" (respuesta: célula).
-Ejemplo INCORRECTO: "La célula ___ la unidad básica" (respuesta: es).
-El hueco (___) NUNCA debe quedar junto a una palabra igual a la respuesta esperada (eso lo vuelve redundante). Ejemplo INCORRECTO: "decimos que pertenece (___) al conjunto" con respuesta "pertenece" (la palabra ya está escrita justo antes del hueco).
+    TipoActividad.completar: """Genera UNA oración CORTA para completar, basada en el contenido del libro. Reemplaza por ___ la palabra o término clave que el estudiante debe recordar. Usa ___ donde va la palabra faltante.
+LA ORACIÓN DEBE SER CORTA: máximo 20 palabras, UNA sola idea. Una oración larga con varias cláusulas confunde al niño y hace imposible deducir la respuesta.
+Usa SOLO vocabulario y conceptos que aparecen en el contenido del libro que se te dio. NO inventes analogías, metáforas ni comparaciones ("es como un río", "son como barcos"…) que no estén escritas en el libro: si el libro no usa esa comparación, NO la uses tú.
+El hueco (___) debe ser una palabra o frase clave que el estudiante pueda DEDUCIR por el contexto de la oración. DEBE reemplazar un TÉRMINO CLAVE del tema (nombre de estructura, órgano, proceso, concepto). NUNCA pongas el blank en verbos comunes (significa, tiene, es, son), artículos, preposiciones o conectores.
+Ejemplo CORRECTO (corto, sin analogía inventada): "El sistema ___ lleva la sangre con nutrientes a todo el cuerpo" (respuesta: circulatorio).
+Ejemplo INCORRECTO (analogía inventada + oración larga): "El sistema circulatorio es como un gran río y ___ son como barcos que recogen los desechos y los llevan a los riñones para eliminar" (respuesta: la sangre).
+Ejemplo INCORRECTO (hueco en verbo): "La célula ___ la unidad básica" (respuesta: es).
+El hueco (___) NUNCA debe quedar junto a una palabra igual a la respuesta esperada (eso lo vuelve redundante). Ejemplo INCORRECTO: "decimos que pertenece (___) al conjunto" con respuesta "pertenece".
 Si el término clave de este concepto es un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠), NO lo uses como respuesta del hueco: ningún teclado permite escribir esos símbolos. Elige en su lugar otro término clave que se escriba con palabras.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
 {
@@ -849,7 +926,11 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
 }""",
 
     TipoActividad.respuesta_corta: """Genera UNA pregunta de respuesta corta basada en el libro.
-La pregunta DEBE pedir UN SOLO TÉRMINO o CONCEPTO específico. Formúlala como: "¿Cómo se llama el hueso que protege al cerebro?" (respuesta: cráneo). NUNCA preguntes dos cosas en una ("¿qué parte Y cuál es su función?"). La respuesta esperada debe ser de 1 a 3 palabras como máximo.
+La respuesta correcta DEBE ser un término o concepto clave de MÁXIMO 4 PALABRAS (ejemplos: "sistema circulatorio", "la célula", "fotosíntesis", "tejido cartilaginoso"). NUNCA generes una respuesta esperada que sea una oración o una frase descriptiva: el estudiante la escribe a mano y es imposible que reproduzca una frase larga, aunque entienda el concepto.
+FORMULA LA PREGUNTA para que la respuesta sea un TÉRMINO, no una explicación. Da la descripción DENTRO de la pregunta y pide el nombre.
+Ejemplo CORRECTO: "¿Qué sistema envía señales al cuerpo y permite sentir frío, calor y dolor?" → respuesta: "sistema nervioso".
+Ejemplo INCORRECTO: "¿Cuál es la función del sistema nervioso?" → respuesta: "envía señales a todo tu cuerpo y te permite sentir frío, calor y dolor" (la respuesta es una oración, no un término).
+La pregunta DEBE pedir UN SOLO TÉRMINO o CONCEPTO específico. NUNCA preguntes dos cosas en una ("¿qué parte Y cuál es su función?").
 NUNCA hagas una pregunta cuya respuesta sea un símbolo matemático especial (∈, ∉, ⊂, ⊄, ⊆, ⊇, ∪, ∩, ≤, ≥, ≠): el estudiante escribe la respuesta en un campo de texto libre y ningún teclado tiene esos símbolos, así que sería imposible de responder. Si el concepto involucra uno de esos símbolos, pregunta por otra cosa (una definición, un ejemplo, el nombre del concepto en palabras).
 Responde SOLO con JSON válido, sin texto adicional:
 {
@@ -913,11 +994,31 @@ def _normalizar_pregunta(texto: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", texto.lower()).strip()
 
 
+# Cuántas veces se reintenta generar una actividad no repetida antes de rendirse.
+# Con el universo reducido a los conceptos estudiados, un solo reintento no
+# bastaba (caso real: ejercicios 1 y 4 idénticos). Al agotarse, un duplicado
+# EXACTO se descarta (no se muestra): un hueco en la sesión es preferible a la
+# misma pregunta dos veces.
+MAX_REINTENTOS_REPETICION = 3
+
+
 def _es_pregunta_repetida(result: dict, evitar_preguntas: list[str]) -> bool:
-    """True si la pregunta generada coincide (normalizada) con una ya hecha
-    en la sesión. Caso real: en una sesión de 5, el LLM generó 3 veces
-    "¿Qué significa que A esté contenido en B?" — cada llamada era
-    independiente y producía la pregunta más obvia del tema."""
+    """True si la pregunta generada es TEXTUALMENTE igual (normalizada: sin
+    tildes, minúsculas, sin puntuación, ignorando el orden de las opciones
+    porque solo se compara el TEXTO de la pregunta) a una ya hecha en la sesión.
+
+    Caso real: en una sesión de 5, el LLM generó 3 veces "¿Qué significa que A
+    esté contenido en B?" — cada llamada era independiente y producía la pregunta
+    más obvia del tema.
+
+    Se compara SOLO por igualdad exacta (no por similitud difusa) a propósito:
+    en pruebas reales, la similitud de texto NO distingue un casi-duplicado real
+    (misma pregunta reformulada, ratio ~0.80) de dos preguntas legítimas sobre
+    conceptos DISTINTOS que comparten plantilla (ratio ~0.98, p. ej.
+    "…gimnospermas?" vs "…angiospermas?"). Cualquier umbral que cace al primero
+    también caza al segundo, matando la variedad deseada. Los casi-duplicados se
+    combaten con el prompt (rotar conceptos) y la memoria cross-nivel, no con un
+    umbral de texto."""
     texto = _texto_pregunta(result)
     if not texto or not evitar_preguntas:
         return False
@@ -931,12 +1032,46 @@ def _bloque_evitar_preguntas(evitar_preguntas: list[str]) -> str:
         return ""
     return (
         "\n\nIMPORTANTE: En esta sesión de práctica, el estudiante ya respondió "
-        "las siguientes preguntas. NO repitas ninguna de estas preguntas ni "
-        "generes una pregunta con el mismo enfoque:\n"
+        "las siguientes preguntas. NO repitas NINGUNA de estas preguntas, ni "
+        "siquiera reformulada con otras palabras o cambiando el orden de las "
+        "opciones, ni una pregunta con el mismo enfoque:\n"
         f"{lista}\n"
-        "Genera una pregunta DIFERENTE que evalúe OTRO aspecto del tema (por "
-        "ejemplo: si ya se preguntó una definición, pregunta sobre un caso "
-        "concreto o sobre la diferencia entre dos conceptos)."
+        "Genera una pregunta CLARAMENTE DIFERENTE que evalúe OTRO aspecto u OTRO "
+        "concepto del tema (por ejemplo: si ya se preguntó una definición, "
+        "pregunta sobre un caso concreto, una función o la diferencia entre dos "
+        "conceptos). Si ya se cubrieron casi todos los conceptos, elige el ángulo "
+        "menos preguntado."
+    )
+
+
+def _bloque_conceptos_estudiados(conceptos: list[str]) -> str:
+    """Bloque de prompt que ACOTA la actividad a los conceptos que el tutor
+    explicó en la micro-lección (Enfoque A: alinear teoría y práctica).
+
+    El estudiante estudió una SELECCIÓN de conceptos, no todo el rango de
+    páginas. Sin este bloque, el generador puede preguntar por cualquier
+    detalle o dato curioso de los fragmentos que la micro-lección omitió (el
+    alumno estudia un tema y lo evalúan sobre otro). Con varias actividades por
+    lección (5 por nivel × 3 niveles) también pide ROTAR entre los conceptos
+    para no repetir siempre el mismo; el "ya preguntado" lo aporta
+    `_bloque_evitar_preguntas`, que lista las preguntas hechas en la lección.
+
+    Si la lista viene vacía (el alumno entró directo a Practicar sin Estudiar,
+    o un cliente viejo), devuelve "" y el generador se comporta como antes.
+    """
+    lista = "\n".join(f"- {c}" for c in conceptos if c and c.strip())
+    if not lista:
+        return ""
+    return (
+        "\n\nEl estudiante ACABA DE ESTUDIAR EXCLUSIVAMENTE estos conceptos en su "
+        "micro-lección:\n"
+        f"{lista}\n"
+        "Genera la actividad ÚNICAMENTE sobre uno de estos conceptos. NO preguntes "
+        "sobre datos curiosos, detalles sueltos ni información del libro que no esté "
+        "en esta lista, aunque aparezcan en el texto de arriba. Si vas a generar "
+        "varias actividades para la misma lección, elige cada vez un concepto "
+        "DISTINTO de la lista para variar; repite un concepto solo si ya se "
+        "cubrieron todos los demás."
     )
 
 
@@ -1005,6 +1140,7 @@ def _llamar_llm(
     rango_max: tuple[int, str] | None = None,
     es_matematicas: bool = False,
     es_ciencias: bool = False,
+    conceptos_estudiados: list[str] | None = None,
 ) -> dict | None:
     """Una llamada al LLM para un tipo de actividad dado. Devuelve el JSON crudo
     (sin separar contenido/respuesta_correcta) o None si falla."""
@@ -1064,6 +1200,7 @@ def _llamar_llm(
                     f"genera una pregunta conceptual básica sobre el tema: {tema}."
                     if tema else ""
                 )
+                + _bloque_conceptos_estudiados(conceptos_estudiados or [])
                 + _bloque_evitar_preguntas(evitar_preguntas or [])
             ),
         },
@@ -1106,6 +1243,7 @@ def generar_actividad(
     evitar_preguntas: list[str] | None = None,
     asignatura_nombre: str | None = None,
     grado_nombre: str | None = None,
+    conceptos_estudiados: list[str] | None = None,
 ) -> tuple[TipoActividad, dict | None]:
     """
     Genera una actividad usando el LLM.
@@ -1121,9 +1259,13 @@ def generar_actividad(
 
     `evitar_preguntas` (las preguntas ya generadas en la sesión de práctica)
     se inyecta en TODOS los prompts —incluida la regeneración— y además se
-    verifica de forma determinística: si la pregunta salió repetida igual,
-    se reintenta UNA vez; si vuelve a repetirse, se acepta con warning (una
-    pregunta repetida es mejor que un hueco en la sesión de 5).
+    verifica de forma determinística: si la pregunta salió TEXTUALMENTE igual a
+    una previa, se reintenta hasta MAX_REINTENTOS_REPETICION veces sumando cada
+    intento a la lista de exclusión; si tras agotarlos SIGUE siendo un duplicado
+    exacto, se DESCARTA (None): un hueco en la sesión es preferible a mostrar la
+    misma pregunta dos veces (Bug 1). Los casi-duplicados (reformulaciones) NO se
+    filtran por texto porque la similitud no los distingue de dos preguntas
+    legítimas sobre conceptos distintos (ver `_es_pregunta_repetida`).
 
     `asignatura_nombre`/`grado_nombre` habilitan, SOLO para Matemáticas, la
     restricción de rango numérico por grado (ver `_rango_numerico_grado`) y
@@ -1132,6 +1274,11 @@ def generar_actividad(
     también sería un error en otras materias, aunque en la práctica solo se
     ha visto en Matemáticas).
 
+    `conceptos_estudiados` (Enfoque A) son los conceptos que el tutor explicó
+    en la micro-lección; si vienen, ACOTAN la actividad a esos conceptos (no a
+    cualquier detalle del rango de páginas) y piden rotar entre ellos. Vacío =
+    comportamiento anterior (fallback). Ver `_bloque_conceptos_estudiados`.
+
     Devuelve `(tipo_efectivo, dict | None)`: `tipo_efectivo` puede diferir del
     `tipo` pedido si se forzó la regeneración; el dict es None si falló.
     """
@@ -1139,7 +1286,8 @@ def generar_actividad(
     rango_max = _rango_numerico_grado(asignatura_nombre, grado_nombre)
     es_mat = bool(asignatura_nombre and "matematic" in _normalizar_pregunta(asignatura_nombre))
     es_cie = bool(asignatura_nombre and "ciencia" in _normalizar_pregunta(asignatura_nombre))
-    result = _llamar_llm(tipo, context, tema, evitar, rango_max, es_mat, es_cie)
+    conceptos = [c for c in (conceptos_estudiados or []) if c and c.strip()]
+    result = _llamar_llm(tipo, context, tema, evitar, rango_max, es_mat, es_cie, conceptos)
 
     if result:
         razon = _actividad_invalida(tipo, result, rango_max)
@@ -1149,7 +1297,7 @@ def generar_actividad(
             logger.warning(
                 f"Actividad {tipo.value} inválida ({razon}); regenerando como opcion_multiple"
             )
-            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max, es_mat, es_cie)
+            result_omc = _llamar_llm(TipoActividad.opcion_multiple, context, tema, evitar, rango_max, es_mat, es_cie, conceptos)
             # La regeneración también se valida: podría volver a caer en un
             # defecto independiente del tipo (p. ej. citar "el ejemplo 2 del
             # libro", o un error aritmético distinto). Mejor descartar que
@@ -1161,22 +1309,32 @@ def generar_actividad(
                 logger.warning("No se pudo regenerar como opcion_multiple; se descarta la actividad")
                 result = None
 
-    # Capa determinística contra repetición: el prompt ya pide variar, pero si
-    # el LLM devolvió igual una pregunta ya hecha en la sesión, se reintenta
-    # UNA vez sumando la repetida a la lista de exclusión.
+    # Capa determinística contra repetición: el prompt ya pide variar, pero con
+    # el universo reducido a los conceptos estudiados el LLM insiste en la
+    # pregunta más obvia. Se reintenta hasta MAX_REINTENTOS_REPETICION veces,
+    # sumando cada pregunta rechazada a la lista de exclusión. Como ÚLTIMO
+    # recurso: si sigue siendo un duplicado EXACTO, se DESCARTA (un hueco en la
+    # sesión es preferible a mostrar la misma pregunta dos veces); si solo quedó
+    # una casi-igual, se acepta (mejor una parecida que una menos).
     if result and _es_pregunta_repetida(result, evitar):
-        logger.warning(
-            f"Actividad {tipo.value} repite una pregunta de la sesión; reintentando una vez"
-        )
-        reintento = _llamar_llm(tipo, context, tema, evitar + [_texto_pregunta(result) or ""], rango_max, es_mat, es_cie)
-        if (
-            reintento
-            and not _actividad_invalida(tipo, reintento, rango_max)
-            and not _es_pregunta_repetida(reintento, evitar)
-        ):
+        evitar_acum = list(evitar)
+        for intento in range(MAX_REINTENTOS_REPETICION):
+            logger.warning(
+                f"Actividad {tipo.value} repite una pregunta de la sesión; "
+                f"reintento {intento + 1}/{MAX_REINTENTOS_REPETICION}"
+            )
+            evitar_acum = evitar_acum + [_texto_pregunta(result) or ""]
+            reintento = _llamar_llm(tipo, context, tema, evitar_acum, rango_max, es_mat, es_cie, conceptos)
+            if not reintento or _actividad_invalida(tipo, reintento, rango_max):
+                continue  # reintento inválido: se conserva el anterior y se sigue probando
             result = reintento
+            if not _es_pregunta_repetida(result, evitar):
+                break  # ya no repite: listo
         else:
-            logger.warning("El reintento también repitió (o falló); se acepta la actividad repetida")
+            # Se agotaron los reintentos y `result` sigue siendo un duplicado
+            # EXACTO (la comparación es exacta): se descarta antes de mostrarlo.
+            logger.warning("Tras los reintentos sigue siendo un duplicado exacto; se descarta la actividad")
+            result = None
 
     if result:
         logger.info(f"Actividad {tipo.value} generada exitosamente")

@@ -26,6 +26,14 @@ class GenerarActividadRequest(BaseModel):
         "(opcional). Se pasan al LLM para que no repita la misma pregunta ni el "
         "mismo enfoque dentro de una sesión de 5 actividades.",
     )
+    conceptos_estudiados: list[str] = Field(
+        default_factory=list,
+        description="Conceptos que el tutor explicó en la micro-lección (opcional): "
+        "'título: explicación' de cada tarjeta de concepto, sin el dato curioso. Si "
+        "se dan, la actividad se genera SOLO sobre esos conceptos (Enfoque A: alinear "
+        "teoría y práctica), no sobre cualquier detalle del rango de páginas. Vacío = "
+        "comportamiento anterior.",
+    )
 
 
 class ResponderActividadRequest(BaseModel):

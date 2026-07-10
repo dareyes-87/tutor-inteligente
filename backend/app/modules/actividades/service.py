@@ -44,6 +44,7 @@ async def crear_actividad(
     leccion_id: int | None = None,
     fragment_ids: list[int] | None = None,
     evitar_preguntas: list[str] | None = None,
+    conceptos_estudiados: list[str] | None = None,
 ) -> Actividad | None:
     """Genera una actividad nueva usando RAG + LLM.
 
@@ -56,6 +57,10 @@ async def crear_actividad(
     En los modos 1 y 2 NO se aplica el grounding estricto: el contenido proviene
     de una lección del libro, así que ya está garantizado que es "del libro"
     (era la causa de los 500 "contexto no relevante" en /practicar).
+
+    `conceptos_estudiados` (Enfoque A) es ortogonal a los tres modos: si viene,
+    ACOTA la pregunta a los conceptos que el tutor explicó en la micro-lección
+    (no a cualquier detalle de los fragmentos). Vacío = comportamiento anterior.
     """
     # Obtener nombres para filtrar RAG
     asig = await db.execute(select(Asignatura).where(Asignatura.id == asignatura_id))
@@ -147,7 +152,8 @@ async def crear_actividad(
     # opcion_multiple (ver generar_actividad): usar SIEMPRE el tipo efectivo
     # para dar forma a contenido/respuesta_correcta y para guardar la actividad.
     tipo, result = generar_actividad(
-        tipo, context, tema, evitar_preguntas, asignatura.nombre, grado_nombre
+        tipo, context, tema, evitar_preguntas, asignatura.nombre, grado_nombre,
+        conceptos_estudiados,
     )
     if not result:
         return None

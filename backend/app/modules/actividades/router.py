@@ -34,6 +34,7 @@ async def generar(
         leccion_id=body.leccion_id,
         fragment_ids=body.fragment_ids,
         evitar_preguntas=body.evitar_preguntas,
+        conceptos_estudiados=body.conceptos_estudiados,
     )
     if actividad is None:
         raise HTTPException(

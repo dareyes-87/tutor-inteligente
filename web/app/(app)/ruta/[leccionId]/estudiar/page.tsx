@@ -13,7 +13,7 @@ import {
   type TarjetaEducativa,
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
-import { precargarActividades } from "@/lib/preload-actividades";
+import { conceptosDeTarjetas, precargarActividades } from "@/lib/preload-actividades";
 import { Mascota } from "@/components/mascota";
 
 interface MiniMsg {
@@ -73,19 +73,24 @@ export default function EstudiarPage() {
         setMicro(m);
         setNivel(nivelActual);
         setError(false);
-        // Guardar fragmentos + nivel para que /practicar use la MISMA teoría y nivel.
+        // Conceptos que el tutor explica en estas tarjetas: la práctica se acota
+        // a ellos (Enfoque A) para no evaluar detalles/trivia que la lección omitió.
+        const conceptos = conceptosDeTarjetas(m.tarjetas ?? []);
+        // Guardar fragmentos + nivel + conceptos para que /practicar use la MISMA
+        // teoría, nivel y alcance de conceptos que vio el estudiante aquí.
         try {
           sessionStorage.setItem(
             `fragments_${leccionId}`,
             JSON.stringify(m.fragment_ids ?? []),
           );
           sessionStorage.setItem(`nivel_${leccionId}`, String(nivelActual));
+          sessionStorage.setItem(`conceptos_${leccionId}`, JSON.stringify(conceptos));
         } catch {
           /* sessionStorage no disponible: practicar caerá al rango de páginas */
         }
         // Pre-carga: mientras el estudiante lee las tarjetas, se generan en
-        // segundo plano las actividades de práctica (misma teoría/nivel), para
-        // que al tocar "Practicar" ya estén listas. Es una optimización: si
+        // segundo plano las actividades de práctica (misma teoría/nivel/conceptos),
+        // para que al tocar "Practicar" ya estén listas. Es una optimización: si
         // falla, Practicar genera normalmente.
         if (tema) {
           precargarActividades(nivelActual, {
@@ -93,6 +98,7 @@ export default function EstudiarPage() {
             asignaturaId: asignaturaIdLocal,
             tema,
             fragmentIds: m.fragment_ids ?? [],
+            conceptos,
           });
         }
       } catch (err) {
