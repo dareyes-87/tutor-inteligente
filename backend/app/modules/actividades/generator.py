@@ -803,7 +803,7 @@ REGLAS CRÍTICAS para los distractores (las opciones incorrectas):
 - NUNCA generes un distractor que podría ser interpretado como correcto por un estudiante que entiende el tema (por ejemplo, la negación exacta de una afirmación verdadera casi siempre también es defendible como cierta o falsa según el caso: evita ese patrón).
 - Los distractores deben ser plausibles (no absurdos) pero inequívocamente incorrectos.
 - ANTES de responder, verifica que SOLO UNA opción sea defendible como correcta.
-- Evita preguntas tipo "¿Cuál de las siguientes afirmaciones es correcta?" con varias opciones que podrían defenderse como ciertas. Prefiere preguntas específicas y concretas (ej. "¿Qué significa que A esté contenido en B?") en vez de pedir juzgar afirmaciones abstractas.
+- Evita preguntas tipo "¿Cuál de las siguientes afirmaciones es correcta?" con varias opciones que podrían defenderse como ciertas. Prefiere preguntas específicas y concretas (por ejemplo, preguntar por la función, la característica o la definición de un concepto puntual del libro) en vez de pedir juzgar afirmaciones abstractas.
 Responde SOLO con JSON válido, sin texto adicional:
 {
     "pregunta": "la pregunta",
@@ -834,9 +834,9 @@ Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de
 }""",
 
     TipoActividad.ordenar: """Genera UN ejercicio de ordenar elementos basado en el libro. Los elementos deben ser conceptos, pasos o etapas QUE APARECEN en el libro (una secuencia o proceso descrito en el libro). No uses procesos que no estén en el libro.
-IMPORTANTE: este tipo de ejercicio es SOLO para temas con una secuencia natural de pasos (un proceso, procedimiento, ciclo o algoritmo descrito en el libro: por ejemplo, las etapas de un proceso biológico, los pasos de un procedimiento matemático, el orden cronológico de un evento). NO lo uses para definiciones, propiedades o relaciones entre conceptos (por ejemplo, "qué es un subconjunto" NO tiene un orden natural de pasos: sería forzado e inventado).
+IMPORTANTE: este tipo de ejercicio es SOLO para temas con una secuencia natural de pasos (un proceso, procedimiento, ciclo o algoritmo descrito en el libro: por ejemplo, las etapas de un proceso biológico, los pasos de un procedimiento matemático, el orden cronológico de un evento). NO lo uses para definiciones, propiedades o relaciones entre conceptos (por ejemplo, "qué es un concepto" o "qué características tiene algo" NO tienen un orden natural de pasos: sería forzado e inventado).
 Si el contenido del libro no describe un proceso con pasos reales, en vez de inventar un orden arbitrario, usa como elementos los PASOS DE UN ÚNICO PROCEDIMIENTO que el libro sí explique para aplicar o verificar ese concepto, de modo que exista un único orden lógicamente correcto.
-REGLA CRÍTICA 1 (error real que debes evitar): NUNCA mezcles en la misma secuencia pasos que pertenecen a resultados o caminos DISTINTOS o CONTRARIOS entre sí. Ejemplo de ERROR real que NO debes repetir, para "verificar si A es subconjunto de B": ["Verificar si todos los elementos de A pertenecen a B", "Comprobar si por lo menos un elemento de A NO pertenece a B", "Concluir que A es subconjunto de B"] — esto está MAL porque el paso 2 (buscar un elemento que NO pertenece) es el camino para concluir LO CONTRARIO (que A NO es subconjunto), no un paso siguiente del mismo procedimiento. Un ejercicio de ordenar debe tener UN SOLO desenlace posible: o bien los pasos para confirmar que SÍ se cumple la propiedad, o bien elige otro proceso del libro con una secuencia sin bifurcaciones (por ejemplo, los pasos para representar o construir algo, no para decidir entre dos resultados opuestos).
+REGLA CRÍTICA 1 (error real que debes evitar): NUNCA mezcles en la misma secuencia pasos que pertenecen a resultados o caminos DISTINTOS o CONTRARIOS entre sí. Ejemplo de ERROR real que NO debes repetir, para "verificar si algo cumple una condición": ["Revisar si todos los casos cumplen la condición", "Comprobar si por lo menos un caso NO la cumple", "Concluir que la condición se cumple"] — esto está MAL porque el paso 2 (buscar un caso que NO la cumple) es el camino para concluir LO CONTRARIO (que la condición NO se cumple), no un paso siguiente del mismo procedimiento. Un ejercicio de ordenar debe tener UN SOLO desenlace posible: o bien los pasos para confirmar que SÍ se cumple la propiedad, o bien elige otro proceso del libro con una secuencia sin bifurcaciones (por ejemplo, los pasos para representar o construir algo, no para decidir entre dos resultados opuestos).
 REGLA CRÍTICA 2 (otro error real que debes evitar, en cualquier materia): NO conviertas una lista de HECHOS o PROPIEDADES sobre un mismo tema en un ejercicio de ordenar, aunque le pongas la palabra "pasos" a la instrucción. Ejemplo de ERROR real (Ciencias Naturales, tema "sistema óseo"): pedir ordenar ["El sistema óseo está formado por todos los huesos del cuerpo", "Sirve para proteger los órganos internos", "Están unidos entre sí por articulaciones", "La función de los huesos largos es dar apoyo"] — esto está MAL porque son 4 datos/propiedades distintas sobre el mismo tema (composición, función, articulación, tipos de huesos) SIN ningún orden temporal o lógico entre sí: cualquier orden sería igual de válido, así que no es un ejercicio de ordenar real. En cambio, SÍ es válido ordenar algo como el proceso de digestión (la comida pasa por la boca, luego el estómago, luego el intestino: cada paso depende físicamente del anterior) porque ahí sí hay una progresión real (de lugar, tiempo o causa-efecto) de un paso al siguiente.
 Por eso, el JSON debe incluir el campo "es_proceso_secuencial": ponlo en `true` SOLO si estás seguro de que hay una progresión real (temporal, de lugar, o de causa-efecto) donde cada elemento depende del anterior; ponlo en `false` si tienes cualquier duda de que sea solo una lista de datos/propiedades/características sobre el mismo tema. Sé estricto: ante la duda, `false`.
 Responde SOLO con JSON válido, sin texto adicional (los valores son ejemplos de FORMATO, no de contenido):
@@ -931,6 +931,19 @@ _INSTRUCCIONES_MATEMATICAS_POSICIONES = (
 )
 
 
+# Refuerzo SOLO para asignaturas que NO son Matemáticas: evita que el vocabulario
+# de teoría de conjuntos (que vivía en los ejemplos del prompt compartido, afinado
+# para Mate) se filtre a Ciencias/Sociales. Caso real: en la lección "Clasificación
+# de seres vivos" (Ciencias 6to) el 7B generó "¿Qué significa que A esté contenido
+# en B?" con opciones "A es un subconjunto de B", copiando el ejemplo del prompt.
+_INSTRUCCIONES_EVITAR_VOCAB_MATEMATICO = (
+    " Esta actividad NO es de Matemáticas: NO uses terminología ni notación "
+    "matemática (conjuntos, subconjuntos, 'A contenido en B', pertenencia, "
+    "ecuaciones, ni símbolos como ∈, ∉, ⊂, ∪, ∩) para explicar el tema. Usa "
+    "únicamente el vocabulario propio de la asignatura tal como aparece en el libro."
+)
+
+
 def _bloque_rango_numerico(rango_max: tuple[int, str] | None) -> str:
     if not rango_max:
         return ""
@@ -984,16 +997,18 @@ def _llamar_llm(
                 "técnico de procesamiento de datos en tu respuesta: refiérete siempre al "
                 "material como 'el libro' o 'tu libro de texto'. "
                 "NUNCA generes preguntas que dependan de un ejemplo específico del libro "
-                "(como conjuntos con nombres de letras P, C, R, V de un diagrama particular, "
+                "(como etiquetas o nombres sueltos —P, C, R, V— de un diagrama particular, "
                 "o datos numéricos de un ejercicio resuelto): el estudiante responde SIN el "
                 "libro abierto y no puede saber a qué se refieren. La pregunta debe evaluar "
                 "la COMPRENSIÓN CONCEPTUAL del tema y entenderse completa por sí sola; si "
-                "necesitas un ejemplo, defínelo COMPLETO dentro de la misma pregunta (por "
-                "ejemplo: 'Si A = {1, 2, 3} y B = {1, 2, 3, 4, 5}, ¿A es subconjunto de B?'). "
+                "necesitas un ejemplo, defínelo COMPLETO dentro de la misma pregunta, sin "
+                "referirte a etiquetas sueltas (A, B, P, C…) de un diagrama o ejercicio que "
+                "el estudiante no puede ver. "
                 "Tampoco escribas 'según el ejemplo', 'en el ejercicio' ni 'en el diagrama' "
                 "en la explicación: explica el concepto, no el ejercicio del libro."
                 + _INSTRUCCIONES_NUMEROS_LEGIBLES
                 + (_INSTRUCCIONES_MATEMATICAS_POSICIONES if es_matematicas else "")
+                + ("" if es_matematicas else _INSTRUCCIONES_EVITAR_VOCAB_MATEMATICO)
                 + _bloque_rango_numerico(rango_max)
             ),
         },
