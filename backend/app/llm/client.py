@@ -4,6 +4,7 @@ Soporta: chat (respuesta completa), generación JSON (para actividades).
 """
 import json
 import logging
+import time
 
 import httpx
 from together import Together
@@ -35,6 +36,9 @@ def _grados_finetuned() -> set[int]:
     if not crudo:
         return set()
     return {int(g) for g in crudo.split(",") if g.strip().isdigit()}
+
+
+MODAL_FINETUNED_REINTENTO_SEGUNDOS = 10.0
 
 
 def grado_usa_finetuned(grado_id: int | None) -> bool:
@@ -103,22 +107,48 @@ class LLMClient:
         Envía la conversación al modelo fine-tuned servido en Modal (endpoint
         OpenAI-compatible vLLM). Usado SOLO para la cohorte experimental (ver
         `grado_usa_finetuned`); el llamador debe capturar excepciones (timeout,
-        cold start, contenedor caído) y degradar a `chat()` — nunca debe
+        cold start agotado, contenedor caído) y degradar a `chat()` — nunca debe
         propagarse un error visible al estudiante por esto.
+
+        Modal responde con un 503 fail-fast (no encola) mientras el contenedor
+        está "despertando" tras estar inactivo, en vez de hacer esperar al
+        cliente. Por eso acá se reintenta cada `MODAL_FINETUNED_REINTENTO_SEGUNDOS`
+        hasta agotar `MODAL_FINETUNED_TIMEOUT_SEGUNDOS` en total, en vez de
+        degradar al primer fallo: así una pregunta que llega con el contenedor
+        frío sí espera el cold start (hasta el límite configurado) y recibe la
+        respuesta real del fine-tuned, no un fallback innecesario.
+
+        BLOQUEANTE hasta por `MODAL_FINETUNED_TIMEOUT_SEGUNDOS` (sleep incluido).
+        El backend corre con --workers 1: el llamador DEBE ejecutar esto en un
+        hilo aparte (`asyncio.to_thread`), o un cold start congelaría el
+        servidor entero para todos los estudiantes, no solo para este.
         """
-        resp = httpx.post(
-            f"{settings.MODAL_FINETUNED_URL.rstrip('/')}/v1/chat/completions",
-            headers={"Authorization": f"Bearer {settings.MODAL_FINETUNED_API_KEY}"},
-            json={
-                "model": settings.MODAL_FINETUNED_MODEL_NAME,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            },
-            timeout=settings.MODAL_FINETUNED_TIMEOUT_SEGUNDOS,
-        )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        plazo = settings.MODAL_FINETUNED_TIMEOUT_SEGUNDOS
+        inicio = time.monotonic()
+        url = f"{settings.MODAL_FINETUNED_URL.rstrip('/')}/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {settings.MODAL_FINETUNED_API_KEY}"}
+        payload = {
+            "model": settings.MODAL_FINETUNED_MODEL_NAME,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+
+        while True:
+            try:
+                resp = httpx.post(url, headers=headers, json=payload, timeout=30.0)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+            except Exception:
+                transcurrido = time.monotonic() - inicio
+                if transcurrido + MODAL_FINETUNED_REINTENTO_SEGUNDOS >= plazo:
+                    raise
+                logger.info(
+                    f"[Chat] Fine-tuned no listo (cold start?), reintentando "
+                    f"en {MODAL_FINETUNED_REINTENTO_SEGUNDOS}s "
+                    f"(transcurrido={transcurrido:.0f}s de {plazo:.0f}s)"
+                )
+                time.sleep(MODAL_FINETUNED_REINTENTO_SEGUNDOS)
 
     def generate_json(
         self, messages: list[dict], max_tokens: int = 2048, model: str | None = None

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     MODAL_FINETUNED_API_KEY: str = ""
     # IDs de grado (separados por coma) que se enrutan al fine-tuned, p. ej. "3".
     MODAL_FINETUNED_GRADOS: str = ""
-    MODAL_FINETUNED_TIMEOUT_SEGUNDOS: float = 60.0
+    MODAL_FINETUNED_TIMEOUT_SEGUNDOS: float = 200.0
 
     # --- JWT ---
     SECRET_KEY: str = "cambia-esto-por-una-clave-larga-y-aleatoria"

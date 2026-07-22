@@ -1,4 +1,5 @@
 """Lógica de negocio del chat: orquesta RAG + LLM + historial."""
+import asyncio
 import logging
 import re
 from datetime import datetime, timezone
@@ -265,7 +266,11 @@ async def procesar_pregunta(
         # la diferencia salvo la respuesta en sí.
         if grado_usa_finetuned(estudiante.grado_id):
             try:
-                respuesta = llm_client.chat_finetuned(messages)
+                # to_thread: chat_finetuned() puede bloquear hasta
+                # MODAL_FINETUNED_TIMEOUT_SEGUNDOS reintentando un cold start;
+                # con --workers 1, hacerlo en el hilo del event loop congelaría
+                # el backend entero para todos los estudiantes mientras tanto.
+                respuesta = await asyncio.to_thread(llm_client.chat_finetuned, messages)
                 logger.info(f"[Chat] Respuesta del fine-tuned (grado_id={estudiante.grado_id})")
             except Exception as e:  # noqa: BLE001 — cualquier fallo del endpoint de Modal degrada a Together
                 logger.warning(f"[Chat] Fine-tuned no disponible, fallback a base: {e}")
