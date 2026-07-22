@@ -1,0 +1,17 @@
+[
+  {
+    "caso": "Ciencias — célula",
+    "fine_tuned": "La célula es la unidad más pequeña de los seres vivos. Es como la casa más pequeña de un organismo, donde todos los procesos vitales ocurren. La célula da es la base de la estructura de la vida porque, en conjunto, forman los organismos. En la naturaleza, hay algunos seres vivos que están formados por una sola célula, como los protozoos y las bacterias. Los demás seres vivos son celulares, incluso nosotros, los humanos, somos celulares. (página 4)",
+    "base": "La célula es como un pequeño tesoro en todos los seres vivos (página 4). Es la parte más pequeña de los organismos y es muy importante porque construye todo lo que vemos en los animales y plantas. Imagine que un organismo es una gran ciudad; la célula sería como una casa en esa ciudad. Todas estas casas (células) trabajan juntas para que la ciudad (organismo) funcione bien.\n\nEn la célula se da la vida, es como una mini ciudad de la vida donde todo funciona para que el organismo sobreviva y pueda reproducirse (página 4)."
+  },
+  {
+    "caso": "Matemáticas — conjunto",
+    "fine_tuned": "Un conjunto es un grupo de elementos que tienen algo en común. Estos elementos pueden ser cosas muy variadas, como números, letras, o incluso juguetes. En matemáticas, los conjuntos nos ayudan a organizar y entender mejor estos grupos de cosas. Por ejemplo, si tienes un conjunto de colores, podrías tener rojo, azul y verde. En este caso, cada color es un elemento del conjunto de colores. ¿Puedes pensar en algún conjunto que tengas en casa? Por ejemplo, los juguetes que tienes o los alimentos que comes. ¿Qué te parece si lo intentamos con los colores que usas para dibujar?",
+    "base": "Un conjunto es un grupo de cosas que tienen algo en común. Por ejemplo, si tienes varios lápices de colores, puedes formar un conjunto con todos tus lápices azules.\n\nEn el libro (página 1), dice que cuando un elemento está dentro de un conjunto, decimos que pertenece al conjunto. Y si no está dentro, decimos que no pertenece.\n\n¿Puedes pensar en un conjunto con algunos de tus juguetes favoritos?"
+  },
+  {
+    "caso": "Fuera de contexto — capital de Francia",
+    "fine_tuned": "No encuentro información sobre eso en tus libros. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?",
+    "base": "No encuentro información sobre eso en tus libros. ¿Quieres preguntarme sobre los temas que estamos viendo en clase?"
+  }
+]

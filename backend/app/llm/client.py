@@ -5,6 +5,7 @@ Soporta: chat (respuesta completa), generación JSON (para actividades).
 import json
 import logging
 
+import httpx
 from together import Together
 
 from app.config import settings
@@ -26,6 +27,23 @@ def modelo_para_asignatura(asignatura_nombre: str | None) -> str | None:
     if asignatura_nombre and "matem" in asignatura_nombre.lower():
         return MODELO_MATEMATICAS
     return None
+
+
+def _grados_finetuned() -> set[int]:
+    """Parsea MODAL_FINETUNED_GRADOS ("3" o "3,4") a un set de IDs. Vacío = feature apagada."""
+    crudo = settings.MODAL_FINETUNED_GRADOS.strip()
+    if not crudo:
+        return set()
+    return {int(g) for g in crudo.split(",") if g.strip().isdigit()}
+
+
+def grado_usa_finetuned(grado_id: int | None) -> bool:
+    """True si el estudiante (por su grado) pertenece a la cohorte experimental
+    del modelo fine-tuned (objetivo específico 3 de tesis). Requiere
+    MODAL_FINETUNED_URL configurado además del grado en la lista."""
+    if not settings.MODAL_FINETUNED_URL or grado_id is None:
+        return False
+    return grado_id in _grados_finetuned()
 
 
 # Timeout (segundos) por llamada al API de Together. Sin esto, el SDK usa un
@@ -77,6 +95,30 @@ class LLMClient:
             temperature=temperature,
         )
         return resp.choices[0].message.content
+
+    def chat_finetuned(
+        self, messages: list[dict], max_tokens: int = 1024, temperature: float = 0.7,
+    ) -> str:
+        """
+        Envía la conversación al modelo fine-tuned servido en Modal (endpoint
+        OpenAI-compatible vLLM). Usado SOLO para la cohorte experimental (ver
+        `grado_usa_finetuned`); el llamador debe capturar excepciones (timeout,
+        cold start, contenedor caído) y degradar a `chat()` — nunca debe
+        propagarse un error visible al estudiante por esto.
+        """
+        resp = httpx.post(
+            f"{settings.MODAL_FINETUNED_URL.rstrip('/')}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {settings.MODAL_FINETUNED_API_KEY}"},
+            json={
+                "model": settings.MODAL_FINETUNED_MODEL_NAME,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            },
+            timeout=settings.MODAL_FINETUNED_TIMEOUT_SEGUNDOS,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
 
     def generate_json(
         self, messages: list[dict], max_tokens: int = 2048, model: str | None = None

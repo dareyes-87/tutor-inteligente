@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.llm.client import llm_client, modelo_para_asignatura
+from app.llm.client import grado_usa_finetuned, llm_client, modelo_para_asignatura
 from app.models.conversacion import Conversacion
 from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
@@ -258,8 +258,21 @@ async def procesar_pregunta(
         logger.info(
             f"[Chat] Contexto relevante: enviando al LLM con {len(fragments)} fragmentos"
         )
-        # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
-        respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
+        # Cohorte experimental (objetivo específico 3 de tesis, A/B por grado):
+        # intenta el modelo fine-tuned en Modal primero; si falla o tarda más
+        # del timeout configurado (cold start, contenedor caído, etc.), degrada
+        # SIN error visible al modelo base de Together — el estudiante nunca ve
+        # la diferencia salvo la respuesta en sí.
+        if grado_usa_finetuned(estudiante.grado_id):
+            try:
+                respuesta = llm_client.chat_finetuned(messages)
+                logger.info(f"[Chat] Respuesta del fine-tuned (grado_id={estudiante.grado_id})")
+            except Exception as e:  # noqa: BLE001 — cualquier fallo del endpoint de Modal degrada a Together
+                logger.warning(f"[Chat] Fine-tuned no disponible, fallback a base: {e}")
+                respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
+        else:
+            # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
+            respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
         fragments_referencia = fragments
     else:
         logger.info(

@@ -405,7 +405,9 @@ function MiniChat({ contexto, asignaturaId, onCerrar }: { contexto: string; asig
   const [conversacionId, setConversacionId] = useState<number | null>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [tardando, setTardando] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tardandoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -418,6 +420,8 @@ function MiniChat({ contexto, asignaturaId, onCerrar }: { contexto: string; asig
     setMensajes((prev) => [...prev, { rol: "usuario", contenido: t }]);
     setTexto("");
     setEnviando(true);
+    setTardando(false);
+    tardandoTimer.current = setTimeout(() => setTardando(true), 10_000);
     try {
       const res = await preguntar(t, asignaturaId, conversacionId);
       setConversacionId(res.conversacion_id);
@@ -427,7 +431,9 @@ function MiniChat({ contexto, asignaturaId, onCerrar }: { contexto: string; asig
       setMensajes((prev) => prev.slice(0, -1));
       setTexto(t);
     } finally {
+      if (tardandoTimer.current) clearTimeout(tardandoTimer.current);
       setEnviando(false);
+      setTardando(false);
     }
   }
 
@@ -477,7 +483,7 @@ function MiniChat({ contexto, asignaturaId, onCerrar }: { contexto: string; asig
             {enviando && (
               <div className="flex justify-start">
                 <div className="rounded-[6px_16px_16px_16px] border border-border bg-white px-4 py-2.5 text-[14.5px] font-semibold text-muted-foreground">
-                  El tutor está escribiendo…
+                  {tardando ? "El tutor está despertando, espera un momento…" : "El tutor está escribiendo…"}
                 </div>
               </div>
             )}

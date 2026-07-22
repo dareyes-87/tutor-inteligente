@@ -62,8 +62,10 @@ export default function ChatPage() {
   const [mensajes, setMensajes] = useState<ChatMessage[]>([]);
   const [pregunta, setPregunta] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [tardando, setTardando] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tardandoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Autoscroll al último mensaje.
   useEffect(() => {
@@ -78,6 +80,10 @@ export default function ChatPage() {
     setMensajes((prev) => [...prev, { rol: "usuario", contenido: texto }]);
     setPregunta("");
     setEnviando(true);
+    setTardando(false);
+    // Si la respuesta tarda más de lo normal (p. ej. el modelo fine-tuned
+    // "despertando" tras estar inactivo), se avisa en vez de parecer colgado.
+    tardandoTimer.current = setTimeout(() => setTardando(true), 10_000);
 
     try {
       const res = await preguntar(texto, asignaturaId, conversacionId);
@@ -93,7 +99,9 @@ export default function ChatPage() {
       setMensajes((prev) => prev.slice(0, -1));
       setPregunta(texto);
     } finally {
+      if (tardandoTimer.current) clearTimeout(tardandoTimer.current);
       setEnviando(false);
+      setTardando(false);
     }
   }
 
@@ -207,7 +215,7 @@ export default function ChatPage() {
                 <Mascota size={48} />
               </div>
               <div className="rounded-[6px_18px_18px_18px] border border-border bg-white px-[18px] py-3.5 text-[15.5px] font-semibold text-muted-foreground shadow-[0_3px_10px_rgba(30,43,77,.06)]">
-                El tutor está pensando…
+                {tardando ? "El tutor está despertando, espera un momento…" : "El tutor está pensando…"}
               </div>
             </div>
           )}
