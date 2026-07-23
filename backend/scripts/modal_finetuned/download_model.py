@@ -4,12 +4,17 @@ descomprime ahí mismo.
 
 Uso:
     modal run backend/scripts/modal_finetuned/download_model.py --url "<url-firmada>"
+    VOLUME_NAME=tutor-finetuned-weights-v2 modal run .../download_model.py --url "..."
 """
+import os
+
 import modal
+
+VOLUME_NAME = os.environ.get("VOLUME_NAME", "tutor-finetuned-weights")
 
 app = modal.App("tutor-finetuned-download")
 
-model_vol = modal.Volume.from_name("tutor-finetuned-weights", create_if_missing=True)
+model_vol = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
 
 download_image = modal.Image.debian_slim(python_version="3.12").apt_install("curl", "zstd")
 

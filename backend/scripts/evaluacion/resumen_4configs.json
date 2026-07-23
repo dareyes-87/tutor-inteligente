@@ -1,0 +1,38 @@
+{
+  "A_base_sin_rag": {
+    "global": 0.6692,
+    "ciencias": 0.6445,
+    "matematicas": 0.6938,
+    "conceptual": 0.8001,
+    "factual": 0.6617,
+    "procedimental": 0.4906,
+    "errores": 0
+  },
+  "B_base_con_rag": {
+    "global": 0.8381,
+    "ciencias": 0.8347,
+    "matematicas": 0.8415,
+    "conceptual": 0.9351,
+    "factual": 0.6977,
+    "procedimental": 0.8599,
+    "errores": 0
+  },
+  "C_v1_con_rag": {
+    "global": 0.8476,
+    "ciencias": 0.8211,
+    "matematicas": 0.8742,
+    "conceptual": 0.8755,
+    "factual": 0.8023,
+    "procedimental": 0.8596,
+    "errores": 0
+  },
+  "D_v2_con_rag": {
+    "global": 0.8438,
+    "ciencias": 0.8216,
+    "matematicas": 0.8651,
+    "conceptual": 0.9231,
+    "factual": 0.778,
+    "procedimental": 0.8112,
+    "errores": 1
+  }
+}
