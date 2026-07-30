@@ -36,6 +36,25 @@ class Settings(BaseSettings):
     MODAL_FINETUNED_GRADOS: str = ""
     MODAL_FINETUNED_TIMEOUT_SEGUNDOS: float = 200.0
 
+    # --- Keep-warm de Modal (piloto, ventana acotada por presupuesto) ---
+    # Apaga por defecto (false). Mientras esté activo, un ping liviano cada
+    # MODAL_KEEPWARM_INTERVALO_SEGUNDOS evita el scale-to-zero de Modal
+    # (scaledown_window=5min en serve.py). Diseño HÍBRIDO: se pinguea si
+    # `ahora` cae en la ventana base (HORA_INICIO-HORA_FIN, garantizada) O si
+    # hubo actividad real de un estudiante de la cohorte fine-tuned en los
+    # últimos MODAL_KEEPWARM_EXTENSION_MINUTOS (ventana rodante, ver
+    # app/workers/modal_keepwarm.py::registrar_actividad). Ambos casos quedan
+    # acotados por FECHA_INICIO/FECHA_FIN. Fuera de esto, o con esta variable
+    # en false, no se hace ningún ping y el fallback normal a Together AI
+    # sigue operando igual que siempre.
+    MODAL_KEEPWARM_ENABLED: bool = False
+    MODAL_KEEPWARM_HORA_INICIO: int = 14  # 2pm — ventana base garantizada
+    MODAL_KEEPWARM_HORA_FIN: int = 15  # 3pm (exclusivo) — ventana base garantizada
+    MODAL_KEEPWARM_EXTENSION_MINUTOS: int = 15  # rodante, por actividad real
+    MODAL_KEEPWARM_FECHA_INICIO: str = ""  # "2026-08-03", vacío = sin límite
+    MODAL_KEEPWARM_FECHA_FIN: str = ""  # "2026-08-09", vacío = sin límite
+    MODAL_KEEPWARM_INTERVALO_SEGUNDOS: int = 180  # 3 min (< 5 min de scaledown)
+
     # --- JWT ---
     SECRET_KEY: str = "cambia-esto-por-una-clave-larga-y-aleatoria"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

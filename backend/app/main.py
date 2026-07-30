@@ -4,6 +4,7 @@ Sprint 0: /health, /llm/hello
 Sprint 1: /auth/*, /ingesta/*
 Sprint 2: /chat/*, /actividades/*
 """
+import asyncio
 import logging
 import os
 import httpx
@@ -17,6 +18,7 @@ from app.config import settings
 from app.database import engine, AsyncSessionLocal
 from app.llm.client import llm_client
 from app.seed import seed_admin
+from app.workers.modal_keepwarm import keepwarm_loop
 
 # Importar routers
 from app.modules.auth.router import router as auth_router
@@ -37,7 +39,9 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as db:
         await seed_admin(db)
+    keepwarm_task = asyncio.create_task(keepwarm_loop())
     yield
+    keepwarm_task.cancel()
     await engine.dispose()
 
 
