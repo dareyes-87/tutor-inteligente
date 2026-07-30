@@ -1,8 +1,68 @@
 # Reporte de Correcciones Pre-Piloto
 
-## Fecha: 2026-07-29
-## Rama: `fix/pre-piloto` (no mergeada, no pusheada a `origin/main`)
+## Fecha: 2026-07-29 / 2026-07-30
+## Rama: `fix/pre-piloto`, mergeada y pusheada a `origin/main` (commits `081758a` y `bd8d252`)
 ## Entorno de prueba: LOCAL (docker compose) + lectura de solo-consulta contra producción para extraer contenido real y medir tiempos
+
+## ⚠️ Incidente post-deploy (resuelto)
+
+El push de `081758a` tumbó producción (`502 Application failed to respond`) durante unos minutos: Daniel ya tenía `MODAL_KEEPWARM_ENABLED`, `MODAL_KEEPWARM_HORA_INICIO`/`HORA_FIN` creadas en Railway pero **vacías**, y los campos nuevos en `config.py` las tipaban como `bool`/`int` — pydantic-settings no acepta `""` para esos tipos y lanza `ValidationError` al instanciar `Settings()` (que corre a nivel de módulo), tumbando toda la app. Hotfix en `bd8d252`: los 5 campos `MODAL_KEEPWARM_*` pasan a `str` (mismo patrón que `MODAL_FINETUNED_GRADOS`), parseados a mano con fallback al default ante vacío/inválido. Reproducido el crash exacto localmente, confirmado que ya no ocurre, y verificado en producción tras el segundo deploy: `/health` → 200, chat real de un estudiante → 200 con el footer de página incluido. **Lección para el futuro:** si se agregan variables de entorno nuevas a `config.py`, revisar primero si Railway ya tiene esa variable creada (aunque sea de un experimento anterior) antes de tipar como `bool`/`int` — mejor usar `str` + parseo manual como patrón por defecto en este proyecto.
+
+---
+
+## 11. Bug encontrado en producción: footer de página duplicado en conversaciones de varios turnos (2026-07-30)
+
+Con el A/B ya ampliado a todos los grados, Daniel probó varias preguntas reales en producción y encontró que 3 de 5 respuestas mostraban el footer de la Prioridad 3 **duplicado**, con rangos de página ligeramente distintos entre las dos líneas. Una (de un solo turno) salió bien.
+
+### 11.1 Diagnóstico (descarté las dos hipótesis originales con evidencia)
+
+**No es el modelo fine-tuned citando por su cuenta.** Reproduje el mismo problema, exacto, con **Together AI** (estudiante que no es de la cohorte fine-tuned), en una conversación de 3 turnos:
+```
+Turno 3 (Together):
+"...Así, las plantas pueden crecer y ayudarnos a respirar. 🌱🌞
+
+📖 Basado en tu libro de Ciencias Naturales, página 62.         ← generado por el modelo, imitando
+📖 Basado en tu libro de Ciencias Naturales, páginas 60-63, 70." ← nuestro footer determinístico real
+```
+
+**No es un doble-append en el código.** Solo hay un punto de inserción (`chat/service.py`, confirmado por grep y lectura completa); una pregunta aislada (primer turno de cualquier conversación) nunca lo duplica — coincide con que el caso de "latitud" que salió bien era, según Daniel, la única de un solo turno.
+
+**Causa real: el historial de conversación le enseña el patrón al modelo, dentro de la misma sesión.** `obtener_historial()` lee de Postgres los mensajes previos —incluido el footer que ya quedó guardado en `contenido` del turno anterior— y se los pasa de vuelta al LLM en `build_messages()`. El modelo, viendo su propio turno anterior terminar en "📖 Basado en tu libro de...", imita esa frase en el turno siguiente (con una página que él infiere, no necesariamente la del footer real), y luego nuestro código agrega el footer real con los fragmentos de esa consulta — de ahí las dos líneas casi idénticas. Esto **no depende del proveedor del modelo** (pasa igual con Together que con Modal): es un efecto de in-context learning genérico, no algo aprendido en el fine-tuning (el dataset de 563 ejemplos es de antes de que existiera este footer).
+
+Reproducido en producción (conversación real, estudiante `layala`, 3 turnos sobre estrellas/constelaciones) y en local (estudiante `carlos`, 3 turnos sobre fotosíntesis, Together) — mismo patrón en ambos.
+
+### 11.2 Corrección aplicada
+
+Un solo cambio, en `chat/service.py`:
+- `_sin_footer_pagina(contenido)` (nueva): corta el texto desde el marcador fijo `"\n\n📖 Basado en tu libro de "` (que solo nuestro código genera, nunca aparece en input del usuario ni en el libro).
+- `obtener_historial()`: a los mensajes de rol `asistente` se les aplica `_sin_footer_pagina()` antes de incluirlos en el historial que se le pasa al LLM.
+
+El footer sigue guardándose completo en `Mensaje.contenido` (el estudiante lo sigue viendo al reabrir la conversación) — solo se le oculta al LLM en su propio historial, que es la fuente de la imitación.
+
+### 11.3 Pruebas en LOCAL
+
+Reproduje el escenario que falló en producción (fotosíntesis, 3 turnos, Together — el bug no es específico de Modal, así que no hacía falta gastar en una llamada a Modal para esta verificación):
+
+| Turno | Footer (conteo de "📖") |
+|---|---|
+| 1 (pregunta inicial) | 1 — correcto |
+| 2 ("Cuéntame más sobre eso") | 0 — el contexto de esa pregunta vaga no pasó el chequeo de citas válidas, footer vacío (comportamiento esperado, no relacionado con este bug) |
+| 3 ("¿Y qué necesitan las plantas para hacerla?") | **1 — ya NO se duplica** |
+
+Sin regresión en los otros dos casos ya verificados esta semana:
+- **Pregunta fuera de contexto:** `referencias: []`, sin footer — igual que antes.
+- **Pregunta por página específica** ("Explícame la página 62"): footer singular ("página 62") — igual que antes.
+
+### 11.4 Archivos modificados
+
+```
+backend/app/modules/chat/service.py   (+~20 líneas: _sin_footer_pagina() + uso en obtener_historial())
+```
+No se tocó `ingesta/`, `chunking.py`, `embeddings.py`, `indexer.py`, modelos, migraciones, ni `actividades/validator.py`/`evaluator.py`.
+
+### 11.5 Estado: listo en LOCAL, esperando confirmación para push
+
+No hice push — queda en el working directory local (rama `main`, ya que el push anterior fue directo a `main`), esperando que Daniel confirme el momento.
 
 ---
 

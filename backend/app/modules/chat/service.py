@@ -131,6 +131,29 @@ def _referencia_paginas(fragments: list[dict], asignatura_nombre: str | None) ->
     return f"\n\n📖 Basado en tu libro de {materia}, {etiqueta} {rango}."
 
 
+# Marcador fijo con el que SIEMPRE empieza el footer de _referencia_paginas.
+# Nunca aparece en input de un usuario ni en teoría del libro, así que
+# buscarlo como substring es seguro.
+_MARCADOR_FOOTER_PAGINA = "\n\n📖 Basado en tu libro de "
+
+
+def _sin_footer_pagina(contenido: str) -> str:
+    """Quita el footer determinístico de página de una respuesta ya guardada,
+    para NO incluirlo en el historial que se le pasa al LLM.
+
+    Si el modelo ve su propio turno anterior terminando en "📖 Basado en tu
+    libro de...", tiende a imitar esa frase literalmente en el turno
+    siguiente (in-context, no es un patrón aprendido en el fine-tuning: pasa
+    igual con Together AI) — produciendo una segunda línea casi idéntica con
+    una página distinta a la que arma nuestro código. Cortar el footer del
+    historial elimina la fuente de la imitación sin tocar el footer que sí
+    se le muestra al estudiante (ese queda intacto en `Mensaje.contenido`)."""
+    idx = contenido.find(_MARCADOR_FOOTER_PAGINA)
+    if idx == -1:
+        return contenido
+    return contenido[:idx].rstrip()
+
+
 async def obtener_o_crear_conversacion(
     db: AsyncSession,
     conversacion_id: int | None,
@@ -161,14 +184,28 @@ async def obtener_o_crear_conversacion(
 
 
 async def obtener_historial(db: AsyncSession, conversacion_id: int) -> list[dict]:
-    """Obtiene los mensajes previos de una conversación."""
+    """Obtiene los mensajes previos de una conversación, para usar como
+    historial en el prompt del LLM. A los mensajes del asistente se les quita
+    el footer determinístico de página (ver _sin_footer_pagina) — el
+    estudiante lo sigue viendo en la conversación guardada, pero el LLM no lo
+    ve en su propio historial."""
     result = await db.execute(
         select(Mensaje)
         .where(Mensaje.conversacion_id == conversacion_id)
         .order_by(Mensaje.fecha_creacion)
     )
     mensajes = result.scalars().all()
-    return [{"rol": m.rol.value, "contenido": m.contenido} for m in mensajes]
+    return [
+        {
+            "rol": m.rol.value,
+            "contenido": (
+                _sin_footer_pagina(m.contenido)
+                if m.rol == RolMensaje.asistente
+                else m.contenido
+            ),
+        }
+        for m in mensajes
+    ]
 
 
 async def procesar_pregunta(
