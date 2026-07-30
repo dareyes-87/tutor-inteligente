@@ -47,13 +47,19 @@ class Settings(BaseSettings):
     # acotados por FECHA_INICIO/FECHA_FIN. Fuera de esto, o con esta variable
     # en false, no se hace ningún ping y el fallback normal a Together AI
     # sigue operando igual que siempre.
-    MODAL_KEEPWARM_ENABLED: bool = False
-    MODAL_KEEPWARM_HORA_INICIO: int = 14  # 2pm — ventana base garantizada
-    MODAL_KEEPWARM_HORA_FIN: int = 15  # 3pm (exclusivo) — ventana base garantizada
-    MODAL_KEEPWARM_EXTENSION_MINUTOS: int = 15  # rodante, por actividad real
+    #
+    # Todos como `str` (no bool/int): Railway puede tener estas variables
+    # creadas pero VACÍAS (pasó justo eso — ver incidente 2026-07-29), y
+    # pydantic-settings NO acepta "" para un campo bool/int (ValidationError
+    # al arrancar, tumba toda la app). Como `str`, "" es válido y se parsea a
+    # mano en modal_keepwarm.py, cayendo al default si viene vacío o inválido.
+    MODAL_KEEPWARM_ENABLED: str = "false"
+    MODAL_KEEPWARM_HORA_INICIO: str = "14"  # 2pm — ventana base garantizada
+    MODAL_KEEPWARM_HORA_FIN: str = "15"  # 3pm (exclusivo) — ventana base garantizada
+    MODAL_KEEPWARM_EXTENSION_MINUTOS: str = "15"  # rodante, por actividad real
     MODAL_KEEPWARM_FECHA_INICIO: str = ""  # "2026-08-03", vacío = sin límite
     MODAL_KEEPWARM_FECHA_FIN: str = ""  # "2026-08-09", vacío = sin límite
-    MODAL_KEEPWARM_INTERVALO_SEGUNDOS: int = 180  # 3 min (< 5 min de scaledown)
+    MODAL_KEEPWARM_INTERVALO_SEGUNDOS: str = "180"  # 3 min (< 5 min de scaledown)
 
     # --- JWT ---
     SECRET_KEY: str = "cambia-esto-por-una-clave-larga-y-aleatoria"

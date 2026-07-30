@@ -45,6 +45,28 @@ _TZ = ZoneInfo("America/Guatemala")
 _ultima_actividad: datetime | None = None
 
 
+def _parse_bool(valor: str, default: bool) -> bool:
+    """Parsea un env var de texto a bool. "" o inválido -> default (nunca
+    lanza), a diferencia de un campo bool de pydantic-settings."""
+    v = (valor or "").strip().lower()
+    if not v:
+        return default
+    return v in ("1", "true", "yes", "on", "si", "sí")
+
+
+def _parse_int(valor: str, default: int) -> int:
+    """Parsea un env var de texto a int. "" o inválido -> default (nunca
+    lanza), a diferencia de un campo int de pydantic-settings."""
+    v = (valor or "").strip()
+    if not v:
+        return default
+    try:
+        return int(v)
+    except ValueError:
+        logger.warning(f"[KeepWarm] Valor inválido '{valor}', usando default={default}")
+        return default
+
+
 def registrar_actividad() -> None:
     """Llamar cada vez que un estudiante de la cohorte fine-tuned (grado_id
     en MODAL_FINETUNED_GRADOS) manda una pregunta de chat — ver
@@ -71,7 +93,9 @@ def _en_fecha(ahora: datetime) -> bool:
 
 def _en_ventana_base(ahora: datetime) -> bool:
     """True si `ahora` cae en el rango de horas garantizado."""
-    return settings.MODAL_KEEPWARM_HORA_INICIO <= ahora.hour < settings.MODAL_KEEPWARM_HORA_FIN
+    hora_inicio = _parse_int(settings.MODAL_KEEPWARM_HORA_INICIO, 14)
+    hora_fin = _parse_int(settings.MODAL_KEEPWARM_HORA_FIN, 15)
+    return hora_inicio <= ahora.hour < hora_fin
 
 
 def _en_extension_por_actividad(ahora: datetime) -> bool:
@@ -79,7 +103,8 @@ def _en_extension_por_actividad(ahora: datetime) -> bool:
     MODAL_KEEPWARM_EXTENSION_MINUTOS (ventana rodante)."""
     if _ultima_actividad is None:
         return False
-    limite = timedelta(minutes=settings.MODAL_KEEPWARM_EXTENSION_MINUTOS)
+    minutos = _parse_int(settings.MODAL_KEEPWARM_EXTENSION_MINUTOS, 15)
+    limite = timedelta(minutes=minutos)
     return (ahora - _ultima_actividad) < limite
 
 
@@ -110,21 +135,21 @@ async def keepwarm_loop() -> None:
     MODAL_KEEPWARM_ENABLED es false o no hay MODAL_FINETUNED_URL, retorna de
     inmediato sin hacer nada (no-op).
     """
-    if not settings.MODAL_KEEPWARM_ENABLED or not settings.MODAL_FINETUNED_URL:
+    if not _parse_bool(settings.MODAL_KEEPWARM_ENABLED, False) or not settings.MODAL_FINETUNED_URL:
         logger.info(
             "[KeepWarm] Desactivado (MODAL_KEEPWARM_ENABLED=false o sin MODAL_FINETUNED_URL)"
         )
         return
 
+    intervalo = _parse_int(settings.MODAL_KEEPWARM_INTERVALO_SEGUNDOS, 180)
     logger.info(
-        f"[KeepWarm] Activo (híbrido): ventana base {settings.MODAL_KEEPWARM_HORA_INICIO}h-"
-        f"{settings.MODAL_KEEPWARM_HORA_FIN}h + extensión rodante de "
-        f"{settings.MODAL_KEEPWARM_EXTENSION_MINUTOS}min por actividad "
+        f"[KeepWarm] Activo (híbrido): ventana base {_parse_int(settings.MODAL_KEEPWARM_HORA_INICIO, 14)}h-"
+        f"{_parse_int(settings.MODAL_KEEPWARM_HORA_FIN, 15)}h + extensión rodante de "
+        f"{_parse_int(settings.MODAL_KEEPWARM_EXTENSION_MINUTOS, 15)}min por actividad "
         f"(America/Guatemala), fechas {settings.MODAL_KEEPWARM_FECHA_INICIO or 'sin límite'} "
-        f"a {settings.MODAL_KEEPWARM_FECHA_FIN or 'sin límite'}, cada "
-        f"{settings.MODAL_KEEPWARM_INTERVALO_SEGUNDOS}s"
+        f"a {settings.MODAL_KEEPWARM_FECHA_FIN or 'sin límite'}, cada {intervalo}s"
     )
     while True:
         if _debe_pinguear(datetime.now(_TZ)):
             await _ping()
-        await asyncio.sleep(settings.MODAL_KEEPWARM_INTERVALO_SEGUNDOS)
+        await asyncio.sleep(intervalo)
