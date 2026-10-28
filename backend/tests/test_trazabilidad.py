@@ -55,3 +55,24 @@ async def test_actividad_por_busqueda_guarda_fragmentos_sin_leccion(token_estudi
     leccion_id, fragmentos = _fila(act["id"])
     assert leccion_id is None
     assert fragmentos and _fragmentos_existen(fragmentos)
+
+
+@pytest.mark.asyncio
+async def test_respuesta_incorrecta_indica_pagina_para_repasar(token_estudiante):
+    act = await _generar(token_estudiante, leccion_id=LECCION_CIENCIAS)
+    with create_engine(settings.database_url_sync).connect() as c:
+        correcta = c.execute(
+            text("select respuesta_correcta->>'respuesta_correcta' from actividad where id = :id"),
+            {"id": act["id"]},
+        ).scalar()
+    incorrecta = "falso" if str(correcta).lower() in ("true", "verdadero") else "verdadero"
+    async with httpx.AsyncClient(base_url=BASE_URL, timeout=30) as client:
+        resp = await client.post(
+            "/actividades/responder",
+            json={"actividad_id": act["id"], "respuesta": {"respuesta": incorrecta}},
+            headers={"Authorization": f"Bearer {token_estudiante}"},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["puntaje"] == 0
+    assert "📖 Repasa tu libro de Ciencias Naturales, página" in body["retroalimentacion"]

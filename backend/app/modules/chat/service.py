@@ -21,6 +21,7 @@ from app.modules.rag.search import (
     search_fragments,
 )
 from app.modules.chat.prompts import build_context_prompt, build_messages
+from app.modules.rag.paginas import etiqueta_paginas
 from app.modules.lecciones.service import actualizar_racha
 
 logger = logging.getLogger(__name__)
@@ -112,22 +113,6 @@ def _citas_validas(respuesta: str, fragments: list[dict]) -> bool:
     return all(p in paginas_disponibles for p in citadas)
 
 
-def _formatear_rango_paginas(paginas: list[int]) -> str:
-    """Agrupa números de página consecutivos en rangos legibles.
-    Ej.: [36, 37, 93] -> "36-37, 93"."""
-    ordenadas = sorted(set(paginas))
-    rangos: list[str] = []
-    inicio = fin = ordenadas[0]
-    for p in ordenadas[1:]:
-        if p == fin + 1:
-            fin = p
-        else:
-            rangos.append(f"{inicio}-{fin}" if inicio != fin else str(inicio))
-            inicio = fin = p
-    rangos.append(f"{inicio}-{fin}" if inicio != fin else str(inicio))
-    return ", ".join(rangos)
-
-
 def _referencia_paginas(fragments: list[dict], asignatura_nombre: str | None) -> str:
     """Construye la línea de referencia determinística ("📖 Basado en tu libro
     de X, páginas Y-Z.") a partir de los fragmentos EFECTIVAMENTE usados como
@@ -136,10 +121,8 @@ def _referencia_paginas(fragments: list[dict], asignatura_nombre: str | None) ->
     paginas = [f.get("page_num") for f in fragments if f.get("page_num") is not None]
     if not paginas:
         return ""
-    rango = _formatear_rango_paginas(paginas)
     materia = asignatura_nombre or "tu libro"
-    etiqueta = "página" if len(set(paginas)) == 1 else "páginas"
-    return f"\n\n📖 Basado en tu libro de {materia}, {etiqueta} {rango}."
+    return f"\n\n📖 Basado en tu libro de {materia}, {etiqueta_paginas(paginas)}."
 
 
 # Marcador fijo con el que SIEMPRE empieza el footer de _referencia_paginas.

@@ -13,6 +13,7 @@ from app.models.fragmento import Fragmento
 from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.usuario import Usuario
+from app.modules.rag.paginas import referencia_repaso
 from app.modules.rag.search import es_ejercicio_del_libro, is_context_relevant, search_fragments
 from app.modules.chat.prompts import build_context_prompt
 from app.modules.actividades.generator import generar_actividad
@@ -232,6 +233,17 @@ async def responder_actividad(
         respuesta_correcta=actividad.respuesta_correcta,
         contenido=actividad.contenido,
     )
+
+    # Si no acertó del todo, se le indica dónde repasar en el libro: páginas de
+    # los fragmentos que se usaron para generar la actividad.
+    if evaluacion["puntaje"] < 100 and actividad.fragmentos_fuente_ids:
+        paginas = (await db.execute(
+            select(Fragmento.numero_pagina).where(Fragmento.id.in_(actividad.fragmentos_fuente_ids))
+        )).scalars().all()
+        asignatura_nombre = (await db.execute(
+            select(Asignatura.nombre).where(Asignatura.id == actividad.asignatura_id)
+        )).scalar_one_or_none()
+        evaluacion["retroalimentacion"] += referencia_repaso(asignatura_nombre, list(paginas))
 
     # Guardar resultado
     resultado = ResultadoActividad(
