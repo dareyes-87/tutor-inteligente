@@ -210,12 +210,20 @@ def es_ejercicio_del_libro(texto: str) -> bool:
     cambia qué fragmentos se recuperan por rango de páginas, solo cuáles de
     esos se le pasan al LLM como contexto.
 
-    Se normalizan espacios y saltos de línea antes de buscar: el OCR parte las
-    frases ("Ahora es tu\nturno") y sin esto 58 fragmentos de Matemáticas 4to
-    con ejercicios reales pasaban como teoría.
+    Un fragmento que menciona "ejercicio" (ya no es marcador) sigue marcado si,
+    normalizando saltos de línea, trae otro marcador: el OCR parte frases como
+    "Ahora es tu\nturno". NO se normaliza en general: en Matemáticas 4to
+    marcaba 58 fragmentos más que mezclan teoría y ejercicio y se perdían
+    definiciones (decimales p. 65, divisibilidad p. 34). Ver
+    docs/limitaciones-conocidas.md.
     """
-    t = re.sub(r"\s+", " ", texto or "").lower()
-    return any(marcador in t for marcador in _MARCADORES_EJERCICIO)
+    t = (texto or "").lower()
+    if any(marcador in t for marcador in _MARCADORES_EJERCICIO):
+        return True
+    if "ejercicio" in t:
+        normalizado = re.sub(r"\s+", " ", t)
+        return any(marcador in normalizado for marcador in _MARCADORES_EJERCICIO)
+    return False
 
 
 def is_context_relevant(fragments: list[dict]) -> bool:

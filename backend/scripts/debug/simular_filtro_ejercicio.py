@@ -2,8 +2,8 @@
 Simula cambios al filtro de ejercicios (rag/search.py::es_ejercicio_del_libro)
 contra TODOS los fragmentos de la BD local, sin tocar el código de la app.
 
-Variantes (frente al filtro actual). NOTA: V2 se aplicó en rag/search.py
-(2026-10-28); desde entonces "actual" ya es V2 y las variantes no cambian nada.
+Variantes (frente al filtro actual). NOTA: V3 es el filtro aplicado en
+rag/search.py (2026-10-28; V2 se probó y se revirtió). Desde entonces "actual" es V3.
   V1  quitar el marcador suelto "ejercicio" (en este corpus solo coincide con
       notas al docente —"propóngales un ejercicio"— o con "hacer ejercicio"
       físico, que es teoría de Ciencias).
