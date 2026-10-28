@@ -13,3 +13,7 @@ backend/scripts/dataset_out/
 .venv-ragas/
 tmp/
 backend/scripts/evaluacion/*.bak
+
+# Credenciales reales de estudiantes y docentes (nunca al repo)
+datos/estudiantes/
+datos/credenciales_docentes.csv
