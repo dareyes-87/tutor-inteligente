@@ -234,16 +234,18 @@ async def responder_actividad(
         contenido=actividad.contenido,
     )
 
-    # Si no acertó del todo, se le indica dónde repasar en el libro: páginas de
-    # los fragmentos que se usaron para generar la actividad.
-    if evaluacion["puntaje"] < 100 and actividad.fragmentos_fuente_ids:
+    # Se le indica dónde está en el libro (o dónde repasar, si no acertó del todo):
+    # páginas de los fragmentos que se usaron para generar la actividad.
+    if actividad.fragmentos_fuente_ids:
         paginas = (await db.execute(
             select(Fragmento.numero_pagina).where(Fragmento.id.in_(actividad.fragmentos_fuente_ids))
         )).scalars().all()
         asignatura_nombre = (await db.execute(
             select(Asignatura.nombre).where(Asignatura.id == actividad.asignatura_id)
         )).scalar_one_or_none()
-        evaluacion["retroalimentacion"] += referencia_repaso(asignatura_nombre, list(paginas))
+        evaluacion["retroalimentacion"] += referencia_repaso(
+            asignatura_nombre, list(paginas), correcta=evaluacion["puntaje"] >= 100
+        )
 
     # Guardar resultado
     resultado = ResultadoActividad(

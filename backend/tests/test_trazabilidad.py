@@ -57,22 +57,34 @@ async def test_actividad_por_busqueda_guarda_fragmentos_sin_leccion(token_estudi
     assert fragmentos and _fragmentos_existen(fragmentos)
 
 
-@pytest.mark.asyncio
-async def test_respuesta_incorrecta_indica_pagina_para_repasar(token_estudiante):
-    act = await _generar(token_estudiante, leccion_id=LECCION_CIENCIAS)
+async def _responder_vf(token: str, acertar: bool) -> dict:
+    act = await _generar(token, leccion_id=LECCION_CIENCIAS)
     with create_engine(settings.database_url_sync).connect() as c:
         correcta = c.execute(
             text("select respuesta_correcta->>'respuesta_correcta' from actividad where id = :id"),
             {"id": act["id"]},
         ).scalar()
-    incorrecta = "falso" if str(correcta).lower() in ("true", "verdadero") else "verdadero"
+    es_verdadero = str(correcta).lower() in ("true", "verdadero")
+    respuesta = "verdadero" if es_verdadero == acertar else "falso"
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30) as client:
         resp = await client.post(
             "/actividades/responder",
-            json={"actividad_id": act["id"], "respuesta": {"respuesta": incorrecta}},
-            headers={"Authorization": f"Bearer {token_estudiante}"},
+            json={"actividad_id": act["id"], "respuesta": {"respuesta": respuesta}},
+            headers={"Authorization": f"Bearer {token}"},
         )
     assert resp.status_code == 200, resp.text
-    body = resp.json()
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_respuesta_incorrecta_indica_pagina_para_repasar(token_estudiante):
+    body = await _responder_vf(token_estudiante, acertar=False)
     assert body["puntaje"] == 0
     assert "📖 Repasa tu libro de Ciencias Naturales, página" in body["retroalimentacion"]
+
+
+@pytest.mark.asyncio
+async def test_respuesta_correcta_indica_donde_esta_en_el_libro(token_estudiante):
+    body = await _responder_vf(token_estudiante, acertar=True)
+    assert body["puntaje"] == 100
+    assert "📖 Esto está en tu libro de Ciencias Naturales, página" in body["retroalimentacion"]

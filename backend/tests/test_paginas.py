@@ -14,6 +14,10 @@ def test_repaso_varias_paginas():
     assert referencia_repaso("Matemáticas", [50, 51, 55]) == "\n\n📖 Repasa tu libro de Matemáticas, páginas 50-51, 55."
 
 
+def test_respuesta_correcta_dice_donde_esta():
+    assert referencia_repaso("Matemáticas", [12], correcta=True) == "\n\n📖 Esto está en tu libro de Matemáticas, página 12."
+
+
 def test_repaso_sin_paginas_es_vacio():
     assert referencia_repaso("Matemáticas", []) == ""
     assert referencia_repaso("Matemáticas", [None]) == ""

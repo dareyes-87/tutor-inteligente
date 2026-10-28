@@ -23,9 +23,11 @@ def etiqueta_paginas(paginas: list[int]) -> str:
     return f"{etiqueta} {formatear_rango_paginas(paginas)}"
 
 
-def referencia_repaso(asignatura_nombre: str | None, paginas: list[int]) -> str:
-    """Línea de repaso para la retroalimentación de una actividad; "" si no hay páginas."""
+def referencia_repaso(asignatura_nombre: str | None, paginas: list[int], correcta: bool = False) -> str:
+    """Línea con la página del libro para la retroalimentación de una actividad
+    ("Esto está en…" si acertó, "Repasa…" si no); "" si no hay páginas."""
     paginas = [p for p in paginas if p is not None]
     if not paginas:
         return ""
-    return f"\n\n📖 Repasa tu libro de {asignatura_nombre or 'texto'}, {etiqueta_paginas(paginas)}."
+    inicio = "Esto está en tu libro" if correcta else "Repasa tu libro"
+    return f"\n\n📖 {inicio} de {asignatura_nombre or 'texto'}, {etiqueta_paginas(paginas)}."
