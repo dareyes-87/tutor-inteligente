@@ -78,7 +78,7 @@ Con la BD vacía, los IDs salen en el orden de creación. **Crear en este orden 
 | 2 | `Matemáticas` | 2 |
 | 3 (opcional) | `Comunicación y Lenguaje` | 3 |
 
-**Grados** (`POST /admin/grados {"nombre": ...}`): el nombre debe **empezar por el número** y contener `Primaria` o `Básico` (el código deriva de ahí el nivel, el registro del tutor y el rango numérico de Matemáticas). Ej.: `4to Primaria`, `5to Primaria`, `6to Primaria`, `1ro Básico`, `2do Básico`, `3ro Básico`. Anotar los IDs resultantes (los usa `MODAL_FINETUNED_GRADOS` si algún día se reactiva).
+**Grados** (`POST /admin/grados {"nombre": ...}`): el nombre debe **empezar por el número** y contener `Primaria` o `Básico` (el código deriva de ahí el nivel, el registro del tutor y el rango numérico de Matemáticas). Nombres e IDs fijos en `docs/cuentas.md` (`4to Primaria`=1 … `9no Básico`=7; el 4 no se usa): con la vía de la sección 9 vienen ya en el dump. Anotar los IDs resultantes (los usa `MODAL_FINETUNED_GRADOS` si algún día se reactiva).
 
 Comprobar: `GET /admin/asignaturas` y `GET /admin/grados` devuelven los IDs esperados.
 
@@ -110,6 +110,30 @@ curl -X POST "$API/ingesta/libros" -H "Authorization: Bearer $TOKEN" \
 3. Manual, como estudiante: login → Mi Ruta → Estudiar (micro-lección) → Practicar (5 actividades) → completar nivel; chat con una pregunta del libro y una fuera del libro (debe responder el rechazo fijo).
 4. Docente: `/docente`, `/docente/libros`, `/docente/estudiantes`.
 5. Una pregunta de calentamiento al chat antes de la presentación.
+
+## 9. Vía recomendada: armar todo en local y trasladarlo (PLAN — pendiente de aprobación)
+
+En lugar de los pasos 5–7 (re-ingestar en Railway: OCR de ~1 h por libro escaneado y LLM para las lecciones), se arma la BD completa en local —grados, cuentas reales, libros, lecciones y datos del piloto— y se traslada:
+
+1. **Copia depurada en local** (no se toca la BD de trabajo):
+   ```bash
+   docker compose exec postgres createdb -U "$POSTGRES_USER" -T tutor tutor_prod   # sin conexiones abiertas a "tutor"
+   ```
+   En `tutor_prod`: borrar las cuentas de prueba con sus datos (conversaciones, mensajes, resultados, perfiles, progreso), que hoy son `carlos`, `pramirez_test`, `lmartinez`, `sgomez`, `test_verif_bug249`, `verif_conceptos_*` (9) y `diagtemp`, y las que creen las pruebas automáticas antes del dump (`doc_*` y estudiantes temporales; se listan con `select username from usuario where id not in (<87 reales + docentes + admin>)`). **Cambiar en la copia** el hash del `admin` (el local usa la contraseña de desarrollo) y el de `maria` por contraseñas propias de producción.
+2. **Dump y restore**:
+   ```bash
+   docker compose exec postgres pg_dump -U "$POSTGRES_USER" -Fc tutor_prod > tutor_prod.dump
+   pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" tutor_prod.dump
+   ```
+   Incluye `alembic_version` (producción queda en el mismo head) y las secuencias. Requiere `pg_restore` ≥ 16 (local: 16.14); versión del Postgres de Railway [NO VERIFICADO].
+3. **Reconstruir Chroma desde Postgres** (sin OCR ni LLM): script nuevo `backend/scripts/reconstruir_chroma.py`, corrido dentro del backend de producción. Por cada `fragmento` une `libro_texto`→`asignatura`/`grado` y escribe en la colección `libros_texto`:
+   - `id` = `fragmento.chunk_id_vectordb` (`libro_{id}_chunk_{nnnnn}`; es el que el RAG devuelve y con el que se vuelve a `fragmento`, así que los IDs quedan coherentes por construcción);
+   - `document` = `contenido_texto` (idéntico a lo indexado: comprobado el 2026-10-28, 812/812 fragmentos iguales en texto y metadatos);
+   - metadatos `{libro_id, asignatura: nombre, grado: nombre, page_num: numero_pagina, method: "digital" si confianza_ocr == 100 si no "ocr", confidence: confianza_ocr}`, los mismos que escribe `chunking.py`;
+   - embeddings recalculados con el mismo modelo (`generate_embeddings`), en lotes, con `upsert` (re-ejecutable).
+   Tiempo estimado: ~12 000 fragmentos con MiniLM en CPU, del orden de 5–15 min [NO VERIFICADO: medir en local].
+4. **PDFs**: no hacen falta para el RAG (solo para re-ingestar); `libro_texto.archivo_pdf_path` apuntará a archivos que no existen en el volumen de producción salvo que se copien.
+5. Verificación: sección 8, más conteos `fragmento` = `collection.count()` y login de una cuenta real por grado.
 
 ## Checklist del día de la presentación
 
