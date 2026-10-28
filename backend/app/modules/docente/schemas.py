@@ -83,3 +83,33 @@ class EstadisticasDocente(BaseModel):
     temas_mas_preguntados: list[TemaPreguntado]
     # Desglose por pregunta concreta (lo más útil para el docente).
     preguntas_frecuentes: list[PreguntaFrecuente]
+
+
+class LeccionDiagnostico(BaseModel):
+    id: int
+    orden: int
+    nombre: str
+    paginas: str | None
+
+
+class CeldaDiagnostico(BaseModel):
+    leccion_id: int
+    nivel: str  # domina / en_proceso / refuerzo / sin_datos
+    puntaje_promedio: float | None
+    total_actividades: int
+
+
+class FilaDiagnostico(BaseModel):
+    estudiante_id: int
+    nombre: str
+    apellido: str
+    celdas: list[CeldaDiagnostico]  # una por lección, en el orden de `lecciones`
+
+
+class DiagnosticoResponse(BaseModel):
+    libro_id: int
+    libro_titulo: str
+    asignatura_id: int
+    asignatura: str
+    lecciones: list[LeccionDiagnostico]
+    estudiantes: list[FilaDiagnostico]

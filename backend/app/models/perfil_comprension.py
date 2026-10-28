@@ -26,9 +26,13 @@ class PerfilComprension(Base):
 
     @property
     def nivel(self) -> str:
-        """domina >=80%, en_proceso 50-79%, refuerzo <50%"""
-        if self.puntaje_promedio >= 80:
-            return "domina"
-        elif self.puntaje_promedio >= 50:
-            return "en_proceso"
-        return "refuerzo"
+        return nivel_por_puntaje(self.puntaje_promedio)
+
+
+def nivel_por_puntaje(puntaje_promedio: float) -> str:
+    """domina >=80%, en_proceso 50-79%, refuerzo <50% (también lo usa el diagnóstico docente)."""
+    if puntaje_promedio >= 80:
+        return "domina"
+    elif puntaje_promedio >= 50:
+        return "en_proceso"
+    return "refuerzo"

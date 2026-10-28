@@ -5,6 +5,7 @@ modificarlos. Reúsa por import `obtener_ruta` y `obtener_perfil_estudiante`.
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.actividad import Actividad, ResultadoActividad
 from app.models.asignatura import Asignatura
 from app.models.conversacion import Conversacion
 from app.models.fragmento import Fragmento
@@ -12,12 +13,17 @@ from app.models.grado import Grado
 from app.models.leccion import Leccion
 from app.models.libro import LibroTexto
 from app.models.mensaje import Mensaje, RolMensaje
+from app.models.perfil_comprension import nivel_por_puntaje
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.actividades.service import obtener_perfil_estudiante
 from app.modules.lecciones.service import obtener_ruta
 from app.modules.docente.schemas import (
     AsignaturaOpcion,
+    CeldaDiagnostico,
+    DiagnosticoResponse,
+    FilaDiagnostico,
+    LeccionDiagnostico,
     EstadisticasDocente,
     EstudianteDetalle,
     EstudianteResumen,
@@ -293,4 +299,102 @@ async def estadisticas(
         promedio_progreso=promedio_progreso,
         temas_mas_preguntados=temas,
         preguntas_frecuentes=preguntas_frecuentes,
+    )
+
+
+def construir_matriz(
+    estudiantes: list[Usuario],
+    lecciones: list[Leccion],
+    agregados: dict[tuple[int, int], tuple[float, int]],
+) -> list[FilaDiagnostico]:
+    """Matriz estudiantes × lecciones. `agregados[(estudiante_id, leccion_id)]` =
+    (puntaje promedio, nº de actividades respondidas); sin entrada = sin_datos."""
+    filas = []
+    for e in estudiantes:
+        celdas = []
+        for l in lecciones:
+            promedio, total = agregados.get((e.id, l.id), (None, 0))
+            celdas.append(CeldaDiagnostico(
+                leccion_id=l.id,
+                nivel=nivel_por_puntaje(promedio) if promedio is not None else "sin_datos",
+                puntaje_promedio=round(promedio, 1) if promedio is not None else None,
+                total_actividades=total,
+            ))
+        filas.append(FilaDiagnostico(
+            estudiante_id=e.id, nombre=e.nombre, apellido=e.apellido, celdas=celdas,
+        ))
+    return filas
+
+
+async def diagnostico(
+    db: AsyncSession,
+    grado_id: int | None,
+    asignatura_id: int | None = None,
+    libro_id: int | None = None,
+) -> DiagnosticoResponse | None:
+    """Mapa de comprensión estudiantes × lecciones de un libro.
+
+    El libro es `libro_id` o, si no viene, el más reciente de `asignatura_id`.
+    Docente (`grado_id`): solo libros y estudiantes de su grado. Administrador
+    (None): cualquier libro, con los estudiantes del grado de ese libro.
+    Solo cuentan las actividades con `leccion_id` (las generadas desde la ruta).
+    None si no hay un libro que cumpla.
+    """
+    stmt = (
+        select(LibroTexto, Asignatura)
+        .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
+        .order_by(LibroTexto.fecha_subida.desc())
+    )
+    if libro_id is not None:
+        stmt = stmt.where(LibroTexto.id == libro_id)
+    if asignatura_id is not None:
+        stmt = stmt.where(LibroTexto.asignatura_id == asignatura_id)
+    if grado_id is not None:
+        stmt = stmt.where(LibroTexto.grado_id == grado_id)
+    fila = (await db.execute(stmt.limit(1))).first()
+    if fila is None:
+        return None
+    libro, asignatura = fila
+
+    lecciones = list((await db.execute(
+        select(Leccion).where(Leccion.libro_id == libro.id).order_by(Leccion.orden)
+    )).scalars().all())
+    estudiantes = list((await db.execute(
+        select(Usuario)
+        .where(
+            Usuario.rol == RolUsuario.estudiante,
+            Usuario.activo.is_(True),
+            Usuario.grado_id == libro.grado_id,
+        )
+        .order_by(Usuario.apellido, Usuario.nombre)
+    )).scalars().all())
+
+    agregados: dict[tuple[int, int], tuple[float, int]] = {}
+    if lecciones and estudiantes:
+        rows = (await db.execute(
+            select(
+                ResultadoActividad.estudiante_id,
+                Actividad.leccion_id,
+                func.avg(ResultadoActividad.puntaje),
+                func.count(ResultadoActividad.id),
+            )
+            .join(Actividad, ResultadoActividad.actividad_id == Actividad.id)
+            .where(
+                Actividad.leccion_id.in_([l.id for l in lecciones]),
+                ResultadoActividad.estudiante_id.in_([e.id for e in estudiantes]),
+            )
+            .group_by(ResultadoActividad.estudiante_id, Actividad.leccion_id)
+        )).all()
+        agregados = {(est, lec): (float(prom), n) for est, lec, prom, n in rows}
+
+    return DiagnosticoResponse(
+        libro_id=libro.id,
+        libro_titulo=libro.titulo,
+        asignatura_id=asignatura.id,
+        asignatura=asignatura.nombre,
+        lecciones=[
+            LeccionDiagnostico(id=l.id, orden=l.orden, nombre=l.nombre, paginas=l.paginas)
+            for l in lecciones
+        ],
+        estudiantes=construir_matriz(estudiantes, lecciones, agregados),
     )
