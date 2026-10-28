@@ -12,3 +12,4 @@ backend/scripts/dataset_out/
 # Entornos y salidas locales
 .venv-ragas/
 tmp/
+backend/scripts/evaluacion/*.bak

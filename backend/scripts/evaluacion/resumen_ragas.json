@@ -1,0 +1,14 @@
+{
+  "fecha_evaluacion": "2026-07-11",
+  "total_preguntas": 50,
+  "faithfulness_global": 0.8381,
+  "faithfulness_ciencias": 0.8347,
+  "faithfulness_matematicas": 0.8415,
+  "faithfulness_conceptual": 0.9351,
+  "faithfulness_factual": 0.6977,
+  "faithfulness_procedimental": 0.8599,
+  "preguntas_sobre_umbral": 35,
+  "preguntas_bajo_umbral": 15,
+  "preguntas_error": 0,
+  "umbral": 0.8
+}
