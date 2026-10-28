@@ -24,10 +24,20 @@ correr este script hay que restaurarlo desde ese commit.
 --- Uso ---
     TOGETHER_API_KEY=xxx python backend/scripts/evaluacion/evaluar_ragas.py
 
-Salidas (en la misma carpeta del script):
+    Con respuestas ya recolectadas en local (recolectar_respuestas_local.py,
+    que reemplaza al endpoint eliminado) en otra carpeta, sin tocar las de
+    la configuración B:
+    TOGETHER_API_KEY=xxx python backend/scripts/evaluacion/evaluar_ragas.py \
+        --salida backend/scripts/evaluacion/ragas_2026-10_deepseek --max-usd 1
+
+    Opciones: --evaluador (modelo de Together), --max-usd (tope de gasto del
+    evaluador; tokens y costo por llamada se registran con scripts/costos_llm.py).
+
+Salidas (en --salida; por defecto la misma carpeta del script):
     resultados_ragas.csv    una fila por pregunta con su faithfulness
     resumen_ragas.json      agregados (global, por asignatura, por tipo, umbral)
 """
+import argparse
 import csv
 import json
 import os
@@ -40,7 +50,9 @@ import requests
 
 # --- Rutas relativas a la carpeta del script (no dependen del cwd) ---
 DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(DIR.parent))  # costos_llm.py
 PREGUNTAS_PATH = DIR / "preguntas_ragas.json"
+# Se reasignan en main() según --salida.
 CACHE_PATH = DIR / "respuestas_cache.json"
 CSV_PATH = DIR / "resultados_ragas.csv"
 RESUMEN_PATH = DIR / "resumen_ragas.json"
@@ -52,7 +64,10 @@ API_URL = os.environ.get(
 ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASSWORD", "admin123")
 TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY", "")
-MODELO_EVALUADOR = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+# Configuración B usó meta-llama/Llama-3.3-70B-Instruct-Turbo (ya no es serverless
+# en Together desde 2026-10). Por defecto ahora GLM-5.3 (no es de la familia del
+# tutor, DeepSeek: evita autoevaluación). Se cambia con --evaluador.
+MODELO_EVALUADOR = "zai-org/GLM-5.3"
 
 UMBRAL = 0.80
 TIMEOUT_PREGUNTA = 60      # segundos por request al tutor
@@ -140,7 +155,23 @@ def recolectar_respuestas(token: str, preguntas: list[dict]) -> list[dict]:
     return resultados
 
 
-def evaluar_faithfulness(resultados: list[dict]) -> None:
+def _callback_costos(presupuesto):
+    """Callback de LangChain que registra los tokens de cada llamada del evaluador."""
+    from langchain_core.callbacks import BaseCallbackHandler
+
+    class Costos(BaseCallbackHandler):
+        def on_llm_end(self, response, **kwargs):
+            salida = response.llm_output or {}
+            uso = salida.get("token_usage") or {}
+            presupuesto.registrar(
+                salida.get("model_name") or MODELO_EVALUADOR,
+                uso.get("prompt_tokens", 0), uso.get("completion_tokens", 0),
+            )
+
+    return Costos()
+
+
+def evaluar_faithfulness(resultados: list[dict], presupuesto=None) -> None:
     """Evalúa Faithfulness con RAGAS sobre los resultados con status OK y
     escribe el score numérico en cada registro (clave 'faithfulness').
 
@@ -171,30 +202,45 @@ def evaluar_faithfulness(resultados: list[dict]) -> None:
     llm = ChatTogether(
         model=MODELO_EVALUADOR,
         together_api_key=TOGETHER_API_KEY,
+        callbacks=[_callback_costos(presupuesto)] if presupuesto else None,
     )
     evaluator_llm = LangchainLLMWrapper(llm)
 
-    samples = [
-        SingleTurnSample(
-            user_input=r["pregunta"],
-            response=r["respuesta_tutor"],
-            retrieved_contexts=r["retrieved_contexts"],
-        )
-        for r in evaluables
-    ]
-    dataset = EvaluationDataset(samples=samples)
+    def evaluar_lote(registros):
+        dataset = EvaluationDataset(samples=[
+            SingleTurnSample(
+                user_input=r["pregunta"],
+                response=r["respuesta_tutor"],
+                retrieved_contexts=r["retrieved_contexts"],
+            )
+            for r in registros
+        ])
+        df = evaluate(
+            dataset=dataset,
+            metrics=[Faithfulness(llm=evaluator_llm)],
+            llm=evaluator_llm,
+        ).to_pandas()
+        # La columna puede llamarse 'faithfulness'; buscarla de forma tolerante.
+        col = "faithfulness" if "faithfulness" in df.columns else df.columns[-1]
+        return list(df[col])
 
-    print(f"\nEvaluando Faithfulness de {len(samples)} preguntas con {MODELO_EVALUADOR}...")
-    result = evaluate(
-        dataset=dataset,
-        metrics=[Faithfulness(llm=evaluator_llm)],
-        llm=evaluator_llm,
-    )
-
-    df = result.to_pandas()
-    # La columna puede llamarse 'faithfulness'; buscarla de forma tolerante.
-    col = "faithfulness" if "faithfulness" in df.columns else df.columns[-1]
-    scores = list(df[col])
+    print(f"\nEvaluando Faithfulness de {len(evaluables)} preguntas con {MODELO_EVALUADOR}...")
+    if presupuesto is None:
+        scores = evaluar_lote(evaluables)
+    else:
+        # Una pregunta a la vez para poder cortar en el tope de gasto (--max-usd).
+        from costos_llm import PresupuestoAgotado
+        scores = []
+        for r in evaluables:
+            try:
+                presupuesto.verificar()
+            except PresupuestoAgotado as e:
+                print(f"DETENIDO: {e}", file=sys.stderr)
+                break
+            scores += evaluar_lote([r])
+            print(f"  {len(scores)}/{len(evaluables)} faithfulness={scores[-1]}  (${presupuesto.total_usd:.4f})", flush=True)
+        for r in evaluables[len(scores):]:
+            r["status"] = "ERROR"  # sin evaluar por tope: fuera de promedios
     for r, score in zip(evaluables, scores):
         try:
             valor = float(score)
@@ -291,13 +337,37 @@ def exportar_y_resumir(resultados: list[dict]) -> None:
         "preguntas_bajo_umbral": bajo,
         "preguntas_error": errores,
         "umbral": UMBRAL,
+        "modelo_evaluador": MODELO_EVALUADOR,
     }
+    # Comparación justa: configuración B sobre las MISMAS preguntas (si se evalúa en otra carpeta).
+    csv_b = DIR / "resultados_ragas.csv"
+    if CSV_PATH != csv_b and csv_b.exists():
+        with open(csv_b, encoding="utf-8") as fh:
+            b = {f["pregunta"]: f["faithfulness_score"] for f in csv.DictReader(fh)}
+        mismas = [float(b[r["pregunta"]]) for r in resultados if b.get(r["pregunta"], "ERROR") not in ("ERROR", "")]
+        resumen["faithfulness_config_b_mismas_preguntas"] = _promedio(mismas)
+        print(f"Config. B (Llama-70B evaluador) en las mismas preguntas: {fmt(resumen['faithfulness_config_b_mismas_preguntas'])}")
     with open(RESUMEN_PATH, "w", encoding="utf-8") as fh:
         json.dump(resumen, fh, ensure_ascii=False, indent=2)
     print(f"Resumen: {RESUMEN_PATH}")
 
 
 def main() -> None:
+    global CACHE_PATH, CSV_PATH, RESUMEN_PATH, MODELO_EVALUADOR
+    parser = argparse.ArgumentParser(description="Evaluación RAGAS (Faithfulness)")
+    parser.add_argument("--salida", default=str(DIR), help="carpeta de cache y resultados")
+    parser.add_argument("--evaluador", default=MODELO_EVALUADOR)
+    parser.add_argument("--max-usd", type=float, default=None, help="tope de gasto del evaluador (USD)")
+    args = parser.parse_args()
+    salida = Path(args.salida).resolve()
+    CACHE_PATH = salida / "respuestas_cache.json"
+    CSV_PATH = salida / "resultados_ragas.csv"
+    RESUMEN_PATH = salida / "resumen_ragas.json"
+    MODELO_EVALUADOR = args.evaluador
+    if salida != DIR and (CSV_PATH.exists() or RESUMEN_PATH.exists()):
+        print(f"ERROR: ya hay resultados en {salida}; no se sobrescriben.", file=sys.stderr)
+        sys.exit(1)
+
     if not TOGETHER_API_KEY:
         print("ERROR: define TOGETHER_API_KEY (LLM evaluador de RAGAS).", file=sys.stderr)
         sys.exit(1)
@@ -324,8 +394,14 @@ def main() -> None:
         )
         print(f"Respuestas guardadas en cache: {CACHE_PATH}")
 
-    evaluar_faithfulness(resultados)
+    presupuesto = None
+    if args.max_usd is not None:
+        from costos_llm import Presupuesto
+        presupuesto = Presupuesto(args.max_usd, api_key=TOGETHER_API_KEY)
+    evaluar_faithfulness(resultados, presupuesto)
     exportar_y_resumir(resultados)
+    if presupuesto:
+        presupuesto.imprimir_resumen()
 
 
 if __name__ == "__main__":
