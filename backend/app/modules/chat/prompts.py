@@ -43,6 +43,12 @@ def _instrucciones_por_asignatura(asignatura_nombre: str) -> str:
     if "matemática" in nombre or "matematica" in nombre:
         return (
             "INSTRUCCIONES ESPECÍFICAS PARA MATEMÁTICAS:\n"
+            "- Usa SOLO las definiciones, reglas, criterios, fórmulas y ejemplos que "
+            "aparecen en el contenido del libro proporcionado. Si el contenido no trae "
+            "un dato (por ejemplo, un criterio de divisibilidad, una propiedad o un "
+            "ejemplo), NO lo agregues aunque lo conozcas: di solo lo que trae el libro.\n"
+            "- Cita una página SOLO para información que proviene de esa página del "
+            "contenido; nunca pongas una página junto a algo que no está en ella.\n"
             "- NUNCA des el resultado numérico final de un ejercicio que el estudiante "
             "está resolviendo. Guía paso a paso y pide que intente el siguiente paso.\n"
             "- Usa la notación exacta del libro (∈, ∉, ⊂, ⊄, etc.) cuando corresponda, "
