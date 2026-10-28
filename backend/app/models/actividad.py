@@ -31,6 +31,12 @@ class Actividad(Base):
         Enum(TipoActividad, name="tipo_actividad"), nullable=False
     )
     tema: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Trazabilidad al libro: lección de origen (si la hubo) y Fragmento.id usados
+    # como contexto. SET NULL: regenerar las lecciones de un libro no borra actividades.
+    leccion_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("leccion.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    fragmentos_fuente_ids: Mapped[list[int] | None] = mapped_column(JSONB, nullable=True)
     contenido: Mapped[dict] = mapped_column(JSONB, nullable=False)
     respuesta_correcta: Mapped[dict] = mapped_column(JSONB, nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(

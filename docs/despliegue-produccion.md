@@ -61,7 +61,7 @@ En Railway, para cada servicio con datos (Postgres, Chroma y el volumen de `BOOK
 
 Al desplegar el backend, `start.sh` ejecuta solo:
 
-1. `alembic upgrade head` → crea las 11 tablas (head actual `4858c23833e7`).
+1. `alembic upgrade head` → crea las 11 tablas (head actual `a2a93c93a5e9`).
 2. `uvicorn ... --workers 1` → el `lifespan` valida los secretos, crea el admin (`ADMIN_USERNAME`/`ADMIN_PASSWORD`), precarga el modelo de embeddings (viene dentro de la imagen; no descarga de Hugging Face) y conecta a Chroma.
 
 Verificar: `GET /health` → `{"estado_general":"ok", "postgres":"ok", "chroma":"ok"}`.

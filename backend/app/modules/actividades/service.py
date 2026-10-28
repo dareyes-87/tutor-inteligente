@@ -98,7 +98,7 @@ async def crear_actividad(
                 .order_by(Fragmento.numero_pagina, Fragmento.id)
             )
         ).scalars().all()
-        fragments = [{"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows]
+        fragments = [{"id": r.id, "page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows]
         # Filtrar ejercicios del libro (Mesa lista, Ahora es tu turno…): el LLM
         # los copia como si fueran teoría. No cambia qué se recupera, solo qué
         # de lo recuperado se usa como contexto.
@@ -124,7 +124,7 @@ async def crear_actividad(
                 )
             ).scalars().all()
             fragments = [
-                {"page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows
+                {"id": r.id, "page_num": r.numero_pagina, "text": r.contenido_texto} for r in rows
             ]
             fragments = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
             if fragments:
@@ -138,6 +138,14 @@ async def crear_actividad(
             search_fragments, query=query, asignatura=asignatura.nombre, grado=grado_nombre
         )
         fragments = [f for f in fragments if not es_ejercicio_del_libro(f.get("text", ""))]
+        # Chroma devuelve chunk_id: se traduce a Fragmento.id para la trazabilidad.
+        chunk_ids = [f["chunk_id"] for f in fragments if f.get("chunk_id")]
+        if chunk_ids:
+            por_chunk = dict((await db.execute(
+                select(Fragmento.chunk_id_vectordb, Fragmento.id).where(Fragmento.chunk_id_vectordb.in_(chunk_ids))
+            )).all())
+            for f in fragments:
+                f["id"] = por_chunk.get(f.get("chunk_id"))
 
     if not fragments:
         logger.warning("No se encontraron fragmentos para generar actividad")
@@ -192,6 +200,8 @@ async def crear_actividad(
         grado_id=grado_id,
         tipo=tipo,
         tema=tema_actividad,
+        leccion_id=leccion.id if leccion is not None else None,
+        fragmentos_fuente_ids=[f["id"] for f in fragments if f.get("id") is not None],
         contenido=contenido,
         respuesta_correcta=respuesta_correcta,
     )
