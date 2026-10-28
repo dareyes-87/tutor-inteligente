@@ -161,7 +161,11 @@ def _evaluar_verdadero_falso(resp_est, resp_corr, contenido):
 def _evaluar_completar(resp_est, resp_corr, contenido):
     respuesta = str(resp_est.get("respuesta", ""))
     correcta = str(resp_corr.get("respuesta_correcta", ""))
-    explicacion = resp_corr.get("explicacion", resp_corr.get("pista", ""))
+    # El generador guarda la pista en `contenido` (visible), no en
+    # `respuesta_correcta`: sin este fallback la retroalimentación salía vacía.
+    explicacion = (
+        resp_corr.get("explicacion") or resp_corr.get("pista") or (contenido or {}).get("pista") or ""
+    )
 
     # Matcher flexible: un niño que acierta el concepto (aunque le sobre un
     # artículo o le falte una tilde) recibe "¡Correcto!", no "casi".
