@@ -1,0 +1,6 @@
+{
+  "modelo_tutor": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "modelo_tutor_matematicas": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "n_preguntas": 20,
+  "fuente": "procesar_pregunta local (BD local, libros 3 y 4)"
+}

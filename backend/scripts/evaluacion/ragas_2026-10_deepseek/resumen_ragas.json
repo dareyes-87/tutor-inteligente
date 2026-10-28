@@ -1,0 +1,17 @@
+{
+  "fecha_evaluacion": "2026-10-28",
+  "total_preguntas": 20,
+  "faithfulness_global": 0.6863,
+  "faithfulness_ciencias": 0.8823,
+  "faithfulness_matematicas": 0.4902,
+  "faithfulness_conceptual": 0.756,
+  "faithfulness_factual": 0.6667,
+  "faithfulness_procedimental": 0.613,
+  "preguntas_sobre_umbral": 11,
+  "preguntas_bajo_umbral": 9,
+  "preguntas_error": 0,
+  "umbral": 0.8,
+  "modelo_evaluador": "zai-org/GLM-5.3",
+  "reasoning_effort_evaluador": "low",
+  "faithfulness_config_b_mismas_preguntas": 0.8694
+}

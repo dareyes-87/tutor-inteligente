@@ -68,6 +68,9 @@ TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY", "")
 # en Together desde 2026-10). Por defecto ahora GLM-5.3 (no es de la familia del
 # tutor, DeepSeek: evita autoevaluación). Se cambia con --evaluador.
 MODELO_EVALUADOR = "zai-org/GLM-5.3"
+# None = el del modelo. Con GLM-5.3 a pleno razonamiento la evaluación costó
+# ~$0.06/pregunta y tuvo timeouts (2026-10-28); "low" lo baja mucho.
+REASONING_EFFORT = None
 
 UMBRAL = 0.80
 TIMEOUT_PREGUNTA = 60      # segundos por request al tutor
@@ -202,6 +205,7 @@ def evaluar_faithfulness(resultados: list[dict], presupuesto=None) -> None:
     llm = ChatTogether(
         model=MODELO_EVALUADOR,
         together_api_key=TOGETHER_API_KEY,
+        reasoning_effort=REASONING_EFFORT,
         callbacks=[_callback_costos(presupuesto)] if presupuesto else None,
     )
     evaluator_llm = LangchainLLMWrapper(llm)
@@ -338,6 +342,7 @@ def exportar_y_resumir(resultados: list[dict]) -> None:
         "preguntas_error": errores,
         "umbral": UMBRAL,
         "modelo_evaluador": MODELO_EVALUADOR,
+        "reasoning_effort_evaluador": REASONING_EFFORT,
     }
     # Comparación justa: configuración B sobre las MISMAS preguntas (si se evalúa en otra carpeta).
     csv_b = DIR / "resultados_ragas.csv"
@@ -353,10 +358,11 @@ def exportar_y_resumir(resultados: list[dict]) -> None:
 
 
 def main() -> None:
-    global CACHE_PATH, CSV_PATH, RESUMEN_PATH, MODELO_EVALUADOR
+    global CACHE_PATH, CSV_PATH, RESUMEN_PATH, MODELO_EVALUADOR, REASONING_EFFORT
     parser = argparse.ArgumentParser(description="Evaluación RAGAS (Faithfulness)")
     parser.add_argument("--salida", default=str(DIR), help="carpeta de cache y resultados")
     parser.add_argument("--evaluador", default=MODELO_EVALUADOR)
+    parser.add_argument("--reasoning-effort", default=None, choices=["low", "medium", "high"])
     parser.add_argument("--max-usd", type=float, default=None, help="tope de gasto del evaluador (USD)")
     args = parser.parse_args()
     salida = Path(args.salida).resolve()
@@ -364,8 +370,15 @@ def main() -> None:
     CSV_PATH = salida / "resultados_ragas.csv"
     RESUMEN_PATH = salida / "resumen_ragas.json"
     MODELO_EVALUADOR = args.evaluador
+    REASONING_EFFORT = args.reasoning_effort
     if salida != DIR and (CSV_PATH.exists() or RESUMEN_PATH.exists()):
         print(f"ERROR: ya hay resultados en {salida}; no se sobrescriben.", file=sys.stderr)
+        sys.exit(1)
+
+    # Fallar ANTES de gastar en el evaluador si no se podrá escribir el resultado
+    # (p. ej. carpeta creada como root desde el contenedor).
+    if not os.access(salida, os.W_OK):
+        print(f"ERROR: no se puede escribir en {salida} (¿creada como root? chown).", file=sys.stderr)
         sys.exit(1)
 
     if not TOGETHER_API_KEY:

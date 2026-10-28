@@ -1,0 +1,4 @@
+{
+  "fuente": "subconjunto de ../respuestas_cache.json (configuración B, 2026-07) con las 20 preguntas de ragas_2026-10_deepseek",
+  "modelo_evaluador": "zai-org/GLM-5.3"
+}

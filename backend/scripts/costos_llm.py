@@ -48,8 +48,10 @@ def agregar_argumento_max_usd(parser: argparse.ArgumentParser, defecto: float = 
 class Presupuesto:
     def __init__(self, max_usd: float, api_key: str | None = None, catalogo: dict | None = None):
         if catalogo is None:
-            from app.config import settings
-            catalogo = catalogo_modelos(api_key or settings.TOGETHER_API_KEY)
+            if api_key is None:  # sin clave explícita: la del backend (requiere app/ en sys.path)
+                from app.config import settings
+                api_key = settings.TOGETHER_API_KEY
+            catalogo = catalogo_modelos(api_key)
         self.max_usd = max_usd
         self._precios = {
             mid: ((m.get("pricing") or {}).get("input", 0.0), (m.get("pricing") or {}).get("output", 0.0))
