@@ -15,6 +15,7 @@ from app.models.asignatura import Asignatura
 from app.models.usuario import Usuario
 from app.models.grado import Grado
 from app.modules.rag.search import (
+    TOP_K,
     es_ejercicio_del_libro,
     is_context_relevant,
     search_fragments,
@@ -30,6 +31,10 @@ RESPUESTA_FUERA_DE_CONTEXTO = (
     "No encuentro información sobre eso en tus libros de clase. "
     "¿Quieres preguntarme sobre los temas que estamos viendo?"
 )
+
+# Candidatos que se piden a la búsqueda semántica antes de filtrar ejercicios;
+# al LLM llegan como mucho TOP_K (ver el filtro en procesar_pregunta).
+CANDIDATOS_CHAT = 2 * TOP_K
 
 # Respaldo cuando el LLM falla o responde vacío: el estudiante ve un mensaje
 # claro en vez de un error 500.
@@ -284,6 +289,7 @@ async def procesar_pregunta(
                 query=pregunta,
                 asignatura=asignatura_nombre,
                 grado=grado_nombre,
+                top_k=CANDIDATOS_CHAT,
             )
     else:
         fragments = await asyncio.to_thread(
@@ -291,6 +297,7 @@ async def procesar_pregunta(
             query=pregunta,
             asignatura=asignatura_nombre,
             grado=grado_nombre,
+            top_k=CANDIDATOS_CHAT,
         )
 
     # Filtro de ejercicios SOLO en búsqueda semántica (sin página específica):
@@ -298,11 +305,13 @@ async def procesar_pregunta(
     # "Ahora es tu turno"…) se cuele como si fuera teoría. Con página específica
     # NO se filtra: el estudiante pidió esa página tal cual, sea teoría o
     # ejercicio. Si el filtro dejara la lista vacía, se conservan los originales
-    # para no dejar al estudiante sin respuesta.
+    # para no dejar al estudiante sin respuesta. Se recuperan CANDIDATOS_CHAT y,
+    # tras filtrar, se rellena hasta TOP_K con los siguientes por distancia: así
+    # un ejercicio descartado no deja fuera la teoría que venía justo detrás
+    # (caso real: la tabla de propiedades de la multiplicación, puesto 6).
     if pagina_solicitada is None:
         filtrados = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
-        if filtrados:
-            fragments = filtrados
+        fragments = (filtrados or fragments)[:TOP_K]
 
     # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
