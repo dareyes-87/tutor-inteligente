@@ -25,7 +25,18 @@ class Settings(BaseSettings):
 
     # --- Together AI ---
     TOGETHER_API_KEY: str = ""
+    # Un modelo por rol: chat/actividades/micro-lecciones del resto de
+    # asignaturas, Matemáticas (aritmética más confiable) y generación de la
+    # ruta de lecciones en la ingesta (una vez por libro).
     LLM_MODEL: str = "Qwen/Qwen2.5-7B-Instruct-Turbo"
+    LLM_MODEL_MATEMATICAS: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+    LLM_MODEL_RUTA: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+    # Respaldo por rol (separados por coma, en orden): se usan SOLO si Together
+    # responde que el modelo no existe o no está disponible (ver app/llm/client.py).
+    # Texto, no lista: Railway puede tener la variable creada pero vacía.
+    LLM_MODEL_FALLBACKS: str = ""
+    LLM_MODEL_MATEMATICAS_FALLBACKS: str = ""
+    LLM_MODEL_RUTA_FALLBACKS: str = ""
 
     # --- Modelo fine-tuned (Modal) — A/B por grado, objetivo específico 3 de tesis ---
     # Vacío = feature apagada (nadie se enruta al fine-tuned). Ver app/llm/client.py.
@@ -109,6 +120,18 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def cadenas_modelos(s: Settings = settings) -> dict[str, list[str]]:
+    """Cadena [principal, *respaldos] de cada rol, leída de la configuración
+    en el momento (así un cambio de `settings` en scripts se respeta)."""
+    def cadena(principal: str, respaldos: str) -> list[str]:
+        return [principal] + [m.strip() for m in respaldos.split(",") if m.strip() and m.strip() != principal]
+    return {
+        "chat": cadena(s.LLM_MODEL, s.LLM_MODEL_FALLBACKS),
+        "matematicas": cadena(s.LLM_MODEL_MATEMATICAS, s.LLM_MODEL_MATEMATICAS_FALLBACKS),
+        "ruta": cadena(s.LLM_MODEL_RUTA, s.LLM_MODEL_RUTA_FALLBACKS),
+    }
 
 
 # Variables que en producción NO pueden quedarse con el valor por defecto del

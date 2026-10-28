@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.llm.client import grado_usa_finetuned, llm_client, modelo_para_asignatura
+from app.llm.client import grado_usa_finetuned, llm_client, rol_para_asignatura
 from app.models.conversacion import Conversacion
 from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
@@ -29,6 +29,13 @@ logger = logging.getLogger(__name__)
 RESPUESTA_FUERA_DE_CONTEXTO = (
     "No encuentro información sobre eso en tus libros de clase. "
     "¿Quieres preguntarme sobre los temas que estamos viendo?"
+)
+
+# Respaldo cuando el LLM falla o responde vacío: el estudiante ve un mensaje
+# claro en vez de un error 500.
+RESPUESTA_LLM_NO_DISPONIBLE = (
+    "Lo siento, en este momento no puedo responder. "
+    "Intenta de nuevo en un momento, por favor."
 )
 
 # Frases que indican que la respuesta es un rechazo por grounding. Si el LLM
@@ -334,6 +341,7 @@ async def procesar_pregunta(
         # del timeout configurado (cold start, contenedor caído, etc.), degrada
         # SIN error visible al modelo base de Together — el estudiante nunca ve
         # la diferencia salvo la respuesta en sí.
+        respuesta = None
         if grado_usa_finetuned(estudiante.grado_id):
             try:
                 # to_thread: chat_finetuned() puede bloquear hasta
@@ -344,18 +352,20 @@ async def procesar_pregunta(
                 logger.info(f"[Chat] Respuesta del fine-tuned (grado_id={estudiante.grado_id})")
             except Exception as e:  # noqa: BLE001 — cualquier fallo del endpoint de Modal degrada a Together
                 logger.warning(f"[Chat] Fine-tuned no disponible, fallback a base: {e}")
-                # to_thread por la misma razón que chat_finetuned() arriba: llamada
-                # síncrona a Together que, sin esto, bloquearía el único worker
-                # para todos los estudiantes mientras dura la respuesta.
+        if not respuesta:
+            # Matemáticas usa su propio modelo (LLM_MODEL_MATEMATICAS); el resto, LLM_MODEL.
+            # to_thread: llamada síncrona a Together que, sin esto, bloquearía el
+            # único worker (--workers 1) para todos los estudiantes mientras dura.
+            try:
                 respuesta = await asyncio.to_thread(
-                    llm_client.chat, messages, model=modelo_para_asignatura(asignatura_nombre)
+                    llm_client.chat, messages, rol=rol_para_asignatura(asignatura_nombre)
                 )
-        else:
-            # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
-            # to_thread: ver comentario arriba (llamada síncrona en backend --workers 1).
-            respuesta = await asyncio.to_thread(
-                llm_client.chat, messages, model=modelo_para_asignatura(asignatura_nombre)
-            )
+            except Exception as e:  # noqa: BLE001 — Together caído/timeout: respaldo, no un 500
+                logger.error(f"[Chat] Fallo al llamar al LLM: {e}")
+        if not respuesta:
+            # Respuesta vacía (content=None) o error del API. Contiene "lo siento",
+            # así que _es_rechazo() la trata como rechazo y no se anexan páginas.
+            respuesta = RESPUESTA_LLM_NO_DISPONIBLE
         fragments_referencia = fragments
     else:
         logger.info(

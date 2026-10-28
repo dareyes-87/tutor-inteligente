@@ -1,0 +1,8 @@
+# Dependencias solo de desarrollo/pruebas (NO van en la imagen de producción).
+# Uso dentro del contenedor:
+#   docker compose exec backend pip install -r requirements-dev.txt
+#   docker compose exec backend pytest tests/
+# (httpx ya viene en requirements.txt; las pruebas usan el resto de deps de la app.)
+-r requirements.txt
+pytest==9.2.0
+pytest-asyncio==1.4.1

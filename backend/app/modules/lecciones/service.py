@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.client import llm_client, modelo_para_asignatura
+from app.llm.client import llm_client, rol_para_asignatura
 from app.models.asignatura import Asignatura
 from app.models.fragmento import Fragmento
 from app.models.grado import Grado
@@ -612,8 +612,8 @@ async def generar_micro_leccion(
 
     # Generación con verificación de cobertura: 1 intento + 1 reintento si quedan
     # pocas tarjetas válidas tras descartar las que no se apoyan en los fragmentos.
-    # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
-    modelo = modelo_para_asignatura(asignatura_nombre)
+    # Matemáticas usa su propio modelo (LLM_MODEL_MATEMATICAS); el resto, LLM_MODEL.
+    rol = rol_para_asignatura(asignatura_nombre)
     micro: MicroLeccionResponse | None = None
     for intento in range(2):
         messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel, asignatura_nombre)
@@ -626,7 +626,7 @@ async def generar_micro_leccion(
         # dura la llamada — causa raíz confirmada de los 502 intermitentes
         # reportados por docentes (ver docs/diagnostico_error_lecciones.md).
         data = await asyncio.to_thread(
-            llm_client.generate_json, messages, max_tokens=4096, model=modelo
+            llm_client.generate_json, messages, max_tokens=4096, rol=rol
         )
         if data is None:
             continue
