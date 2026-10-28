@@ -19,6 +19,7 @@ import asyncio
 import json
 import logging
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, "/app")
@@ -55,6 +56,8 @@ def muestra_estratificada(preguntas: list[dict], n: int) -> list[dict]:
 async def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--n", type=int, default=20)
+    parser.add_argument("--asignatura-id", type=int, default=None,
+                        help="quedarse solo con las preguntas de esa asignatura DE la muestra de --n")
     parser.add_argument("--salida", required=True, help="carpeta de resultados (no se sobrescribe un cache existente)")
     agregar_argumento_max_usd(parser)
     args = parser.parse_args()
@@ -67,6 +70,8 @@ async def main():
         sys.exit(1)
 
     preguntas = muestra_estratificada(json.loads((DIR / "preguntas_ragas.json").read_text(encoding="utf-8")), args.n)
+    if args.asignatura_id is not None:
+        preguntas = [p for p in preguntas if p["asignatura_id"] == args.asignatura_id]
     presupuesto = Presupuesto(args.max_usd)
     presupuesto.instrumentar(llm_client._client)
 
@@ -88,13 +93,15 @@ async def main():
         for i, p in enumerate(preguntas, 1):
             presupuesto.verificar()
             capturados.clear()
+            t = time.monotonic()
             r = await chat_service.procesar_pregunta(db, p["pregunta"], None, p["asignatura_id"], estudiante)
+            segundos = round(time.monotonic() - t, 2)
             contextos = [f.get("text", "") for f in (capturados[-1] if capturados else []) if f.get("text")]
             resultados.append({
                 "pregunta": p["pregunta"], "asignatura": p["asignatura"], "asignatura_id": p["asignatura_id"],
                 "tipo": p["tipo"], "grado": p.get("grado"), "respuesta_tutor": r["respuesta"],
                 "retrieved_contexts": contextos, "num_contextos": len(contextos),
-                "status": "OK" if contextos else "EMPTY",
+                "status": "OK" if contextos else "EMPTY", "segundos": segundos,
             })
             print(f"{i}/{len(preguntas)} {'✓' if contextos else '∅'} {p['pregunta'][:60]}", flush=True)
     finally:
