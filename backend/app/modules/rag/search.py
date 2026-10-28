@@ -198,6 +198,19 @@ _MARCADORES_EJERCICIO = (
     "observa la imagen y responde",
 )
 
+# Libros del MINEDUC de básico (2026-10, variante V5 del simulador). En las Guías
+# de Ciencias "Paso N" es la cabecera de un paso de actividad ("Paso 1 Comparamos…");
+# en Matemáticas "Paso 1." / "Paso 1:" es un procedimiento (teoría), de ahí el
+# lookahead. "¿Qué (más) necesitamos saber?" introduce la teoría de la Guía.
+_PASO_GUIA = re.compile(r"\bpaso\s+\d+(?![\d.:])")
+# Instrucción numerada de Matemática ("1. Escriba…", "2. Calcule…"); verbos
+# contados en 1B/2B/3B.
+_INSTRUCCION_NUMERADA = re.compile(
+    r"(?m)^\s*\d+\.\s+(encuentre|calcule|escriba|resuelva|identifique|complete|clasifique|determine"
+    r"|exprese|represente|construya|convierta|dibuje|desarrolle|compare|ordene|responda|observe"
+    r"|indique|simplifique|forme|factorice|relacione|grafique|trace|ubique|analice|reduzca|elabore|plantee)\b"
+)
+
 
 def es_ejercicio_del_libro(texto: str) -> bool:
     """True si el texto de un fragmento es un ejercicio del libro (resuelto o
@@ -216,14 +229,20 @@ def es_ejercicio_del_libro(texto: str) -> bool:
     marcaba 58 fragmentos más que mezclan teoría y ejercicio y se perdían
     definiciones (decimales p. 65, divisibilidad p. 34). Ver
     docs/limitaciones-conocidas.md.
+
+    Libros de básico: "Paso N" de Guía sin "necesitamos saber", o instrucción
+    numerada sin "Ejemplo" (el ejemplo resuelto se conserva como teoría).
     """
     t = (texto or "").lower()
     if any(marcador in t for marcador in _MARCADORES_EJERCICIO):
         return True
     if "ejercicio" in t:
         normalizado = re.sub(r"\s+", " ", t)
-        return any(marcador in normalizado for marcador in _MARCADORES_EJERCICIO)
-    return False
+        if any(marcador in normalizado for marcador in _MARCADORES_EJERCICIO):
+            return True
+    if _PASO_GUIA.search(t) and "necesitamos saber" not in t:
+        return True
+    return bool(_INSTRUCCION_NUMERADA.search(t)) and "ejemplo" not in t
 
 
 def is_context_relevant(fragments: list[dict]) -> bool:

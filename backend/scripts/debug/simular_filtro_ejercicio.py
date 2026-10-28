@@ -13,7 +13,8 @@ rag/search.py (2026-10-28; V2 se probó y se revirtió). Desde entonces "actual"
       SIGUE marcado si, normalizando espacios, contiene otro marcador (es decir,
       sí trae un ejercicio real partido por el OCR). No marca nada nuevo.
 
-  V5  V4 corregido tras medirlo (ver comentario de v5). Es la propuesta vigente.
+  V5  V4 corregido tras medirlo (ver comentario de v5). APLICADO en rag/search.py
+      (2026-10-28): desde entonces "actual" = V5 y V3 sirve de referencia anterior.
   V4  (primera propuesta para libros MINEDUC de básico, con --pdf) actual + dos reglas:
       - "Paso N" sin "¿Qué más necesitamos saber?" -> ejercicio (Guías de Ciencias);
       - instrucción numerada ("1. Escriba…", "2. Calcule…") sin "Ejemplo" ->
