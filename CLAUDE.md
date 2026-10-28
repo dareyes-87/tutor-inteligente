@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Tutor Inteligente" — a RAG-based intelligent tutoring backend for Guatemalan school students. Teachers upload textbook PDFs; the system OCRs and indexes them, then students chat with an LLM tutor and solve auto-generated activities, all grounded in the indexed textbook content. The codebase, comments, model names, and API responses are in **Spanish** — keep new code and docstrings in Spanish to match.
 
-Everything runs in Docker: a FastAPI backend, PostgreSQL 16 (relational data), and ChromaDB (vector store). The LLM is served remotely by **Together AI** (default model `Qwen/Qwen2.5-7B-Instruct-Turbo`); embeddings run locally on CPU via sentence-transformers.
+Everything runs in Docker: a FastAPI backend, PostgreSQL 16 (relational data), and ChromaDB (vector store). The LLM is served remotely by **Together AI** (default model `deepseek-ai/DeepSeek-V4.1-Flash`, fallback `openai/gpt-oss-120b`; see `config.py`); embeddings run locally on CPU via sentence-transformers.
 
 There are **three top-level apps**:
 - `backend/` — the FastAPI RAG backend (the core; everything above).

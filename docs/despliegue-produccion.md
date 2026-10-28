@@ -7,18 +7,18 @@
 ## ⚠️ Bloqueante previo: modelo de Together
 
 Desde octubre de 2026, Together ya no ofrece en serverless `Qwen/Qwen2.5-7B-Instruct-Turbo` ni
-`meta-llama/Llama-3.3-70B-Instruct-Turbo` (`400 model_not_available`). Hasta que se configure un
-reemplazo, el chat responde un mensaje de respaldo y las actividades, las micro-lecciones **y la
-generación de lecciones en la ingesta** fallan. Resolver esto **antes** del paso 5.
+`meta-llama/Llama-3.3-70B-Instruct-Turbo` (`400 model_not_available`). Reemplazo elegido por benchmark
+(2026-10-28): **DeepSeek-V4.1-Flash** en los 3 roles, con **gpt-oss-120b** de respaldo. Si en Railway
+quedó `LLM_MODEL` con el valor viejo, **borrarla o actualizarla** (pisa el valor por defecto del código).
 
 Los modelos se eligen solo por configuración (`backend/app/config.py`), uno por rol, cada uno con
 respaldos que se usan únicamente si Together responde que el modelo no está disponible:
 
-| Rol | Variable | Respaldos |
+| Rol | Variable (valor por defecto) | Respaldos (valor por defecto) |
 |---|---|---|
-| chat, actividades y micro-lecciones (salvo Matemáticas) | `LLM_MODEL` | `LLM_MODEL_FALLBACKS` |
-| Matemáticas | `LLM_MODEL_MATEMATICAS` | `LLM_MODEL_MATEMATICAS_FALLBACKS` |
-| ruta de lecciones (ingesta) | `LLM_MODEL_RUTA` | `LLM_MODEL_RUTA_FALLBACKS` |
+| chat, actividades y micro-lecciones (salvo Matemáticas) | `LLM_MODEL` (`deepseek-ai/DeepSeek-V4.1-Flash`) | `LLM_MODEL_FALLBACKS` (`openai/gpt-oss-120b`) |
+| Matemáticas | `LLM_MODEL_MATEMATICAS` (`deepseek-ai/DeepSeek-V4.1-Flash`) | `LLM_MODEL_MATEMATICAS_FALLBACKS` (`openai/gpt-oss-120b`) |
+| ruta de lecciones (ingesta) | `LLM_MODEL_RUTA` (`deepseek-ai/DeepSeek-V4.1-Flash`) | `LLM_MODEL_RUTA_FALLBACKS` (`openai/gpt-oss-120b`) |
 
 Respaldos = IDs separados por coma. Comprobar con `verificar_modelos.py` (ver checklist al final).
 

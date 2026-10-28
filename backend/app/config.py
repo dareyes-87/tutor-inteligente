@@ -28,15 +28,17 @@ class Settings(BaseSettings):
     # Un modelo por rol: chat/actividades/micro-lecciones del resto de
     # asignaturas, Matemáticas (aritmética más confiable) y generación de la
     # ruta de lecciones en la ingesta (una vez por libro).
-    LLM_MODEL: str = "Qwen/Qwen2.5-7B-Instruct-Turbo"
-    LLM_MODEL_MATEMATICAS: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-    LLM_MODEL_RUTA: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+    # Elegidos con backend/scripts/debug/benchmark_modelos.py (2026-10-28):
+    # Qwen2.5-7B y Llama-3.3-70B ya no son serverless en Together.
+    LLM_MODEL: str = "deepseek-ai/DeepSeek-V4.1-Flash"
+    LLM_MODEL_MATEMATICAS: str = "deepseek-ai/DeepSeek-V4.1-Flash"
+    LLM_MODEL_RUTA: str = "deepseek-ai/DeepSeek-V4.1-Flash"
     # Respaldo por rol (separados por coma, en orden): se usan SOLO si Together
     # responde que el modelo no existe o no está disponible (ver app/llm/client.py).
     # Texto, no lista: Railway puede tener la variable creada pero vacía.
-    LLM_MODEL_FALLBACKS: str = ""
-    LLM_MODEL_MATEMATICAS_FALLBACKS: str = ""
-    LLM_MODEL_RUTA_FALLBACKS: str = ""
+    LLM_MODEL_FALLBACKS: str = "openai/gpt-oss-120b"
+    LLM_MODEL_MATEMATICAS_FALLBACKS: str = "openai/gpt-oss-120b"
+    LLM_MODEL_RUTA_FALLBACKS: str = "openai/gpt-oss-120b"
 
     # --- Modelo fine-tuned (Modal) — A/B por grado, objetivo específico 3 de tesis ---
     # Vacío = feature apagada (nadie se enruta al fine-tuned). Ver app/llm/client.py.
