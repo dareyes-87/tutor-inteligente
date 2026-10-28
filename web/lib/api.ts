@@ -505,6 +505,33 @@ export function obtenerLibros(): Promise<LibroDocente[]> {
   return request<LibroDocente[]>("/docente/libros");
 }
 
+export type NivelDiagnostico = "domina" | "en_proceso" | "refuerzo" | "sin_datos";
+
+export interface DiagnosticoDocente {
+  libro_id: number;
+  libro_titulo: string;
+  asignatura_id: number;
+  asignatura: string;
+  lecciones: { id: number; orden: number; nombre: string; paginas: string | null }[];
+  estudiantes: {
+    estudiante_id: number;
+    nombre: string;
+    apellido: string;
+    // Una celda por lección, en el mismo orden que `lecciones`.
+    celdas: {
+      leccion_id: number;
+      nivel: NivelDiagnostico;
+      puntaje_promedio: number | null;
+      total_actividades: number;
+    }[];
+  }[];
+}
+
+/** Mapa de comprensión estudiantes × lecciones de un libro (panel docente). */
+export function obtenerDiagnostico(libroId: number): Promise<DiagnosticoDocente> {
+  return request<DiagnosticoDocente>(`/docente/diagnostico?libro_id=${libroId}`);
+}
+
 export function obtenerEstudiantes(): Promise<EstudianteResumen[]> {
   return request<EstudianteResumen[]>("/docente/estudiantes");
 }

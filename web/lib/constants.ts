@@ -33,6 +33,7 @@ export const TEACHER_NAV: NavItem[] = [
   { href: "/docente", key: "resumen", label: "Resumen", icon: "📊" },
   { href: "/docente/libros", key: "libros", label: "Libros", icon: "📚" },
   { href: "/docente/estudiantes", key: "estudiantes", label: "Estudiantes", icon: "👩‍🎓" },
+  { href: "/docente/diagnostico", key: "diagnostico", label: "Diagnóstico", icon: "🗺️" },
   { href: "/docente/preguntas", key: "preguntas", label: "Preguntas", icon: "❓" },
 ];
 
