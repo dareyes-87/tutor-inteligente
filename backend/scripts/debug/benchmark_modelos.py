@@ -283,7 +283,7 @@ async def prueba_micro(n: int) -> dict:
     try:
         orden = [("Ciencias Naturales", i) for i in LECCIONES["Ciencias Naturales"]]
         orden = [x for par in zip(orden, [("Matemáticas", i) for i in LECCIONES["Matemáticas"]]) for x in par]
-        resultados = []
+        resultados, ejemplo = [], None
         with ContadorJSON() as cj:
             for asignatura, leccion_id in orden[:n]:
                 PRESUPUESTO.verificar()
@@ -291,6 +291,8 @@ async def prueba_micro(n: int) -> dict:
                 try:
                     micro = await generar_micro_leccion(leccion_id, db, nivel=1)
                     ok, tarjetas = True, len(micro.tarjetas)
+                    if ejemplo is None:  # para juzgar el español a nivel primaria
+                        ejemplo = {"leccion_id": leccion_id, "tarjetas": [t.model_dump() for t in micro.tarjetas]}
                 except HTTPException:
                     ok, tarjetas = False, 0
                 resultados.append({"leccion_id": leccion_id, "asignatura": asignatura, "ok": ok,
@@ -300,6 +302,7 @@ async def prueba_micro(n: int) -> dict:
             "pct_json_valido_por_llamada": round(100 * cj.ok / cj.total, 1) if cj.total else None,
             "llamadas_json": cj.total,
             "latencia": stats_latencia([r["segundos"] for r in resultados]),
+            "ejemplo": ejemplo,
             "detalle": resultados,
         }
     finally:
@@ -384,7 +387,7 @@ async def main():
                 r["usd"] = round(presupuesto.total_usd - usd_antes, 5)
                 r["minutos"] = round((time.monotonic() - t) / 60, 1)
                 resultados[modelo][nombre] = r
-                print(f"[{modelo}] {nombre}: {json.dumps({k: v for k, v in r.items() if k not in ('detalle', 'ejemplos')}, ensure_ascii=False)}", flush=True)
+                print(f"[{modelo}] {nombre}: {json.dumps({k: v for k, v in r.items() if k not in ('detalle', 'ejemplos', 'ejemplo')}, ensure_ascii=False)}", flush=True)
                 with open(args.salida, "w", encoding="utf-8") as f:
                     json.dump({"resultados": resultados, "costo": presupuesto.por_modelo}, f, ensure_ascii=False, indent=1)
     except PresupuestoAgotado as e:
