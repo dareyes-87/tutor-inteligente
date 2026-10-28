@@ -5,6 +5,7 @@ Expone: ruta del estudiante (con progreso por lección), iniciar/completar
 lecciones, y la capa de gamificación (rachas + ranking) integrada con las
 lecciones. Las funciones son async y son dueñas del commit.
 """
+import asyncio
 import logging
 import math
 import random
@@ -619,7 +620,15 @@ async def generar_micro_leccion(
         messages = _build_micro_leccion_messages(leccion.nombre, contexto, nivel, asignatura_nombre)
         if intento > 0:
             messages[-1]["content"] += "\n\nIMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones."
-        data = llm_client.generate_json(messages, max_tokens=4096, model=modelo)
+        # to_thread: generate_json() es una llamada síncrona a Together que puede
+        # tardar decenas de segundos (más con el 70B). El backend corre con
+        # --workers 1 (ver client.py::chat_finetuned), así que sin esto una sola
+        # micro-lección bloquea el event loop para TODOS los estudiantes mientras
+        # dura la llamada — causa raíz confirmada de los 502 intermitentes
+        # reportados por docentes (ver diagnostico_error_lecciones.md).
+        data = await asyncio.to_thread(
+            llm_client.generate_json, messages, max_tokens=4096, model=modelo
+        )
         if data is None:
             continue
         try:

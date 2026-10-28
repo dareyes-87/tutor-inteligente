@@ -1,4 +1,5 @@
 """Lógica de negocio del módulo de actividades."""
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -151,7 +152,11 @@ async def crear_actividad(
     # Generar actividad con el LLM. `tipo` puede cambiar si el guardrail forzó
     # opcion_multiple (ver generar_actividad): usar SIEMPRE el tipo efectivo
     # para dar forma a contenido/respuesta_correcta y para guardar la actividad.
-    tipo, result = generar_actividad(
+    # to_thread: generar_actividad() es sync y puede llamar a Together hasta 3
+    # veces (inicial + reintento + verificación de secuencia); sin esto bloquea
+    # el único worker del backend para todos los estudiantes mientras corre.
+    tipo, result = await asyncio.to_thread(
+        generar_actividad,
         tipo, context, tema, evitar_preguntas, asignatura.nombre, grado_nombre,
         conceptos_estudiados,
     )

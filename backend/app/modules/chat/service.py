@@ -341,10 +341,18 @@ async def procesar_pregunta(
                 logger.info(f"[Chat] Respuesta del fine-tuned (grado_id={estudiante.grado_id})")
             except Exception as e:  # noqa: BLE001 — cualquier fallo del endpoint de Modal degrada a Together
                 logger.warning(f"[Chat] Fine-tuned no disponible, fallback a base: {e}")
-                respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
+                # to_thread por la misma razón que chat_finetuned() arriba: llamada
+                # síncrona a Together que, sin esto, bloquearía el único worker
+                # para todos los estudiantes mientras dura la respuesta.
+                respuesta = await asyncio.to_thread(
+                    llm_client.chat, messages, model=modelo_para_asignatura(asignatura_nombre)
+                )
         else:
             # Matemáticas usa el 70B (más confiable en aritmética); el resto, el Qwen 7B.
-            respuesta = llm_client.chat(messages, model=modelo_para_asignatura(asignatura_nombre))
+            # to_thread: ver comentario arriba (llamada síncrona en backend --workers 1).
+            respuesta = await asyncio.to_thread(
+                llm_client.chat, messages, model=modelo_para_asignatura(asignatura_nombre)
+            )
         fragments_referencia = fragments
     else:
         logger.info(
