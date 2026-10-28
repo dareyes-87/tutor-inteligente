@@ -14,6 +14,8 @@ calidad real del texto y no la basura visual, el OCR:
 """
 import io
 import logging
+import re
+from collections import Counter
 
 import fitz  # PyMuPDF
 import numpy as np
@@ -124,9 +126,48 @@ def _page_has_text(page: fitz.Page) -> bool:
     return len(text) >= MIN_TEXT_CHARS
 
 
+# Fuentes de símbolos (MathMagic) de los libros de Matemática del MINEDUC: sus
+# glifos se extraen como otro carácter ("x ' 3" en vez de "x ÷ 3").
+SIMBOLOS_POR_FUENTE = {
+    "MMBinary": {"'": "÷", "#": "×"},
+    "MMBinaryBold": {"'": "÷", "#": "×"},
+    "MMVariableA": {"^": "(", "h": ")"},
+}
+# Patrones de cada carácter en el texto de la página, del más estricto al más
+# amplio; se usa el primero cuyo conteo cuadra. La "h" solo cuenta como paréntesis
+# si va suelta, o al menos no pegada a otra letra (sí a exponentes: "h2", "h,").
+_PATRONES_SIMBOLO = {
+    "h": [re.compile(r"(?<![^\s(])h(?!\S)"), re.compile(r"(?<![^\W\d_])h(?![^\W\d_])")],
+}
+
+
+def _corregir_simbolos(page: fitz.Page, texto: str) -> str:
+    """Reemplaza los glifos mal mapeados de SIMBOLOS_POR_FUENTE.
+
+    El texto ordenado (sort=True) ya no dice de qué fuente viene cada carácter,
+    así que se reemplaza un carácter solo si sus apariciones en el texto son
+    exactamente las de esas fuentes en la página; si no cuadran (p. ej. un "#"
+    de otra fuente), se deja como está.
+    """
+    esperados: Counter = Counter()
+    for bloque in page.get_text("dict")["blocks"]:
+        for linea in bloque.get("lines", []):
+            for span in linea["spans"]:
+                mapa = SIMBOLOS_POR_FUENTE.get(span["font"])
+                if mapa:
+                    esperados.update((ch, mapa[ch]) for ch in span["text"] if ch in mapa)
+    # "^" antes que "h": "^h" pasa a "(h" y así la "h" queda reconocible.
+    for (ch, nuevo), n in sorted(esperados.items(), key=lambda kv: kv[0][0] == "h"):
+        for patron in _PATRONES_SIMBOLO.get(ch, [re.compile(re.escape(ch))]):
+            if len(patron.findall(texto)) == n:
+                texto = patron.sub(nuevo, texto)
+                break
+    return texto
+
+
 def _extract_digital_text(page: fitz.Page) -> str:
     """Extrae texto de una página con capa de texto digital."""
-    return page.get_text("text", sort=True).strip()
+    return _corregir_simbolos(page, page.get_text("text", sort=True).strip())
 
 
 def _extract_ocr_text(page: fitz.Page) -> dict:
