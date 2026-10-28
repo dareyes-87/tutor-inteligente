@@ -17,6 +17,8 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import engine, AsyncSessionLocal
 from app.llm.client import llm_client
+from app.modules.ingesta.embeddings import get_model
+from app.modules.ingesta.indexer import get_collection
 from app.seed import seed_admin
 from app.workers.modal_keepwarm import keepwarm_loop
 
@@ -39,6 +41,15 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as db:
         await seed_admin(db)
+    # Precarga del modelo de embeddings: sin esto, la primera pregunta tras
+    # cada arranque paga la carga (y antes, la descarga desde Hugging Face).
+    await asyncio.to_thread(get_model)
+    # Calentar la conexión a Chroma; si no está arriba, la app arranca igual
+    # (/health lo reporta) y el singleton se crea en la primera consulta.
+    try:
+        await asyncio.to_thread(get_collection)
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).warning(f"Chroma no disponible al arrancar: {e}")
     keepwarm_task = asyncio.create_task(keepwarm_loop())
     yield
     keepwarm_task.cancel()
