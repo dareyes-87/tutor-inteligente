@@ -125,7 +125,16 @@ En lugar de los pasos 5–7 (re-ingestar en Railway: OCR de ~1 h por libro escan
    docker compose exec postgres pg_dump -U "$POSTGRES_USER" -Fc tutor_prod > tutor_prod.dump
    pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" tutor_prod.dump
    ```
-   Incluye `alembic_version` (producción queda en el mismo head) y las secuencias. Requiere `pg_restore` ≥ 16 (local: 16.14); versión del Postgres de Railway [NO VERIFICADO].
+   Incluye `alembic_version` (producción queda en el mismo head) y las secuencias.
+
+   **Verificar antes la versión del Postgres de Railway** (local: 16.14):
+   ```bash
+   psql "$DATABASE_URL_PUBLICA" -Atc "show server_version;"     # p. ej. 16.4
+   ```
+   (sin `psql` en el host: `docker run --rm postgres:16 psql "$DATABASE_URL_PUBLICA" -Atc "show server_version;"`).
+   - **16.x**: seguir tal cual (usar `pg_restore` 16, p. ej. el de la imagen `postgres:16`).
+   - **17 o mayor**: un dump de la 16 se restaura bien en una versión mayor, pero el `pg_restore` debe ser **de la versión del servidor**: `docker run --rm -v "$PWD":/w postgres:<versión> pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" /w/tutor_prod.dump`.
+   - **15 o menor**: un dump `-Fc` de la 16 no se restaura en una versión menor. Opciones: (a) recomendada, crear en Railway un Postgres 16 (plantilla/imagen `postgres:16`) y apuntar `DATABASE_URL` del backend a él; o (b) volcar en texto plano (`pg_dump --no-owner --no-acl -Fp`) y aplicarlo con `psql`, revisando errores de sintaxis propios de la 16 (poco probable con este esquema, pero no probado).
 3. **Reconstruir Chroma desde Postgres** (sin OCR ni LLM): script nuevo `backend/scripts/reconstruir_chroma.py`, corrido dentro del backend de producción. Por cada `fragmento` une `libro_texto`→`asignatura`/`grado` y escribe en la colección `libros_texto`:
    - `id` = `fragmento.chunk_id_vectordb` (`libro_{id}_chunk_{nnnnn}`; es el que el RAG devuelve y con el que se vuelve a `fragmento`, así que los IDs quedan coherentes por construcción);
    - `document` = `contenido_texto` (idéntico a lo indexado: comprobado el 2026-10-28, 812/812 fragmentos iguales en texto y metadatos);

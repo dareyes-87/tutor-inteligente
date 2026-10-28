@@ -6,3 +6,5 @@
 -r requirements.txt
 pytest==9.2.0
 pytest-asyncio==1.4.1
+# Seed del piloto (scripts/seed_piloto.py): fechas simuladas en las funciones de servicio.
+freezegun==1.5.5
