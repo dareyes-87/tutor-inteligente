@@ -5,12 +5,17 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { ApiError, getPerfil, type NivelComprension, type PerfilTema } from "@/lib/api";
-import { NIVEL_META } from "@/lib/mock";
 import { Mascota } from "@/components/mascota";
 
-/** El backend usa `en_proceso`; los tokens visuales del diseño usan `proceso`. */
-const nivelMeta = (n: NivelComprension) =>
-  n === "en_proceso" ? NIVEL_META.proceso : NIVEL_META[n];
+/** Tokens visuales por nivel de comprensión (claves = niveles del backend). */
+const NIVEL_META: Record<
+  NivelComprension,
+  { chip: string; chipBg: string; chipColor: string; bar: string; dot: string }
+> = {
+  domina: { chip: "Domina ✅", chipBg: "#E9F9EF", chipColor: "#16A34A", bar: "#22C55E", dot: "#22C55E" },
+  en_proceso: { chip: "En proceso 🟡", chipBg: "#FEF6E7", chipColor: "#D97706", bar: "#F59E0B", dot: "#F59E0B" },
+  refuerzo: { chip: "Necesita refuerzo 🔴", chipBg: "#FDECEC", chipColor: "#DC2626", bar: "#EF4444", dot: "#EF4444" },
+};
 
 export default function ProgresoPage() {
   const [perfil, setPerfil] = useState<PerfilTema[] | null>(null);
@@ -218,7 +223,7 @@ function TemaRow({
   numero: number;
   mostrarAsignatura: boolean;
 }) {
-  const nv = nivelMeta(p.nivel);
+  const nv = NIVEL_META[p.nivel];
   const pct = Math.round(p.puntaje_promedio);
   return (
     <div className="flex items-center gap-3 rounded-[20px] border border-border bg-white px-4 py-4 shadow-[0_5px_16px_rgba(30,43,77,.05)] sm:gap-[22px] sm:px-6 sm:py-5">

@@ -21,6 +21,11 @@ contenido indexado, misma pregunta -> mismo contexto real).
 
 Salidas: respuestas_cache_configA.json / _configC.json / _configD.json (cache,
 igual que el original) y resumen_4configs.json + tabla en stdout.
+
+NOTA (2026-10-28): los retrieved_contexts de B salieron del endpoint
+POST /chat/preguntar-debug, eliminado al terminar la evaluación; su última
+versión vive en el commit e25142c. Este script solo lee la cache de B, así que
+no depende del endpoint.
 """
 import json
 import os

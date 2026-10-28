@@ -16,34 +16,6 @@ def _normalize(text: str) -> str:
         .replace("í", "i").replace("ó", "o").replace("ú", "u")
 
 
-def normalizar_texto(texto: str) -> str:
-    """Normaliza para comparación: minúsculas, sin tildes, sin espacios extra."""
-    # Quitar tildes: á→a, é→e, etc.
-    texto = unicodedata.normalize("NFKD", texto)
-    texto = "".join(c for c in texto if not unicodedata.combining(c))
-    # Minúsculas y strip
-    return texto.lower().strip()
-
-
-def generar_feedback_ortografico(respuesta_est: str, respuesta_cor: str) -> str:
-    """Genera retroalimentación específica para errores ortográficos."""
-    est = respuesta_est.strip()
-    cor = respuesta_cor.strip()
-
-    # Detectar si solo faltan/sobran tildes
-    if normalizar_texto(est) == normalizar_texto(cor):
-        return (
-            f"¡Casi perfecto! La respuesta es correcta pero revisa "
-            f"la ortografía: se escribe «{cor}». ¡Muy buen intento! ⭐"
-        )
-
-    # Error ortográfico general
-    return (
-        f"¡Casi lo tienes! La respuesta correcta es «{cor}». "
-        f"Estuviste muy cerca, ¡sigue así! 💪"
-    )
-
-
 # ============================================================================
 # Matcher flexible DETERMINÍSTICO para "completar" y "respuesta_corta".
 # Un niño de 8-15 que escribe "célula" cuando la esperada es "una célula"

@@ -62,9 +62,3 @@ def index_chunks(
     logger.info(f"Indexados {len(ids)} chunks en ChromaDB (colección: {COLLECTION_NAME})")
     return len(ids)
 
-
-def delete_libro_chunks(libro_id: int) -> None:
-    """Borra todos los chunks de un libro (para re-indexar)."""
-    collection = get_collection()
-    collection.delete(where={"libro_id": libro_id})
-    logger.info(f"Eliminados chunks del libro {libro_id} de ChromaDB")

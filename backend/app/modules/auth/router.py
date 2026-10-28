@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.usuario import RolUsuario
 from app.modules.auth.dependencies import get_current_user, require_role
 from app.modules.auth.schemas import (
-    LoginRequest, RegistroRequest, TokenResponse, UsuarioResponse,
+    RegistroRequest, TokenResponse, UsuarioResponse,
 )
 from app.modules.auth.service import (
     authenticate_user, create_token_for_user, create_user, get_user_by_username,

@@ -6,6 +6,12 @@ respuesta del tutor + los contextos textuales recuperados por el RAG) para las
 50 preguntas de `preguntas_ragas.json`, y calcula la métrica Faithfulness de
 RAGAS usando Together AI (Llama-3.3-70B) como LLM evaluador.
 
+NOTA (2026-10-28): el endpoint POST /chat/preguntar-debug ya NO existe; se
+eliminó al terminar la evaluación (los resultados están en este directorio).
+Su última versión vive en el commit e25142c (chat/router.py::preguntar_debug
+y el parámetro `debug` de chat/service.py::procesar_pregunta). Para volver a
+correr este script hay que restaurarlo desde ese commit.
+
 --- Requisitos (instalar en un venv LOCAL, NO en la imagen del backend) ---
     pip install ragas langchain-together requests pandas
 

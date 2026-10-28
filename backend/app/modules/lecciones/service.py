@@ -43,9 +43,6 @@ from app.modules.rag.search import es_ejercicio_del_libro, search_fragments
 
 logger = logging.getLogger(__name__)
 
-# Puntaje mínimo (promedio) para dar una lección por completada.
-PUNTAJE_MINIMO_COMPLETAR = 70
-
 # --- Sistema de 3 niveles tipo Duolingo ---
 # Cuántos fragmentos (Top-K) usa la micro-lección en cada nivel.
 NIVEL_TOPK = {1: 5, 2: 8, 3: 10}
@@ -627,7 +624,7 @@ async def generar_micro_leccion(
         # --workers 1 (ver client.py::chat_finetuned), así que sin esto una sola
         # micro-lección bloquea el event loop para TODOS los estudiantes mientras
         # dura la llamada — causa raíz confirmada de los 502 intermitentes
-        # reportados por docentes (ver diagnostico_error_lecciones.md).
+        # reportados por docentes (ver docs/diagnostico_error_lecciones.md).
         data = await asyncio.to_thread(
             llm_client.generate_json, messages, max_tokens=4096, model=modelo
         )
@@ -696,62 +693,6 @@ async def iniciar_leccion(
 
     progreso.estado = EstadoLeccion.en_progreso
     progreso.fecha_inicio = datetime.now(timezone.utc)
-    await db.commit()
-    return _to_leccion_en_ruta(leccion, progreso)
-
-
-async def completar_actividad_leccion(
-    estudiante_id: int, leccion_id: int, puntaje: int, db: AsyncSession
-) -> LeccionEnRuta:
-    """Registra una actividad completada en una lección y, si corresponde,
-    completa la lección, desbloquea la siguiente y actualiza racha + puntos."""
-    leccion = (
-        await db.execute(select(Leccion).where(Leccion.id == leccion_id))
-    ).scalar_one_or_none()
-    if leccion is None:
-        raise HTTPException(status_code=404, detail="Lección no encontrada")
-
-    progreso = await _get_or_create_progreso(estudiante_id, leccion, db)
-
-    # Opción A: solo cuentan los ACIERTOS (puntaje >= 70). El campo
-    # `actividades_completadas` lleva el conteo de aciertos (no de respuestas
-    # totales), y `puntaje_promedio` es el promedio de esos aciertos. Una
-    # respuesta < 70 NO avanza ni penaliza la lección: el estudiante reintenta.
-    # Esto evita el "promedio histórico pegajoso" del criterio anterior.
-    if puntaje >= PUNTAJE_MINIMO_COMPLETAR:
-        prev = progreso.actividades_completadas
-        progreso.puntaje_promedio = (progreso.puntaje_promedio * prev + puntaje) / (prev + 1)
-        progreso.actividades_completadas = prev + 1
-
-    ya_completada = progreso.estado == EstadoLeccion.completada
-    if (
-        not ya_completada
-        and progreso.actividades_completadas >= progreso.actividades_requeridas
-    ):
-        progreso.estado = EstadoLeccion.completada
-        progreso.fecha_completada = datetime.now(timezone.utc)
-
-        # Desbloquear la siguiente lección (orden + 1).
-        siguiente = (
-            await db.execute(
-                select(Leccion).where(
-                    Leccion.libro_id == leccion.libro_id,
-                    Leccion.orden == leccion.orden + 1,
-                )
-            )
-        ).scalar_one_or_none()
-        if siguiente is not None:
-            prog_sig = await _get_or_create_progreso(estudiante_id, siguiente, db)
-            if prog_sig.estado == EstadoLeccion.bloqueada:
-                prog_sig.estado = EstadoLeccion.disponible
-
-        # Gamificación: la racha y los puntos solo avanzan al COMPLETAR.
-        await actualizar_racha(estudiante_id, db)
-        usuario = (
-            await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
-        ).scalar_one()
-        usuario.puntos_totales += puntaje
-
     await db.commit()
     return _to_leccion_en_ruta(leccion, progreso)
 

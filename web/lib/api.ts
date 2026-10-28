@@ -395,17 +395,6 @@ export function iniciarLeccion(leccionId: number): Promise<LeccionEnRuta> {
   return request<LeccionEnRuta>(`/lecciones/${leccionId}/iniciar`, { method: "POST" });
 }
 
-/** Registra una actividad completada en una lección (puede completarla). */
-export function completarActividadLeccion(
-  leccionId: number,
-  puntaje: number,
-): Promise<LeccionEnRuta> {
-  return request<LeccionEnRuta>(`/lecciones/${leccionId}/completar-actividad`, {
-    method: "POST",
-    body: JSON.stringify({ puntaje }),
-  });
-}
-
 // ----------------------- Gamificación -----------------------
 
 export interface RachaResponse {

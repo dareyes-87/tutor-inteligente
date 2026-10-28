@@ -93,7 +93,7 @@ async def post_iniciar(
 
 @router.post(
     "/lecciones/{leccion_id}/completar-actividad",
-    response_model=LeccionEnRuta | CompletarNivelResponse,
+    response_model=CompletarNivelResponse,
 )
 async def post_completar_actividad(
     leccion_id: int,
@@ -101,24 +101,15 @@ async def post_completar_actividad(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(_estudiante),
 ):
-    """Registra el resultado de práctica de una lección.
-
-    - Si vienen `nivel` y `actividades_aprobadas` → evalúa el NIVEL (sistema de
-      3 niveles) y devuelve CompletarNivelResponse.
-    - Si no → comportamiento anterior por actividad (devuelve LeccionEnRuta).
-    """
-    if body.nivel is not None and body.actividades_aprobadas is not None:
-        return await service.completar_nivel(
-            current_user.id,
-            leccion_id,
-            body.nivel,
-            body.actividades_aprobadas,
-            body.puntaje,
-            db,
-            total_actividades=body.total_actividades,
-        )
-    return await service.completar_actividad_leccion(
-        current_user.id, leccion_id, body.puntaje, db
+    """Evalúa el resultado de practicar un NIVEL (sistema de 3 niveles)."""
+    return await service.completar_nivel(
+        current_user.id,
+        leccion_id,
+        body.nivel,
+        body.actividades_aprobadas,
+        body.puntaje,
+        db,
+        total_actividades=body.total_actividades,
     )
 
 

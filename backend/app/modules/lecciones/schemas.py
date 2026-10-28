@@ -12,11 +12,6 @@ class LeccionGenerada(BaseModel):
     paginas: str | None = None
 
 
-class LeccionesGeneradas(BaseModel):
-    """Estructura completa esperada del LLM: una lista de lecciones."""
-    lecciones: list[LeccionGenerada]
-
-
 # ----------------------- Ruta de aprendizaje -----------------------
 
 class LeccionEnRuta(BaseModel):
@@ -98,11 +93,9 @@ class MicroLeccionResponse(BaseModel):
 
 class CompletarActividadRequest(BaseModel):
     puntaje: int = Field(ge=0, le=100, description="Puntaje obtenido (0-100)")
-    # Campos del sistema de niveles (opcionales para compatibilidad). Si vienen
-    # ambos, se evalúa el nivel completo; si no, se usa el comportamiento viejo.
-    nivel: int | None = Field(None, ge=1, le=3, description="Nivel practicado (1-3)")
-    actividades_aprobadas: int | None = Field(
-        None, ge=0, description="Cuántas actividades de la sesión superaron el umbral (>=70)"
+    nivel: int = Field(ge=1, le=3, description="Nivel practicado (1-3)")
+    actividades_aprobadas: int = Field(
+        ge=0, description="Cuántas actividades de la sesión superaron el umbral (>=70)"
     )
     total_actividades: int | None = Field(
         None, ge=1, description="Cuántas actividades tuvo la sesión en total (para "
