@@ -438,6 +438,8 @@ export interface LibroDocente {
   total_fragmentos: number;
   total_lecciones: number;
   fecha_creacion: string;
+  confianza_ocr_promedio: number | null; // promedio de las páginas con OCR
+  metodo: "digital" | "ocr" | "mixto" | null; // derivado de los fragmentos
 }
 
 export interface EstudianteResumen {

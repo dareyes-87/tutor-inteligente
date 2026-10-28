@@ -7,6 +7,13 @@ import { ApiError, obtenerLibros, type LibroDocente } from "@/lib/api";
 import { ESTADO_LIBRO } from "@/lib/docente";
 import { UploadModal } from "@/components/teacher/upload-modal";
 
+/** Cómo se extrajo el texto del libro (las páginas digitales no pasan por OCR). */
+function textoMetodo(metodo: "digital" | "ocr" | "mixto", confianza: number | null) {
+  if (metodo === "digital") return "Texto digital";
+  const conf = confianza == null ? "" : ` · confianza OCR ${confianza.toFixed(1)} %`;
+  return (metodo === "ocr" ? "Escaneado (OCR)" : "Mixto: digital y OCR") + conf;
+}
+
 export default function LibrosPage() {
   const [libros, setLibros] = useState<LibroDocente[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -94,6 +101,11 @@ export default function LibrosPage() {
                   <div className="mt-1 text-[11.5px] font-bold text-[#9AA0AD]">
                     {l.total_fragmentos} fragmentos · {l.total_lecciones} lecciones
                   </div>
+                  {l.metodo && (
+                    <div className="mt-0.5 text-[11.5px] font-bold text-[#9AA0AD]">
+                      {textoMetodo(l.metodo, l.confianza_ocr_promedio)}
+                    </div>
+                  )}
                 </div>
                 <span
                   className="flex-none rounded-full px-3 py-1.5 text-[11.5px] font-extrabold"

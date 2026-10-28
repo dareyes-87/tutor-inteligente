@@ -27,6 +27,8 @@ class LibroDocente(BaseModel):
     total_fragmentos: int
     total_lecciones: int
     fecha_creacion: datetime
+    confianza_ocr_promedio: float | None  # promedio sobre las páginas con OCR (None si todas digitales)
+    metodo: str | None  # "digital" / "ocr" / "mixto", derivado de los fragmentos; None sin fragmentos
 
 
 class EstudianteResumen(BaseModel):

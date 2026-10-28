@@ -40,6 +40,14 @@ async def listar_libros(
         .correlate(LibroTexto)
         .scalar_subquery()
     )
+    # Páginas digitales se guardan con confianza_ocr exactamente 100.0
+    # (pdf_processor.process_pdf); las de OCR con la confianza de Tesseract.
+    frag_digitales = (
+        select(func.count(Fragmento.id))
+        .where(Fragmento.libro_id == LibroTexto.id, Fragmento.confianza_ocr == 100.0)
+        .correlate(LibroTexto)
+        .scalar_subquery()
+    )
     lec_count = (
         select(func.count(Leccion.id))
         .where(Leccion.libro_id == LibroTexto.id)
@@ -47,7 +55,7 @@ async def listar_libros(
         .scalar_subquery()
     )
     stmt = (
-        select(LibroTexto, Asignatura.nombre, Grado.nombre, frag_count, lec_count)
+        select(LibroTexto, Asignatura.nombre, Grado.nombre, frag_count, lec_count, frag_digitales)
         .join(Asignatura, LibroTexto.asignatura_id == Asignatura.id)
         .join(Grado, LibroTexto.grado_id == Grado.id)
         .order_by(LibroTexto.fecha_subida.desc())
@@ -65,9 +73,20 @@ async def listar_libros(
             total_fragmentos=frags or 0,
             total_lecciones=lecs or 0,
             fecha_creacion=libro.fecha_subida,
+            confianza_ocr_promedio=libro.confianza_ocr_promedio,
+            metodo=_metodo(frags or 0, digitales or 0),
         )
-        for libro, asig, grado, frags, lecs in rows
+        for libro, asig, grado, frags, lecs, digitales in rows
     ]
+
+
+def _metodo(total: int, digitales: int) -> str | None:
+    """Método de extracción del libro según sus fragmentos."""
+    if total == 0:
+        return None
+    if digitales == total:
+        return "digital"
+    return "ocr" if digitales == 0 else "mixto"
 
 
 async def _completadas_por_estudiante(db: AsyncSession) -> dict[int, int]:
