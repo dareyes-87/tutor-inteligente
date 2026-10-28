@@ -576,7 +576,9 @@ async def generar_micro_leccion(
             "[MicroLeccion] Lección %s sin fragmentos en el rango %s; usando búsqueda semántica (fallback)",
             leccion_id, leccion.paginas,
         )
-        pool = search_fragments(
+        # to_thread: búsqueda síncrona (embedding + Chroma), ver chat/service.py.
+        pool = await asyncio.to_thread(
+            search_fragments,
             query=leccion.tema_clave or leccion.nombre,
             asignatura=asignatura_nombre,
             grado=grado_nombre,

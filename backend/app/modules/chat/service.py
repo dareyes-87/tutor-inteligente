@@ -250,10 +250,13 @@ async def procesar_pregunta(
     # 12"), se busca FILTRANDO por page_num (la búsqueda semántica no entiende
     # referencias a páginas). Si esa página no existe, se cae a la búsqueda
     # semántica normal para no romper el flujo.
+    # to_thread: search_fragments es síncrona (embedding con torch + query a
+    # Chroma) y bloquearía el único worker mientras corre.
     pagina_solicitada = _detectar_pagina(pregunta)
     consulta_por_pagina = False
     if pagina_solicitada is not None:
-        fragments = search_fragments(
+        fragments = await asyncio.to_thread(
+            search_fragments,
             query=pregunta,
             asignatura=asignatura_nombre,
             grado=grado_nombre,
@@ -271,13 +274,15 @@ async def procesar_pregunta(
                 "fallback a búsqueda semántica normal"
             )
             pagina_solicitada = None
-            fragments = search_fragments(
+            fragments = await asyncio.to_thread(
+                search_fragments,
                 query=pregunta,
                 asignatura=asignatura_nombre,
                 grado=grado_nombre,
             )
     else:
-        fragments = search_fragments(
+        fragments = await asyncio.to_thread(
+            search_fragments,
             query=pregunta,
             asignatura=asignatura_nombre,
             grado=grado_nombre,

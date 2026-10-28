@@ -133,8 +133,9 @@ async def crear_actividad(
     # Modo 3: búsqueda semántica (sin lección / sin fragmentos).
     if not fragments:
         query = tema or asignatura.nombre
-        fragments = search_fragments(
-            query=query, asignatura=asignatura.nombre, grado=grado_nombre
+        # to_thread: búsqueda síncrona (embedding + Chroma), ver chat/service.py.
+        fragments = await asyncio.to_thread(
+            search_fragments, query=query, asignatura=asignatura.nombre, grado=grado_nombre
         )
         fragments = [f for f in fragments if not es_ejercicio_del_libro(f.get("text", ""))]
 

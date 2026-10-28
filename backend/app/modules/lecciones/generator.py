@@ -9,6 +9,7 @@ principio a fin de forma determinística (el LLM no puede "olvidar" la mitad
 final): la cobertura la garantiza la segmentación, y el LLM solo aporta los
 nombres atractivos. Si el LLM falla, cada segmento recibe un nombre genérico.
 """
+import asyncio
 import logging
 import math
 
@@ -194,15 +195,19 @@ async def generar_lecciones_desde_libro(libro_id: int, db: AsyncSession) -> list
     # segmentación; el LLM solo aporta nombre/descripción/tema.
     sin_nombre = 0
     creadas: list[Leccion] = []
+    # to_thread: generate_json es síncrona; esta generación corre dentro del
+    # proceso web (tarea de ingesta) y sin hilo bloquearía el único worker.
     for i, seg in enumerate(segmentos, start=1):
         item = _parsear(
-            llm_client.generate_json(
+            await asyncio.to_thread(
+                llm_client.generate_json,
                 _build_messages_segmento(seg, i, n), max_tokens=512, model=MODELO_RUTA
             )
         )
         if item is None:
             item = _parsear(
-                llm_client.generate_json(
+                await asyncio.to_thread(
+                    llm_client.generate_json,
                     _build_messages_segmento(seg, i, n, estricto=True),
                     max_tokens=512,
                     model=MODELO_RUTA,
