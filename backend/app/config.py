@@ -109,3 +109,32 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# Variables que en producción NO pueden quedarse con el valor por defecto del
+# código (JWT falsificable / admin con contraseña conocida).
+_SECRETOS_OBLIGATORIOS_PRODUCCION = ("SECRET_KEY", "ADMIN_PASSWORD")
+
+
+def secretos_inseguros(s: Settings) -> list[str]:
+    """Nombres de las variables secretas vacías o con el valor por defecto.
+
+    Solo aplica en producción, que se detecta por DATABASE_URL definida (la
+    inyecta Railway; en local se usan las POSTGRES_*). En local devuelve [].
+    """
+    if not s.DATABASE_URL:
+        return []
+    return [
+        nombre for nombre in _SECRETOS_OBLIGATORIOS_PRODUCCION
+        if not getattr(s, nombre) or getattr(s, nombre) == Settings.model_fields[nombre].default
+    ]
+
+
+def validar_secretos_produccion(s: Settings = settings) -> None:
+    """Falla el arranque con un mensaje claro si falta algún secreto en producción."""
+    faltantes = secretos_inseguros(s)
+    if faltantes:
+        raise RuntimeError(
+            "Configuración insegura en producción (DATABASE_URL definida): "
+            f"define estas variables de entorno con un valor propio: {', '.join(faltantes)}."
+        )

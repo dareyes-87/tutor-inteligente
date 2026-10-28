@@ -10,13 +10,15 @@ import os
 import httpx
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.config import settings
+from app.config import settings, validar_secretos_produccion
 from app.database import engine, AsyncSessionLocal
 from app.llm.client import llm_client
+from app.models.usuario import RolUsuario
+from app.modules.auth.dependencies import require_role
 from app.modules.ingesta.embeddings import get_model
 from app.modules.ingesta.indexer import get_collection
 from app.seed import seed_admin
@@ -39,6 +41,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validar_secretos_produccion()
     async with AsyncSessionLocal() as db:
         await seed_admin(db)
     # Precarga del modelo de embeddings: sin esto, la primera pregunta tras
@@ -125,7 +128,8 @@ async def health():
     }
 
 
-@app.get("/llm/hello")
+# Solo administrador: consume saldo de Together en cada llamada.
+@app.get("/llm/hello", dependencies=[Depends(require_role(RolUsuario.administrador))])
 def llm_hello():
     if not settings.TOGETHER_API_KEY:
         return {"error": "Falta TOGETHER_API_KEY en el .env"}

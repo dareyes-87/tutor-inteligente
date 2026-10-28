@@ -42,7 +42,13 @@ async def registro(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role(RolUsuario.administrador, RolUsuario.docente)),
 ):
-    """Registra un usuario nuevo. Solo administradores y docentes pueden crear usuarios."""
+    """Registra un usuario nuevo. Solo administradores y docentes pueden crear
+    usuarios; un docente solo puede crear estudiantes."""
+    if current_user.rol == RolUsuario.docente and body.rol != RolUsuario.estudiante:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Un docente solo puede registrar estudiantes",
+        )
     existing = await get_user_by_username(db, body.username)
     if existing:
         raise HTTPException(
