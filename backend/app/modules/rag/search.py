@@ -3,6 +3,7 @@ Búsqueda semántica RAG: encuentra los fragmentos más relevantes
 para una pregunta del estudiante.
 """
 import logging
+import re
 
 from app.modules.ingesta.embeddings import generate_embeddings
 from app.modules.ingesta.indexer import get_collection
@@ -171,10 +172,13 @@ def search_fragments(
 # fragmentos reales de los 3 libros: +17 ejercicios reales capturados en Ciencias
 # 6to (todos verdaderos positivos), 0 cambios en Ciencias/Mate 4to (cero
 # regresión), 0 lecciones vacías. Ver scripts/debug/simular_filtro.py.
+# (2026-10) Se quitó "ejercicio" suelto: en los libros de 4to solo coincidía con
+# notas al docente ("propóngales un ejercicio") y con "hacer ejercicio" físico
+# (teoría de Ciencias), nunca con un ejercicio del estudiante. Ver
+# backend/scripts/debug/simular_filtro_ejercicio.py.
 _MARCADORES_EJERCICIO = (
     "mesa lista",
     "ahora es tu turno",
-    "ejercicio",
     "practica",
     "instrucciones:",
     "realiza lo que se indica",
@@ -205,8 +209,12 @@ def es_ejercicio_del_libro(texto: str) -> bool:
     ANTES de armar el contexto que ve el LLM (micro-lección y actividades); NO
     cambia qué fragmentos se recuperan por rango de páginas, solo cuáles de
     esos se le pasan al LLM como contexto.
+
+    Se normalizan espacios y saltos de línea antes de buscar: el OCR parte las
+    frases ("Ahora es tu\nturno") y sin esto 58 fragmentos de Matemáticas 4to
+    con ejercicios reales pasaban como teoría.
     """
-    t = (texto or "").lower()
+    t = re.sub(r"\s+", " ", texto or "").lower()
     return any(marcador in t for marcador in _MARCADORES_EJERCICIO)
 
 

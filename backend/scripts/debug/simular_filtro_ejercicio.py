@@ -2,7 +2,8 @@
 Simula cambios al filtro de ejercicios (rag/search.py::es_ejercicio_del_libro)
 contra TODOS los fragmentos de la BD local, sin tocar el código de la app.
 
-Variantes (frente al filtro actual):
+Variantes (frente al filtro actual). NOTA: V2 se aplicó en rag/search.py
+(2026-10-28); desde entonces "actual" ya es V2 y las variantes no cambian nada.
   V1  quitar el marcador suelto "ejercicio" (en este corpus solo coincide con
       notas al docente —"propóngales un ejercicio"— o con "hacer ejercicio"
       físico, que es teoría de Ciencias).
@@ -70,6 +71,35 @@ def main():
             m = next(m for m in V1 if m in t)
             i = t.find(m)
             print(f"   nuevo marcado id={f.id} p{f.numero_pagina} por {m!r}: …{t[max(0, i - 60):i + 60]}…")
+
+    lecciones_sin_teoria(filas)
+
+
+def lecciones_sin_teoria(filas, variante=None):
+    """Fragmentos de teoría que le quedan a cada lección de la ruta (los que
+    usan micro-lección y actividades) con el filtro actual y con `variante`."""
+    variante = variante or v2
+    with create_engine(settings.database_url_sync).connect() as c:
+        lecciones = c.execute(text(
+            "select l.id, l.libro_id, l.orden, l.paginas, l.nombre from leccion l order by l.libro_id, l.orden"
+        )).all()
+    print("\n== Lecciones de la ruta (teoría disponible: actual -> variante)")
+    for libro in sorted({l.libro_id for l in lecciones}):
+        de_libro = [l for l in lecciones if l.libro_id == libro]
+        vacias, pocas = [], []
+        for l in de_libro:
+            n = [int(x) for x in re.findall(r"\d+", l.paginas or "")]
+            if not n:
+                continue
+            ini, fin = min(n), max(n)
+            en_rango = [f for f in filas if f.libro_id == libro and f.numero_pagina is not None and ini <= f.numero_pagina <= fin]
+            antes = sum(not es_ejercicio_del_libro(f.contenido_texto) for f in en_rango)
+            despues = sum(not variante(f.contenido_texto) for f in en_rango)
+            if despues == 0:
+                vacias.append((l.orden, l.paginas, antes, despues, len(en_rango)))
+            elif despues < 3:
+                pocas.append((l.orden, l.paginas, antes, despues, len(en_rango)))
+        print(f"   libro {libro}: {len(de_libro)} lecciones | SIN teoría: {len(vacias)} {vacias} | <3 frags: {len(pocas)} {pocas}")
 
 
 if __name__ == "__main__":
