@@ -7,10 +7,20 @@
 ## ⚠️ Bloqueante previo: modelo de Together
 
 Desde octubre de 2026, Together ya no ofrece en serverless `Qwen/Qwen2.5-7B-Instruct-Turbo` ni
-`meta-llama/Llama-3.3-70B-Instruct-Turbo` (`400 model_not_available`). Hasta que se elija y configure
-un reemplazo (`LLM_MODEL` y las constantes `MODELO_MATEMATICAS` / `MODELO_RUTA` del código), el chat, las
-actividades, las micro-lecciones **y la generación de lecciones en la ingesta** fallan. Resolver esto
-**antes** del paso 5.
+`meta-llama/Llama-3.3-70B-Instruct-Turbo` (`400 model_not_available`). Hasta que se configure un
+reemplazo, el chat responde un mensaje de respaldo y las actividades, las micro-lecciones **y la
+generación de lecciones en la ingesta** fallan. Resolver esto **antes** del paso 5.
+
+Los modelos se eligen solo por configuración (`backend/app/config.py`), uno por rol, cada uno con
+respaldos que se usan únicamente si Together responde que el modelo no está disponible:
+
+| Rol | Variable | Respaldos |
+|---|---|---|
+| chat, actividades y micro-lecciones (salvo Matemáticas) | `LLM_MODEL` | `LLM_MODEL_FALLBACKS` |
+| Matemáticas | `LLM_MODEL_MATEMATICAS` | `LLM_MODEL_MATEMATICAS_FALLBACKS` |
+| ruta de lecciones (ingesta) | `LLM_MODEL_RUTA` | `LLM_MODEL_RUTA_FALLBACKS` |
+
+Respaldos = IDs separados por coma. Comprobar con `verificar_modelos.py` (ver checklist al final).
 
 ## 1. Respaldo previo (aunque se vaya a borrar todo)
 
@@ -37,7 +47,7 @@ Obligatorias (si faltan o tienen el valor por defecto, el arranque **falla a pro
 | `CHROMA_HOST`, `CHROMA_PORT` | host interno del servicio Chroma en Railway |
 | `ALLOWED_ORIGINS` | dominio(s) del frontend web, separados por comas |
 
-Recomendadas: `ADMIN_USERNAME`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `LLM_MODEL` (ver bloqueante), `BOOKS_DIR` (apuntar a un volumen persistente).
+Recomendadas: `ADMIN_USERNAME`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `LLM_MODEL*` y `LLM_MODEL*_FALLBACKS` (ver bloqueante), `BOOKS_DIR` (apuntar a un volumen persistente).
 
 Modal apagado para la demo: dejar **vacías** `MODAL_FINETUNED_URL` y `MODAL_FINETUNED_GRADOS`, y `MODAL_KEEPWARM_ENABLED=false` (con eso ningún flujo contacta a Modal). No crear variables bool/int vacías: todas las `MODAL_KEEPWARM_*` son texto.
 
@@ -100,3 +110,22 @@ curl -X POST "$API/ingesta/libros" -H "Authorization: Bearer $TOKEN" \
 3. Manual, como estudiante: login → Mi Ruta → Estudiar (micro-lección) → Practicar (5 actividades) → completar nivel; chat con una pregunta del libro y una fuera del libro (debe responder el rechazo fijo).
 4. Docente: `/docente`, `/docente/libros`, `/docente/estudiantes`.
 5. Una pregunta de calentamiento al chat antes de la presentación.
+
+## Checklist del día de la presentación
+
+1. **Modelos LLM disponibles** (cuesta < $0.01; no toca la BD):
+
+   ```bash
+   # desde la raíz del repo, con el .env que tenga la misma configuración que producción
+   python3 backend/scripts/verificar_modelos.py
+   # o dentro del contenedor
+   docker compose exec backend python scripts/verificar_modelos.py
+   ```
+
+   Imprime por rol (chat / matematicas / ruta) si cada modelo principal y de respaldo está en el
+   catálogo de Together, si responde, su latencia y su precio. Termina con código **1** si un modelo
+   **principal** no responde (un respaldo caído solo se advierte). Si falla un principal: cambiar
+   la variable `LLM_MODEL*` correspondiente en Railway por su primer respaldo que diga OK.
+2. Saldo de Together suficiente (panel de Together → Billing).
+3. `GET /health` → `estado_general: ok`.
+4. Una pregunta de calentamiento al chat y una micro-lección (precarga y confirma el modelo real).

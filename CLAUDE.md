@@ -79,7 +79,7 @@ Uploading a book (`POST /ingesta/libros`, teacher/admin only) saves the PDF to d
 
 ### Lecciones y ruta de aprendizaje (sistema de 3 niveles)
 
-`app/modules/lecciones/` genera y sirve la **ruta de aprendizaje** del estudiante. Al indexar un libro se generan automáticamente las lecciones (`generator.py::generar_lecciones_desde_libro`): el nº de lecciones = `ceil(páginas_con_contenido / PAGINAS_POR_LECCION)` acotado a `[MIN_LECCIONES=5, MAX_LECCIONES=50]` (`PAGINAS_POR_LECCION=5`; con el libro actual son ≈38). Esta generación usa un modelo más potente (`MODELO_RUTA = meta-llama/Llama-3.3-70B-Instruct-Turbo`) solo para nombrar y segmentar; el chat/actividades siguen con el modelo base. **Cambiar estos parámetros NO regenera lecciones ya guardadas** — hay que borrar `progreso_leccion` + `leccion` del libro y re-disparar la generación (ver comentario en `generator.py`).
+`app/modules/lecciones/` genera y sirve la **ruta de aprendizaje** del estudiante. Al indexar un libro se generan automáticamente las lecciones (`generator.py::generar_lecciones_desde_libro`): el nº de lecciones = `ceil(páginas_con_contenido / PAGINAS_POR_LECCION)` acotado a `[MIN_LECCIONES=5, MAX_LECCIONES=50]` (`PAGINAS_POR_LECCION=5`; con el libro actual son ≈38). Esta generación usa el modelo del rol `ruta` (`LLM_MODEL_RUTA` en `config.py`) solo para nombrar y segmentar; el chat/actividades siguen con `LLM_MODEL` (y `LLM_MODEL_MATEMATICAS` para Matemáticas). **Cambiar estos parámetros NO regenera lecciones ya guardadas** — hay que borrar `progreso_leccion` + `leccion` del libro y re-disparar la generación (ver comentario en `generator.py`).
 
 Cada lección tiene un **sistema de 3 niveles tipo Duolingo** en `ProgresoLeccion`: `nivel_actual` (1–3, en el que está el estudiante), `nivel_completado` (0–3, último nivel aprobado; `==3` ⇒ lección **dominada**, corona 👑) e `intentos_nivel`. El estudiante avanza de nivel al aprobar (≥70 en suficientes de las 5 actividades) vía `POST /lecciones/{id}/completar-actividad` (`CompletarActividadRequest` con `nivel` + `actividades_aprobadas`). La ruta (`GET` → `RutaAprendizaje`) expone por lección: `estado` (bloqueada/disponible/en_progreso/completada), `nivel_actual`, `nivel_completado`, `tiene_corona`.
 
@@ -107,7 +107,7 @@ En `web`, las pantallas del estudiante son responsive a ~375px (iPhone). El `Stu
 
 ### LLM client
 
-`app/llm/client.py` is a single shared `llm_client` instance wrapping the Together SDK with three methods: `chat()` (free-form tutor replies), `generate_json()` (structured activities, parses + fence-strips, returns `None` on bad JSON), and `hello()` (smoke test). Route all LLM calls through it.
+`app/llm/client.py` is a single shared `llm_client` instance wrapping the Together SDK with three methods: `chat()` (free-form tutor replies, `None` if empty), `generate_json()` (structured activities, parses + fence-strips, returns `None` on any failure), and `hello()` (smoke test). Route all LLM calls through it. Models are chosen **by role** (`rol="chat" | "matematicas" | "ruta"`) from `config.py` (`LLM_MODEL*`); on `model_not_available` the client falls back to `LLM_MODEL*_FALLBACKS`. Check them with `backend/scripts/verificar_modelos.py`; scripts that spend tokens use `backend/scripts/costos_llm.py` (`--max-usd`).
 
 ### Auth & roles
 
