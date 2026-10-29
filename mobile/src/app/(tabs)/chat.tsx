@@ -12,19 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { preguntar, type ChatResponse } from "@/lib/api";
+import { obtenerMisLibros, preguntar, type ChatResponse } from "@/lib/api";
 import { Colors } from "@/lib/colors";
 import { Mascota } from "@/components/Mascota";
-
-/**
- * Asignaturas disponibles para el chat (Fase 1, hardcodeadas — mismo patrón que
- * web/lib/constants.ts). Los `id` deben coincidir con los del backend. Cuando se
- * agregue Comunicación y Lenguaje, basta con añadir { id, nombre } aquí (y en la
- * web). Limitación compartida: aún no hay GET /asignaturas para estudiantes.
- */
-const ASIGNATURAS: { id: number; nombre: string }[] = [
-  { id: 1, nombre: "Ciencias Naturales" },
-];
 
 type Msg = {
   rol: "me" | "tutor";
@@ -34,12 +24,26 @@ type Msg = {
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const [asignaturaId, setAsignaturaId] = useState<number>(ASIGNATURAS[0].id);
+  // Asignaturas del chat = las de los libros del grado del estudiante (sin repetir).
+  const [asignaturas, setAsignaturas] = useState<{ id: number; nombre: string }[]>([]);
+  const [asignaturaId, setAsignaturaId] = useState<number | null>(null);
   const [conversacionId, setConversacionId] = useState<number | null>(null);
   const [mensajes, setMensajes] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    obtenerMisLibros()
+      .then((libros) => {
+        const unicas = [...new Map(libros.map((l) => [l.asignatura_id, l.asignatura_nombre])).entries()];
+        setAsignaturas(unicas.map(([id, nombre]) => ({ id, nombre })));
+        setAsignaturaId((actual) => actual ?? unicas[0]?.[0] ?? null);
+      })
+      .catch(() => {
+        /* sin libros: el envío queda deshabilitado */
+      });
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -55,7 +59,7 @@ export default function ChatScreen() {
 
   async function enviar() {
     const t = texto.trim();
-    if (!t || enviando) return;
+    if (!t || enviando || asignaturaId === null) return;
     setMensajes((prev) => [...prev, { rol: "me", texto: t }]);
     setTexto("");
     setEnviando(true);
@@ -76,8 +80,8 @@ export default function ChatScreen() {
     }
   }
 
-  const asignaturaActual = ASIGNATURAS.find((a) => a.id === asignaturaId);
-  const hayVariasAsignaturas = ASIGNATURAS.length > 1;
+  const asignaturaActual = asignaturas.find((a) => a.id === asignaturaId);
+  const hayVariasAsignaturas = asignaturas.length > 1;
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -110,7 +114,7 @@ export default function ChatScreen() {
       {/* Selector de asignatura (solo si hay más de una) */}
       {hayVariasAsignaturas ? (
         <View style={styles.asigRow}>
-          {ASIGNATURAS.map((a) => {
+          {asignaturas.map((a) => {
             const activa = a.id === asignaturaId;
             return (
               <Pressable
@@ -204,8 +208,8 @@ export default function ChatScreen() {
           />
           <Pressable
             onPress={enviar}
-            disabled={enviando || !texto.trim()}
-            style={[styles.enviar, { opacity: enviando || !texto.trim() ? 0.5 : 1 }]}
+            disabled={enviando || !texto.trim() || asignaturaId === null}
+            style={[styles.enviar, { opacity: enviando || !texto.trim() || asignaturaId === null ? 0.5 : 1 }]}
           >
             {enviando ? (
               <ActivityIndicator color={Colors.white} />
