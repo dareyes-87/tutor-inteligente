@@ -4,7 +4,8 @@ Verifica la BD contra datos/datos_simulados_cap5.csv tras correr seed_piloto.py.
 Por estudiante (fila del CSV -> cuenta del mapeo): sesiones, consultas y actividades
 exactas, tasa de acierto ±2 y dominio de inicio/final (mismas definiciones que
 seed_piloto.py: contar_piloto). Global: medias de la Tabla 14 y distribución del
-dominio final. Sale con código 1 si algo no cuadra.
+dominio final. Mapa de calor de cada grado (docente.service.diagnostico): celdas en al
+menos 10 lecciones por asignatura y con los tres niveles. Sale con código 1 si algo no cuadra.
 
 Uso (dentro del contenedor):
   python scripts/verificar_seed.py --csv /tmp/datos_simulados_cap5.csv --mapeo /tmp/mapeo.csv
@@ -19,10 +20,13 @@ from pathlib import Path
 from statistics import mean
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from seed_piloto import AsyncSessionLocal, contar_piloto, leer_csv  # noqa: E402
+from seed_piloto import CIENCIAS, MATEMATICAS, AsyncSessionLocal, contar_piloto, leer_csv  # noqa: E402
+
+from app.modules.docente.service import diagnostico  # noqa: E402
 
 TABLA_14 = {"consultas": 16.56, "actividades": 13.67, "tasa": 62.50, "sesiones": 9.24}
 DOMINIO_FINAL = {"En proceso": 59, "Domina": 7, "Necesita refuerzo": 6}
+MIN_LECCIONES_MAPA = 10
 
 
 async def main_async(args) -> int:
@@ -61,6 +65,18 @@ async def main_async(args) -> int:
     ok = dict(dist) == DOMINIO_FINAL
     errores += not ok
     print(f"Dominio final (BD / CSV): {dict(dist)} / {DOMINIO_FINAL}  {'OK' if ok else 'FALLA'}")
+    print("Mapa de calor (lecciones con celdas · domina/en_proceso/refuerzo):")
+    async with AsyncSessionLocal() as db:
+        for g in sorted({r["grado_id"] for r in filas.values()}):
+            for a in (CIENCIAS, MATEMATICAS):
+                d = await diagnostico(db, g, a)
+                celdas = [c for e in d.estudiantes for c in e.celdas if c.nivel != "sin_datos"]
+                n_lecc = len({c.leccion_id for c in celdas})
+                c = Counter(x.nivel for x in celdas)
+                ok = n_lecc >= MIN_LECCIONES_MAPA and all(c[n] for n in ("domina", "en_proceso", "refuerzo"))
+                errores += not ok
+                print(f"  grado {g} {d.asignatura:20} {n_lecc:>2} lecc · {c['domina']}/{c['en_proceso']}/{c['refuerzo']}"
+                      f"  {'OK' if ok else 'FALLA'}")
     return 1 if errores else 0
 
 

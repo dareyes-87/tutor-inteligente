@@ -27,12 +27,29 @@ def test_fila_incompatible_con_tendencia_creciente_usa_opcion_a():
     assert ok and not creciente and _cumple(puntajes, 69.2, "Necesita refuerzo", "Necesita refuerzo")
 
 
-def test_sesiones_parten_rondas_si_faltan_unidades():
-    # Fila 3: 5 sesiones, 2 consultas, 9 actividades (2 rondas) -> se parte una ronda.
-    plan = sp.plan_sesiones(5, 2, 9, random.Random(1))
-    assert len(plan) == 5 and all(p["rondas"] or p["consultas"] for p in plan)
-    assert sum(sum(p["rondas"]) for p in plan) == 9 and sum(p["consultas"] for p in plan) == 2
+def test_bloques_una_ronda_de_ruta_y_practica_en_lecciones_distintas():
+    elegidas = [(sp.CIENCIAS, o) for o in range(2, 7)] + [(sp.MATEMATICAS, o) for o in range(2, 7)]
+    bloques = sp.plan_bloques(18, elegidas, random.Random(1))
+    ruta = [b for b in bloques if b["tipo"] == "ruta"]
+    practica = [b for b in bloques if b["tipo"] == "practica"]
+    assert bloques[0]["tipo"] == "ruta" and [b["tam"] for b in ruta] == [5]
+    assert sum(b["tam"] for b in practica) == 13 and len({(b["asignatura"], b["orden"]) for b in practica}) == 10
+    assert all(b["offset"] + b["tam"] <= 5 for b in practica)
+
+
+def test_sesiones_parten_bloques_si_faltan_unidades():
+    # Fila 3: 5 sesiones, 2 consultas, 9 actividades -> 1 ronda de ruta + 4 de práctica en 4 lecciones.
+    rng = random.Random(1)
+    elegidas = [(sp.CIENCIAS, 2), (sp.MATEMATICAS, 3), (sp.CIENCIAS, 4), (sp.MATEMATICAS, 5)]
+    plan = sp.plan_sesiones(5, 2, sp.plan_bloques(9, elegidas, rng), elegidas, rng)
+    assert len(plan) == 5 and all(p["bloques"] or p["consultas"] for p in plan)
+    assert sum(b["tam"] for p in plan for b in p["bloques"]) == 9 and sum(p["consultas"] for p in plan) == 2
     assert len({p["fecha"].date() for p in plan}) == 5
+
+
+def test_slots_ordenar_siguen_la_posicion_en_el_banco():
+    bloques = [{"tipo": "ruta", "tam": 5, "offset": 0}, {"tipo": "practica", "tam": 2, "offset": 2}]
+    assert sp.slots_ordenar(bloques) == {1, 3, 6}
 
 
 def test_ordenar_da_el_parcial_mas_cercano():
