@@ -89,9 +89,62 @@ def _detectar_pagina(texto: str) -> int | None:
     return n if 1 <= n <= 999 else None
 
 
+# Cita de página en una respuesta del LLM: "página 8", "páginas 12 y 13", "págs. 4-6",
+# "pág. 7", opcionalmente en negrita ("**página 25**").
+_RE_CITA = re.compile(
+    r"\*{0,2}p[aá]g(?:inas?|s?\.)\s*(\d{1,3}(?:\s*(?:,|y|-|–|al?)\s*\d{1,3})*)\*{0,2}",
+    re.IGNORECASE,
+)
+
+
+def _numeros_cita(lista: str) -> list[int]:
+    """'12 y 13' -> [12, 13]; '4-6' / '4 a 6' -> [4, 5, 6]."""
+    paginas = []
+    for parte in re.split(r"\s*(?:,|\by\b)\s*", lista):
+        m = re.fullmatch(r"(\d+)\s*(?:-|–|\bal?\b)\s*(\d+)", parte)
+        if m and 0 < int(m[2]) - int(m[1]) <= 20:
+            paginas += range(int(m[1]), int(m[2]) + 1)
+        elif m:
+            paginas += [int(m[1]), int(m[2])]
+        elif parte.isdigit():
+            paginas.append(int(parte))
+    return paginas
+
+
 def _paginas_citadas(respuesta: str) -> list[int]:
-    """Extrae los números de página citados en el texto, formato '(página X)'."""
-    return [int(n) for n in re.findall(r"p[aá]gina\s+(\d+)", respuesta, re.IGNORECASE)]
+    """Extrae los números de página citados en el texto (ver _RE_CITA)."""
+    return [p for m in _RE_CITA.finditer(respuesta) for p in _numeros_cita(m.group(1))]
+
+
+_CITA = _RE_CITA.pattern
+# De más a menos específica; cada una se aplica solo a citas con alguna página no recuperada.
+_QUITAR_CITA = [
+    # "(página 82)", "(ver página 3)", "(en la página 7)" -> se borra
+    (re.compile(rf"\s*\(\s*(?:ver\s+|en\s+(?:la\s+|las\s+)?)?{_CITA}\s*\)", re.IGNORECASE), ""),
+    # "revisar la página 45 de tu libro" -> "revisar tu libro"
+    (re.compile(rf"\b(?:la|las)\s+{_CITA}\s+(?=de\s+tu\s+libro)de\s+", re.IGNORECASE), ""),
+    # "en la página 32" -> "" si justo antes se nombra el libro; si no, "en tu libro"
+    (re.compile(rf"\s*\b(?:en|de|según)\s+(?:la|las)\s+{_CITA}", re.IGNORECASE), None),
+    # "en tus páginas 36 y 37" -> "en tu libro"
+    (re.compile(rf"\b(?:tus|sus|mis|las|la)\s+{_CITA}", re.IGNORECASE), "tu libro"),
+    # resto: "página 8" -> "tu libro"
+    (re.compile(_CITA, re.IGNORECASE), "tu libro"),
+]
+
+
+def _quitar_citas_invalidas(respuesta: str, paginas_disponibles: set[int]) -> str:
+    """Quita (o cambia por "tu libro") las citas a páginas que no están entre los
+    fragmentos recuperados; las citas válidas quedan intactas. Determinístico."""
+    texto = respuesta
+    for patron, reemplazo in _QUITAR_CITA:
+        def sustituir(m, texto_actual):
+            if set(_numeros_cita(m.group(1))) <= paginas_disponibles:
+                return m.group(0)
+            if reemplazo is not None:
+                return reemplazo
+            return "" if "libro" in texto_actual[max(0, m.start() - 40):m.start()].lower() else " en tu libro"
+        texto = patron.sub(lambda m, t=texto: sustituir(m, t), texto)
+    return texto
 
 
 def _citas_validas(respuesta: str, fragments: list[dict]) -> bool:
@@ -202,49 +255,12 @@ async def obtener_historial(db: AsyncSession, conversacion_id: int) -> list[dict
     ]
 
 
-async def procesar_pregunta(
-    db: AsyncSession,
-    pregunta: str,
-    conversacion_id: int | None,
-    asignatura_id: int,
-    estudiante: Usuario,
-) -> dict:
-    """
-    Pipeline completo del chat:
-    1. Obtener/crear conversación
-    2. Buscar contexto con RAG
-    3. Construir prompt con historial
-    4. Llamar al LLM
-    5. Guardar mensajes
-    6. Devolver respuesta con referencias
-    """
-    # 1. Conversación
-    conv = await obtener_o_crear_conversacion(
-        db, conversacion_id, estudiante.id, asignatura_id
-    )
-
-    # Obtener nombre de asignatura y grado para filtrar RAG
-    asig_result = await db.execute(
-        select(Asignatura).where(Asignatura.id == asignatura_id)
-    )
-    asignatura = asig_result.scalar_one_or_none()
-    asignatura_nombre = asignatura.nombre if asignatura else None
-
-    grado_nombre = None
-    if estudiante.grado_id:
-        grado_result = await db.execute(
-            select(Grado).where(Grado.id == estudiante.grado_id)
-        )
-        grado = grado_result.scalar_one_or_none()
-        grado_nombre = grado.nombre if grado else None
-
-    # 2. Búsqueda RAG
-    # Si el estudiante se refiere a una página concreta ("explícame la página
-    # 12"), se busca FILTRANDO por page_num (la búsqueda semántica no entiende
-    # referencias a páginas). Si esa página no existe, se cae a la búsqueda
-    # semántica normal para no romper el flujo.
-    # to_thread: search_fragments es síncrona (embedding con torch + query a
-    # Chroma) y bloquearía el único worker mientras corre.
+async def recuperar_contexto(
+    pregunta: str, asignatura_nombre: str | None, grado_nombre: str | None
+) -> tuple[list[dict], bool, int | None]:
+    """Paso 2 del chat (sin LLM): fragmentos para la pregunta. Devuelve
+    (fragments, consulta_por_pagina, pagina_solicitada). Determinístico para un
+    mismo índice; lo reusa scripts/corregir_citas_chat.py."""
     pagina_solicitada = _detectar_pagina(pregunta)
     consulta_por_pagina = False
     if pagina_solicitada is not None:
@@ -295,6 +311,55 @@ async def procesar_pregunta(
     if pagina_solicitada is None:
         filtrados = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
         fragments = (filtrados or fragments)[:TOP_K]
+    return fragments, consulta_por_pagina, pagina_solicitada
+
+
+async def procesar_pregunta(
+    db: AsyncSession,
+    pregunta: str,
+    conversacion_id: int | None,
+    asignatura_id: int,
+    estudiante: Usuario,
+) -> dict:
+    """
+    Pipeline completo del chat:
+    1. Obtener/crear conversación
+    2. Buscar contexto con RAG
+    3. Construir prompt con historial
+    4. Llamar al LLM
+    5. Guardar mensajes
+    6. Devolver respuesta con referencias
+    """
+    # 1. Conversación
+    conv = await obtener_o_crear_conversacion(
+        db, conversacion_id, estudiante.id, asignatura_id
+    )
+
+    # Obtener nombre de asignatura y grado para filtrar RAG
+    asig_result = await db.execute(
+        select(Asignatura).where(Asignatura.id == asignatura_id)
+    )
+    asignatura = asig_result.scalar_one_or_none()
+    asignatura_nombre = asignatura.nombre if asignatura else None
+
+    grado_nombre = None
+    if estudiante.grado_id:
+        grado_result = await db.execute(
+            select(Grado).where(Grado.id == estudiante.grado_id)
+        )
+        grado = grado_result.scalar_one_or_none()
+        grado_nombre = grado.nombre if grado else None
+
+    # 2. Búsqueda RAG
+    # Si el estudiante se refiere a una página concreta ("explícame la página
+    # 12"), se busca FILTRANDO por page_num (la búsqueda semántica no entiende
+    # referencias a páginas). Si esa página no existe, se cae a la búsqueda
+    # semántica normal para no romper el flujo.
+    # to_thread: search_fragments es síncrona (embedding con torch + query a
+    # Chroma) y bloquearía el único worker mientras corre.
+    fragments, consulta_por_pagina, pagina_solicitada = await recuperar_contexto(
+        pregunta, asignatura_nombre, grado_nombre
+    )
 
     # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
@@ -369,16 +434,12 @@ async def procesar_pregunta(
     # Si el LLM rechazó la pregunta (aunque el contexto pasara el umbral), no
     # mostrar referencias: las páginas recuperadas no respaldan esa respuesta.
     #
-    # Capa 3 del grounding: si el modelo NO rechazó pero citó una página que no
-    # está entre los fragmentos recuperados, es señal de alucinación de cita.
-    # OPCIÓN A (actual, mínimo riesgo): limpiar referencias + log de auditoría;
-    # la respuesta sí se muestra al estudiante, pero sin páginas que no la
-    # respaldan. Para cambiar a la OPCIÓN B (tratar la cita inválida como
-    # alucinación y reemplazar la respuesta por RESPUESTA_FUERA_DE_CONTEXTO),
-    # basta con reemplazar el cuerpo del `elif` por esas dos líneas.
+    # Capa 3 del grounding: si el modelo citó una página que no está entre los
+    # fragmentos recuperados (alucinación de cita), se quita esa cita del texto
+    # (log de auditoría) y se mantiene la referencia determinística.
     if _es_rechazo(respuesta):
         fragments_referencia = []
-    elif not _citas_validas(respuesta, fragments):
+    if not _citas_validas(respuesta, fragments):
         logger.warning(
             "[Chat] Grounding: el modelo citó una página que NO está en los "
             "fragmentos recuperados. Pregunta=%r, respuesta=%r, "
@@ -388,9 +449,12 @@ async def procesar_pregunta(
             _paginas_citadas(respuesta),
             {f.get("page_num") for f in fragments},
         )
-        fragments_referencia = []
-        # OPCIÓN B (más estricta, desactivada): descartar también el contenido.
-        # respuesta = RESPUESTA_FUERA_DE_CONTEXTO
+        # Antes (opción A) se vaciaban las referencias pero la cita errónea quedaba
+        # en el texto que ve el estudiante. Ahora se quita del texto y se conserva
+        # la referencia determinística de las páginas recuperadas.
+        respuesta = _quitar_citas_invalidas(
+            respuesta, {f.get("page_num") for f in fragments if f.get("page_num") is not None}
+        )
 
     # Referencia de página SIEMPRE visible (determinística, no depende del LLM):
     # se arma a partir de page_num de los fragmentos que sobrevivieron al
