@@ -47,7 +47,9 @@ Obligatorias (si faltan o tienen el valor por defecto, el arranque **falla a pro
 | `CHROMA_HOST`, `CHROMA_PORT` | host interno del servicio Chroma en Railway |
 | `ALLOWED_ORIGINS` | dominio(s) del frontend web, separados por comas |
 
-Recomendadas: `ADMIN_USERNAME`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `LLM_MODEL*` y `LLM_MODEL*_FALLBACKS` (ver bloqueante), `BOOKS_DIR` (apuntar a un volumen persistente).
+**`ACCESS_TOKEN_EXPIRE_MINUTES` debe quedar en `720`** (12 h; con 60 la app móvil y la web piden volver a ingresar cada hora, en plena demo). Debe ser un número: una variable vacía tumba el backend (es `int`).
+
+Recomendadas: `ADMIN_USERNAME`, `LLM_MODEL*` y `LLM_MODEL*_FALLBACKS` (ver bloqueante), `BOOKS_DIR` (apuntar a un volumen persistente).
 
 Modal apagado para la demo: dejar **vacías** `MODAL_FINETUNED_URL` y `MODAL_FINETUNED_GRADOS`, y `MODAL_KEEPWARM_ENABLED=false` (con eso ningún flujo contacta a Modal). No crear variables bool/int vacías: todas las `MODAL_KEEPWARM_*` son texto.
 

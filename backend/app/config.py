@@ -76,7 +76,7 @@ class Settings(BaseSettings):
 
     # --- JWT ---
     SECRET_KEY: str = "cambia-esto-por-una-clave-larga-y-aleatoria"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720  # 12 h: una sesión de clase o de demo sin re-login
 
     # --- Admin seed ---
     ADMIN_USERNAME: str = "admin"
