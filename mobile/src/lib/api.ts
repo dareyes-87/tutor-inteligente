@@ -18,8 +18,9 @@ export const API_URL =
   "https://tutor-inteligente-production.up.railway.app";
 
 const TOKEN_KEY = "auth_token";
+const USUARIO_KEY = "auth_usuario"; // copia de /auth/me: la sesión se restaura sin red al abrir la app
 
-// ----------------------- Token -----------------------
+// ----------------------- Sesión -----------------------
 
 export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
@@ -29,6 +30,36 @@ async function setToken(token: string): Promise<void> {
 }
 async function removeToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await SecureStore.deleteItemAsync(USUARIO_KEY);
+}
+
+export async function getUsuarioGuardado(): Promise<Usuario | null> {
+  const json = await SecureStore.getItemAsync(USUARIO_KEY);
+  try {
+    return json ? (JSON.parse(json) as Usuario) : null;
+  } catch {
+    return null;
+  }
+}
+export async function guardarUsuario(usuario: Usuario): Promise<void> {
+  await SecureStore.setItemAsync(USUARIO_KEY, JSON.stringify(usuario));
+}
+
+/** true si el JWT ya venció según su campo `exp` (o no se puede leer). Sin red. */
+export function tokenVencido(token: string): boolean {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { exp } = JSON.parse(atob(payload.padEnd(payload.length + ((4 - (payload.length % 4)) % 4), "=")));
+    return typeof exp === "number" && exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
+// AuthProvider registra aquí qué hacer cuando el backend responde 401 (sesión vencida o inválida).
+let alNoAutorizado: (() => void) | null = null;
+export function alExpirarSesion(cb: (() => void) | null): void {
+  alNoAutorizado = cb;
 }
 
 export class ApiError extends Error {
@@ -52,6 +83,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     await removeToken();
+    alNoAutorizado?.();
     throw new ApiError(401, "Sesión expirada");
   }
   if (!res.ok) {

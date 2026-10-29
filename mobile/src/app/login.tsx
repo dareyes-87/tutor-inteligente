@@ -18,7 +18,7 @@ import { LogoColegio } from "@/components/LogoColegio";
 import { Mascota } from "@/components/Mascota";
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, aviso } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -59,6 +59,7 @@ export default function LoginScreen() {
       {/* Mitad inferior navy con el formulario */}
       <View style={styles.bottom}>
         <View style={styles.card}>
+          {!!aviso && !error && <Text style={styles.aviso}>👋 {aviso}</Text>}
           <Text style={styles.label}>Usuario</Text>
           <TextInput
             value={username}
@@ -109,6 +110,7 @@ const styles = StyleSheet.create({
   subtitulo: { fontSize: 15, fontWeight: "700", color: Colors.textLight, marginTop: 4 },
   bottom: { flex: 1, backgroundColor: Colors.navy, justifyContent: "center", paddingHorizontal: 24 },
   card: { backgroundColor: Colors.white, borderRadius: 24, padding: 24, marginTop: -40, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  aviso: { backgroundColor: "#EFF6FF", color: Colors.blueDark, fontSize: 13.5, fontWeight: "800", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, textAlign: "center" },
   label: { fontSize: 13, fontWeight: "800", color: "#5A6170", marginBottom: 7, marginTop: 4 },
   input: {
     backgroundColor: "#FBF6EF",
