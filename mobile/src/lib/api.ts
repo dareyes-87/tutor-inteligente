@@ -252,6 +252,14 @@ export function obtenerRacha(): Promise<RachaResponse> {
 export function obtenerRanking(): Promise<RankingResponse> {
   return request<RankingResponse>("/gamificacion/ranking");
 }
+/** Dominio = promedio del puntaje ponderado por nº de actividades (igual que la web):
+ * lo usan "Mi progreso" y "Mis asignaturas" del inicio, para que coincidan. */
+export function dominioDe(temas: PerfilTema[]): number {
+  const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
+  return tot === 0
+    ? 0
+    : Math.round(temas.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) / tot);
+}
 export function getPerfil(): Promise<PerfilTema[]> {
   return request<PerfilTema[]>("/actividades/perfil");
 }

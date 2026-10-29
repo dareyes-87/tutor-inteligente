@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
+  dominioDe,
+  getPerfil,
   obtenerMisLibros,
   obtenerRacha,
   obtenerRuta,
+  type PerfilTema,
   type RachaResponse,
   type RutaAprendizaje,
 } from "@/lib/api";
@@ -19,6 +22,7 @@ export default function InicioPage() {
 
   const [racha, setRacha] = useState<RachaResponse | null>(null);
   const [rutas, setRutas] = useState<RutaAprendizaje[] | null>(null);
+  const [perfil, setPerfil] = useState<PerfilTema[]>([]);
 
   useEffect(() => {
     let activo = true;
@@ -27,11 +31,13 @@ export default function InicioPage() {
       obtenerMisLibros().then((libros) =>
         Promise.all(libros.map((libro) => obtenerRuta(libro.libro_id))),
       ),
+      getPerfil().catch(() => [] as PerfilTema[]),
     ])
-      .then(([rachaResp, rutasResp]) => {
+      .then(([rachaResp, rutasResp, perfilResp]) => {
         if (!activo) return;
         setRacha(rachaResp);
         setRutas(rutasResp);
+        setPerfil(perfilResp);
       })
       .catch(() => {
         /* silencioso: el dashboard sigue mostrándose con lo demás */
@@ -144,7 +150,11 @@ export default function InicioPage() {
       </div>
       {rutas && rutas.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:gap-[18px] md:grid-cols-4">
-          {rutas.map((r) => (
+          {rutas.map((r) => {
+            // Mismo dominio que "Mi progreso"; las lecciones completadas van como texto.
+            const temas = perfil.filter((p) => p.asignatura === r.asignatura);
+            const dominio = dominioDe(temas);
+            return (
             <div
               key={r.libro_id}
               className="rounded-[22px] border border-border bg-white p-[22px] text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]"
@@ -153,20 +163,30 @@ export default function InicioPage() {
                 📚
               </div>
               <div className="mx-auto mb-3.5 w-[108px] max-w-full">
-                <ProgressRing pct={Math.round(r.progreso_porcentaje)} color="#22C55E">
-                  <span className="text-[22px] font-black text-navy">
-                    {Math.round(r.progreso_porcentaje)}%
-                  </span>
+                <ProgressRing pct={temas.length ? dominio : 0} color="#22C55E">
+                  {temas.length ? (
+                    <span className="text-[22px] font-black text-navy">{dominio}%</span>
+                  ) : (
+                    <span className="text-[13px] font-extrabold leading-tight text-muted-foreground">
+                      Sin actividad
+                    </span>
+                  )}
                 </ProgressRing>
               </div>
               <div className="text-[15px] font-extrabold leading-tight text-navy">
                 {r.asignatura}
               </div>
+              {temas.length > 0 && (
+                <div className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                  dominio
+                </div>
+              )}
               <div className="mt-1 text-xs font-bold text-muted-foreground">
-                {r.lecciones_completadas} de {r.total_lecciones} lecciones
+                {r.lecciones_completadas} de {r.total_lecciones} lecciones completadas
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-[22px] border border-border bg-white px-6 py-10 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">

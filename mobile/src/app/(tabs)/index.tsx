@@ -15,9 +15,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Mascota } from "@/components/Mascota";
 import { ProgressBar } from "@/components/ProgressBar";
 import {
+  dominioDe,
+  getPerfil,
   obtenerMisLibros,
   obtenerRacha,
   obtenerRuta,
+  type PerfilTema,
   type RachaResponse,
   type RutaAprendizaje,
 } from "@/lib/api";
@@ -28,16 +31,22 @@ export default function InicioScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [rutas, setRutas] = useState<RutaAprendizaje[]>([]);
+  const [perfil, setPerfil] = useState<PerfilTema[]>([]);
   const [racha, setRacha] = useState<RachaResponse | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      const [rachaResp, libros] = await Promise.all([obtenerRacha(), obtenerMisLibros()]);
+      const [rachaResp, libros, perfilResp] = await Promise.all([
+        obtenerRacha(),
+        obtenerMisLibros(),
+        getPerfil().catch(() => [] as PerfilTema[]),
+      ]);
       const rutasResp = await Promise.all(libros.map((libro) => obtenerRuta(libro.libro_id)));
       setRacha(rachaResp);
       setRutas(rutasResp);
+      setPerfil(perfilResp);
       setError(false);
     } catch {
       setError(true);
@@ -156,18 +165,23 @@ export default function InicioScreen() {
           {/* Mis asignaturas */}
           <Text style={styles.seccionTitulo}>Mis asignaturas</Text>
           {rutas.length > 0 ? (
-            rutas.map((r) => (
-              <View key={r.libro_id} style={styles.asigCard}>
-                <View style={styles.asigHead}>
-                  <Text style={styles.asigNombre}>📚 {r.asignatura}</Text>
-                  <Text style={styles.asigPct}>{Math.round(r.progreso_porcentaje)}%</Text>
+            rutas.map((r) => {
+              // Mismo dominio que "Mi progreso"; las lecciones completadas van como texto.
+              const temas = perfil.filter((p) => p.asignatura === r.asignatura);
+              const dominio = dominioDe(temas);
+              return (
+                <View key={r.libro_id} style={styles.asigCard}>
+                  <View style={styles.asigHead}>
+                    <Text style={styles.asigNombre}>📚 {r.asignatura}</Text>
+                    <Text style={styles.asigPct}>{temas.length ? `${dominio}% dominio` : "Sin actividad"}</Text>
+                  </View>
+                  <ProgressBar progress={temas.length ? dominio : 0} color={Colors.green} height={10} />
+                  <Text style={styles.asigMeta}>
+                    {r.lecciones_completadas} de {r.total_lecciones} lecciones completadas
+                  </Text>
                 </View>
-                <ProgressBar progress={r.progreso_porcentaje} color={Colors.green} height={10} />
-                <Text style={styles.asigMeta}>
-                  {r.lecciones_completadas} de {r.total_lecciones} lecciones
-                </Text>
-              </View>
-            ))
+              );
+            })
           ) : (
             <View style={styles.vacioCard}>
               <Text style={styles.vacioEmoji}>📚</Text>

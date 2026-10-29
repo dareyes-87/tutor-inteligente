@@ -254,6 +254,16 @@ export interface PerfilTema {
   total_actividades: number;
 }
 
+/** Dominio = promedio ponderado del puntaje por nº de actividades (temas con más
+ * práctica pesan más). Lo usan "Mi progreso" y los círculos de "Mis asignaturas"
+ * del inicio, para que muestren el mismo valor. */
+export function dominioDe(temas: PerfilTema[]): number {
+  const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
+  return tot === 0
+    ? 0
+    : Math.round(temas.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) / tot);
+}
+
 /** Perfil de comprensión del estudiante autenticado (por asignatura/tema). */
 export function getPerfil(): Promise<PerfilTema[]> {
   return request<PerfilTema[]>("/actividades/perfil");

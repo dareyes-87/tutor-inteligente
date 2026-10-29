@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProgressBar } from "@/components/ProgressBar";
-import { getPerfil, type PerfilTema } from "@/lib/api";
+import { dominioDe, getPerfil, type PerfilTema } from "@/lib/api";
 import { Colors } from "@/lib/colors";
 
 const NIVEL: Record<string, { color: string; label: string }> = {
@@ -35,7 +35,7 @@ export default function ProgresoScreen() {
 
   const items = perfil ?? [];
   const totalAct = items.reduce((s, p) => s + p.total_actividades, 0);
-  const avance = items.length ? Math.round(items.reduce((s, p) => s + p.puntaje_promedio, 0) / items.length) : 0;
+  const avance = dominioDe(items);
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -71,7 +71,7 @@ export default function ProgresoScreen() {
               return (
                 <View key={`${p.asignatura}-${p.tema}`} style={styles.card}>
                   <View style={styles.cardTop}>
-                    <Text style={styles.tema} numberOfLines={1}>{p.tema}</Text>
+                    <Text style={styles.tema} numberOfLines={1}>{p.tema.charAt(0).toUpperCase() + p.tema.slice(1)}</Text>
                     <View style={[styles.chip, { backgroundColor: nv.color + "22" }]}>
                       <Text style={[styles.chipText, { color: nv.color }]}>{nv.label}</Text>
                     </View>

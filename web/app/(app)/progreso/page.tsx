@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { ApiError, getPerfil, type NivelComprension, type PerfilTema } from "@/lib/api";
+import { ApiError, dominioDe, getPerfil, type NivelComprension, type PerfilTema } from "@/lib/api";
 import { Mascota } from "@/components/mascota";
 
 /** Tokens visuales por nivel de comprensión (claves = niveles del backend). */
@@ -115,16 +115,6 @@ export default function ProgresoPage() {
   // --- Con datos ---
   const totalActividades = items.reduce((s, p) => s + p.total_actividades, 0);
 
-  // Dominio = promedio ponderado del puntaje por nº de actividades (temas con más
-  // práctica pesan más). Se reutiliza para el total y para cada asignatura.
-  const dominioDe = (temas: PerfilTema[]) => {
-    const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
-    return tot === 0
-      ? 0
-      : Math.round(
-          temas.reduce((s, p) => s + p.puntaje_promedio * p.total_actividades, 0) / tot,
-        );
-  };
   const avanceTotal = dominioDe(items);
 
   // Agrupar temas por asignatura, preservando el orden de aparición.
@@ -237,7 +227,9 @@ function TemaRow({
         {/* Nombre del tema arriba (prominente), asignatura debajo como metadata
             secundaria: evita el truncado "La ..." y que el badge tape el nombre. */}
         <div className="mb-1 flex items-start justify-between gap-3">
-          <span className="text-[16.5px] font-extrabold leading-tight text-navy">{p.tema}</span>
+          <span className="text-[16.5px] font-extrabold leading-tight text-navy">
+            {p.tema.charAt(0).toUpperCase() + p.tema.slice(1)}
+          </span>
           <span className="flex-none whitespace-nowrap text-[12.5px] font-extrabold text-muted-foreground">
             {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
           </span>
