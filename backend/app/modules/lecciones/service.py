@@ -712,6 +712,7 @@ async def _posicion_en_ranking(
             select(Usuario.id, Usuario.puntos_totales).where(
                 Usuario.grado_id == grado_id,
                 Usuario.rol == RolUsuario.estudiante,
+                Usuario.activo.is_(True),
             )
         )
     ).all()
@@ -899,6 +900,7 @@ async def obtener_ranking(
                 select(Usuario).where(
                     Usuario.grado_id == grado_id,
                     Usuario.rol == RolUsuario.estudiante,
+                    Usuario.activo.is_(True),
                 )
             )
         ).scalars().all()
