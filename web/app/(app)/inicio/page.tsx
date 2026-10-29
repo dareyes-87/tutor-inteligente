@@ -87,7 +87,9 @@ export default function InicioPage() {
             <div className="text-[15px] font-extrabold opacity-95">
               {racha?.activo_hoy
                 ? "¡Ya practicaste hoy! 🎉"
-                : "seguidos · ¡no rompas la racha!"}
+                : racha?.racha_actual
+                  ? "seguidos · ¡no rompas la racha!"
+                  : "Practica hoy para empezar una nueva racha"}
             </div>
             <div className="mt-3.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3.5 py-1.5 text-[13px] font-extrabold">
               🏆 Mejor racha: {racha?.mejor_racha ?? 0}

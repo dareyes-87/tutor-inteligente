@@ -17,7 +17,7 @@ from app.models.perfil_comprension import nivel_por_puntaje
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.actividades.service import obtener_perfil_estudiante
-from app.modules.lecciones.service import obtener_ruta
+from app.modules.lecciones.service import obtener_ruta, racha_vigente
 from app.modules.docente.schemas import (
     AsignaturaOpcion,
     CeldaDiagnostico,
@@ -126,7 +126,7 @@ async def listar_estudiantes(
             nombre=u.nombre,
             apellido=u.apellido,
             grado=grado,
-            racha_actual=u.racha_actual,
+            racha_actual=racha_vigente(u),
             puntos_totales=u.puntos_totales,
             lecciones_completadas=completadas.get(u.id, 0),
             ultima_actividad=u.ultima_actividad,
@@ -188,7 +188,7 @@ async def detalle_estudiante(
         nombre=usuario.nombre,
         apellido=usuario.apellido,
         grado=grado_nombre,
-        racha_actual=usuario.racha_actual,
+        racha_actual=racha_vigente(usuario),
         puntos_totales=usuario.puntos_totales,
         ruta=ruta,
         perfil=perfil,

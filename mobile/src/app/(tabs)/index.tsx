@@ -111,7 +111,11 @@ export default function InicioScreen() {
                 {racha?.racha_actual === 1 ? "día" : "días"}
               </Text>
               <Text style={styles.rachaSub}>
-                {racha?.activo_hoy ? "¡Ya practicaste hoy! 🎉" : "¡No rompas la racha!"}
+                {racha?.activo_hoy
+                  ? "¡Ya practicaste hoy! 🎉"
+                  : racha?.racha_actual
+                    ? "¡No rompas la racha!"
+                    : "Practica hoy para empezar una nueva racha"}
               </Text>
               <View style={styles.rachaBadge}>
                 <Text style={styles.rachaBadgeText}>🏆 Mejor racha: {racha?.mejor_racha ?? 0}</Text>

@@ -852,6 +852,16 @@ def hoy_guatemala() -> date:
     return datetime.now(ZONA_GUATEMALA).date()
 
 
+def racha_vigente(usuario: Usuario) -> int:
+    """Racha a mostrar: la guardada solo sigue viva si la última actividad fue hoy o
+    ayer (hora de Guatemala); si no, es 0. Se calcula al leer, sin escribir en la BD
+    (la columna se corrige sola en la próxima actividad, vía actualizar_racha)."""
+    ultima = usuario.ultima_actividad
+    if ultima is None or (hoy_guatemala() - ultima).days > 1:
+        return 0
+    return usuario.racha_actual
+
+
 async def actualizar_racha(estudiante_id: int, db: AsyncSession) -> None:
     """Actualiza la racha del estudiante según su última actividad.
 
@@ -884,7 +894,7 @@ async def obtener_racha(estudiante_id: int, db: AsyncSession) -> RachaResponse:
         await db.execute(select(Usuario).where(Usuario.id == estudiante_id))
     ).scalar_one()
     return RachaResponse(
-        racha_actual=usuario.racha_actual,
+        racha_actual=racha_vigente(usuario),
         mejor_racha=usuario.mejor_racha,
         activo_hoy=(usuario.ultima_actividad == hoy_guatemala()),
     )
@@ -931,7 +941,7 @@ async def obtener_ranking(
                 apellido=u.apellido,
                 lecciones_completadas=completadas_por.get(u.id, 0),
                 puntos_totales=u.puntos_totales,
-                racha_actual=u.racha_actual,
+                racha_actual=racha_vigente(u),
             )
         )
         if u.id == estudiante_id:
