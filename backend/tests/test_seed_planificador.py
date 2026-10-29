@@ -32,7 +32,8 @@ def test_bloques_una_ronda_de_ruta_y_practica_en_lecciones_distintas():
     bloques = sp.plan_bloques(18, elegidas, random.Random(1))
     ruta = [b for b in bloques if b["tipo"] == "ruta"]
     practica = [b for b in bloques if b["tipo"] == "practica"]
-    assert bloques[0]["tipo"] == "ruta" and [b["tam"] for b in ruta] == [5]
+    assert [b["tam"] for b in ruta] == [5]
+    assert bloques.index(ruta[0]) >= len(bloques) // 2  # en la segunda mitad, con la curva ya alta
     assert sum(b["tam"] for b in practica) == 13 and len({(b["asignatura"], b["orden"]) for b in practica}) == 10
     assert all(b["offset"] + b["tam"] <= 5 for b in practica)
 
