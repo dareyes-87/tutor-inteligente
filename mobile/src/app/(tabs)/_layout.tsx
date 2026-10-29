@@ -44,6 +44,10 @@ export default function TabsLayout() {
         name="chat"
         options={{ title: "Chat", tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} /> }}
       />
+      <Tabs.Screen
+        name="perfil"
+        options={{ title: "Perfil", tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} /> }}
+      />
     </Tabs>
   );
 }

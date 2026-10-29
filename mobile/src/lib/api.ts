@@ -278,6 +278,9 @@ export function completarNivel(
 export function iniciarLeccion(leccionId: number): Promise<LeccionEnRuta> {
   return request<LeccionEnRuta>(`/lecciones/${leccionId}/iniciar`, { method: "POST" });
 }
+export function obtenerMiGrado(): Promise<{ id: number | null; nombre: string | null }> {
+  return request("/lecciones/mi-grado");
+}
 export function obtenerRacha(): Promise<RachaResponse> {
   return request<RachaResponse>("/gamificacion/racha");
 }
