@@ -36,6 +36,13 @@ export default function ProgresoScreen() {
   const items = perfil ?? [];
   const totalAct = items.reduce((s, p) => s + p.total_actividades, 0);
   const avance = dominioDe(items);
+  // Agrupado por asignatura (orden de aparición), cada una con su dominio: igual que la web.
+  const grupos: { asignatura: string; temas: PerfilTema[] }[] = [];
+  for (const p of items) {
+    let g = grupos.find((x) => x.asignatura === p.asignatura);
+    if (!g) grupos.push((g = { asignatura: p.asignatura, temas: [] }));
+    g.temas.push(p);
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -62,11 +69,20 @@ export default function ProgresoScreen() {
               </View>
               <View style={styles.statCard}>
                 <Text style={[styles.statVal, { color: Colors.orange }]}>{avance}%</Text>
-                <Text style={styles.statLabel}>AVANCE</Text>
+                <Text style={styles.statLabel}>DOMINIO GENERAL</Text>
               </View>
             </View>
 
-            {items.map((p) => {
+            {grupos.map((g) => (
+              <View key={g.asignatura} style={{ marginBottom: 6 }}>
+                <View style={styles.grupoHead}>
+                  <Text style={styles.grupoNombre}>{g.asignatura}</Text>
+                  <Text style={styles.grupoTemas}>
+                    {g.temas.length} {g.temas.length === 1 ? "tema" : "temas"}
+                  </Text>
+                  <Text style={styles.grupoDominio}>{dominioDe(g.temas)}% dominio</Text>
+                </View>
+            {g.temas.map((p) => {
               const nv = NIVEL[p.nivel] ?? NIVEL.refuerzo;
               return (
                 <View key={`${p.asignatura}-${p.tema}`} style={styles.card}>
@@ -83,11 +99,13 @@ export default function ProgresoScreen() {
                     <Text style={[styles.barVal, { color: nv.color }]}>{Math.round(p.puntaje_promedio)}</Text>
                   </View>
                   <Text style={styles.meta}>
-                    {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"} · {p.asignatura}
+                    {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
                   </Text>
                 </View>
               );
             })}
+              </View>
+            ))}
           </>
         )}
       </ScrollView>
@@ -103,6 +121,10 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: Colors.white, borderRadius: 16, padding: 16, alignItems: "center", borderWidth: 1, borderColor: Colors.border },
   statVal: { fontSize: 26, fontWeight: "900" },
   statLabel: { fontSize: 10.5, fontWeight: "800", color: Colors.textLight, marginTop: 2 },
+  grupoHead: { flexDirection: "row", alignItems: "baseline", gap: 8, marginBottom: 10, marginTop: 4 },
+  grupoNombre: { fontSize: 17, fontWeight: "900", color: Colors.navy },
+  grupoTemas: { flex: 1, fontSize: 12, fontWeight: "800", color: Colors.textLight },
+  grupoDominio: { fontSize: 15, fontWeight: "900", color: Colors.orange },
   card: { backgroundColor: Colors.white, borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: Colors.border },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   tema: { flex: 1, fontSize: 15.5, fontWeight: "800", color: Colors.navy, marginRight: 10 },
