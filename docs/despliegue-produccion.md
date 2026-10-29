@@ -111,38 +111,89 @@ curl -X POST "$API/ingesta/libros" -H "Authorization: Bearer $TOKEN" \
 4. Docente: `/docente`, `/docente/libros`, `/docente/estudiantes`.
 5. Una pregunta de calentamiento al chat antes de la presentación.
 
-## 9. Vía recomendada: armar todo en local y trasladarlo (PLAN — pendiente de aprobación)
+## 9. Vía recomendada: armar todo en local y trasladarlo (ENSAYADA en local el 2026-10-28)
 
-En lugar de los pasos 5–7 (re-ingestar en Railway: OCR de ~1 h por libro escaneado y LLM para las lecciones), se arma la BD completa en local —grados, cuentas reales, libros, lecciones y datos del piloto— y se traslada:
+En lugar de los pasos 5–7 (re-ingestar en Railway: OCR de ~1 h por libro escaneado y LLM para las
+lecciones), se arma la BD completa en local —grados, cuentas reales, libros, lecciones y datos del
+piloto— y se traslada. El procedimiento se ensayó completo contra un stack limpio (otro Postgres 16 y
+otro Chroma 1.5.9 vacíos, compose project aparte) con estos tiempos reales:
 
-1. **Copia depurada en local** (no se toca la BD de trabajo):
+| Paso | Tiempo medido |
+|---|---|
+| 1. Copia `tutor` → `tutor_prod` | 1.0 s |
+| 2. Depurar la copia (`preparar_copia_prod.py`) | 2.9 s |
+| 3. `pg_dump -Fc` (2.1 MB) | 0.5 s |
+| 4. `pg_restore` en el Postgres de destino | 1.7 s |
+| 5. Arranque del backend contra la BD restaurada | 15 s |
+| 6. `reconstruir_chroma.py` (8 882 fragmentos, CPU local de 8 núcleos) | **460 s (7.7 min)** |
+| 7. Verificación (`verificar_seed.py` + login + chat + mapa) | ~15 s |
+
+En Railway el paso 6 depende de su CPU (puede tardar varias veces más); lo demás es despreciable.
+
+1. **Copia local** (no se toca la BD de trabajo ni hace falta parar el backend; `createdb -T` exigía
+   cerrar todas las conexiones a `tutor`, por eso se usa `pg_dump | psql`):
    ```bash
-   docker compose exec postgres createdb -U "$POSTGRES_USER" -T tutor tutor_prod   # sin conexiones abiertas a "tutor"
+   docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --if-exists tutor_prod && createdb -U "$POSTGRES_USER" tutor_prod && pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | psql -q -U "$POSTGRES_USER" -d tutor_prod -v ON_ERROR_STOP=1'
    ```
-   En `tutor_prod`: borrar las cuentas de prueba con sus datos (conversaciones, mensajes, resultados, perfiles, progreso), que hoy son `carlos`, `pramirez_test`, `lmartinez`, `sgomez`, `test_verif_bug249`, `verif_conceptos_*` (9) y `diagtemp`, y las que creen las pruebas automáticas antes del dump (`doc_*` y estudiantes temporales; se listan con `select username from usuario where id not in (<87 reales + docentes + admin>)`). **Cambiar en la copia** el hash del `admin` (el local usa la contraseña de desarrollo) y el de `maria` por contraseñas propias de producción.
-2. **Dump y restore**:
+2. **Depurar la copia**: `backend/scripts/preparar_copia_prod.py` conserva el admin, los docentes activos
+   y los 87 estudiantes reales (aborta si no son exactamente 22/19/9/15/12/10 por grado), borra el resto
+   de cuentas con sus datos —en el ensayo, 15: `carlos`, `diagtemp`, `lmartinez`, `pramirez_test`,
+   `sgomez`, `test_verif_bug249` y los `verif_conceptos_*`— y pone contraseñas aleatorias nuevas al
+   `admin` y a `maria`, que AÑADE a un CSV (nunca por pantalla). Se niega a correr sobre `tutor`.
    ```bash
-   docker compose exec postgres pg_dump -U "$POSTGRES_USER" -Fc tutor_prod > tutor_prod.dump
-   pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" tutor_prod.dump
+   docker compose exec -T -e POSTGRES_DB=tutor_prod backend python scripts/preparar_copia_prod.py --credenciales /tmp/cred_prod.csv --dry-run
+   docker compose exec -T -e POSTGRES_DB=tutor_prod backend python scripts/preparar_copia_prod.py --credenciales /tmp/cred_prod.csv
+   docker cp "$(docker compose ps -q backend)":/tmp/cred_prod.csv datos/credenciales_produccion.csv   # ignorado por git
+   docker compose exec -T backend rm /tmp/cred_prod.csv
    ```
-   Incluye `alembic_version` (producción queda en el mismo head) y las secuencias.
+   Si se repite el paso 1, repetir también el 2 (genera contraseñas nuevas y las añade al CSV: vale la última).
+3. **Dump**:
+   ```bash
+   docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc tutor_prod' > tutor_prod.dump
+   ```
+4. **Restore** en el Postgres de Railway. **Pausar antes el servicio backend** (en el ensayo se paró:
+   así nadie escribe durante el `--clean`). El Postgres de destino puede tener ya el esquema migrado y
+   el admin creado por el arranque: `--clean --if-exists` lo reemplaza sin errores (comprobado).
+   ```bash
+   docker run --rm -v "$PWD":/w postgres:16 pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" /w/tutor_prod.dump
+   ```
+   Restaura `alembic_version` (head `a2a93c93a5e9`), las secuencias y los IDs (el mapeo fila→estudiante
+   de `datos/mapeo_estudiantes_csv.csv` sigue valiendo).
 
    **Verificar antes la versión del Postgres de Railway** (local: 16.14):
    ```bash
-   psql "$DATABASE_URL_PUBLICA" -Atc "show server_version;"     # p. ej. 16.4
+   docker run --rm postgres:16 psql "$DATABASE_URL_PUBLICA" -Atc "show server_version;"
    ```
-   (sin `psql` en el host: `docker run --rm postgres:16 psql "$DATABASE_URL_PUBLICA" -Atc "show server_version;"`).
-   - **16.x**: seguir tal cual (usar `pg_restore` 16, p. ej. el de la imagen `postgres:16`).
-   - **17 o mayor**: un dump de la 16 se restaura bien en una versión mayor, pero el `pg_restore` debe ser **de la versión del servidor**: `docker run --rm -v "$PWD":/w postgres:<versión> pg_restore --clean --if-exists --no-owner --no-acl -d "$DATABASE_URL_PUBLICA" /w/tutor_prod.dump`.
-   - **15 o menor**: un dump `-Fc` de la 16 no se restaura en una versión menor. Opciones: (a) recomendada, crear en Railway un Postgres 16 (plantilla/imagen `postgres:16`) y apuntar `DATABASE_URL` del backend a él; o (b) volcar en texto plano (`pg_dump --no-owner --no-acl -Fp`) y aplicarlo con `psql`, revisando errores de sintaxis propios de la 16 (poco probable con este esquema, pero no probado).
-3. **Reconstruir Chroma desde Postgres** (sin OCR ni LLM): script nuevo `backend/scripts/reconstruir_chroma.py`, corrido dentro del backend de producción. Por cada `fragmento` une `libro_texto`→`asignatura`/`grado` y escribe en la colección `libros_texto`:
-   - `id` = `fragmento.chunk_id_vectordb` (`libro_{id}_chunk_{nnnnn}`; es el que el RAG devuelve y con el que se vuelve a `fragmento`, así que los IDs quedan coherentes por construcción);
-   - `document` = `contenido_texto` (idéntico a lo indexado: comprobado el 2026-10-28, 812/812 fragmentos iguales en texto y metadatos);
-   - metadatos `{libro_id, asignatura: nombre, grado: nombre, page_num: numero_pagina, method: "digital" si confianza_ocr == 100 si no "ocr", confidence: confianza_ocr}`, los mismos que escribe `chunking.py`;
-   - embeddings recalculados con el mismo modelo (`generate_embeddings`), en lotes, con `upsert` (re-ejecutable).
-   Tiempo estimado: ~12 000 fragmentos con MiniLM en CPU, del orden de 5–15 min [NO VERIFICADO: medir en local].
-4. **PDFs**: no hacen falta para el RAG (solo para re-ingestar); `libro_texto.archivo_pdf_path` apuntará a archivos que no existen en el volumen de producción salvo que se copien.
-5. Verificación: sección 8, más conteos `fragmento` = `collection.count()` y login de una cuenta real por grado.
+   - **16.x**: seguir tal cual.
+   - **17 o mayor**: el `pg_restore` debe ser **de la versión del servidor**: misma orden con la imagen `postgres:<versión>`.
+   - **15 o menor**: un dump `-Fc` de la 16 no se restaura en una versión menor. Opciones: (a) recomendada, crear en Railway un Postgres 16 (imagen `postgres:16`) y apuntar `DATABASE_URL` del backend a él; o (b) volcar en texto plano (`pg_dump --no-owner --no-acl -Fp`) y aplicarlo con `psql` (no probado).
+5. **Reanudar el backend** de Railway (aplica `alembic upgrade head`, que no hace nada: ya está en head).
+6. **Reconstruir Chroma desde Postgres** (sin OCR ni LLM), en la shell del backend de producción:
+   ```bash
+   python scripts/reconstruir_chroma.py            # aborta si la colección ya tiene vectores
+   python scripts/reconstruir_chroma.py --vaciar   # si el Chroma de producción tiene datos viejos
+   ```
+   Escribe por fragmento `id = chunk_id_vectordb`, `document = contenido_texto` y los metadatos de
+   `chunking.py` (`grado`/`asignatura` por NOMBRE, `method` = "digital" si la confianza es 100), con los
+   embeddings recalculados. Termina con error si `count()` ≠ nº de fragmentos. **Ensayo: la colección
+   reconstruida es idéntica a la local** (8 882 IDs, documentos y metadatos iguales; coseno de los
+   embeddings 1.0 en todos).
+7. **Verificación** (todo OK en el ensayo):
+   - `GET /health` → ok.
+   - Login de una cuenta real (jgarcia: 200) y de admin/maria con las contraseñas NUEVAS (200; la de
+     desarrollo da 401).
+   - Una pregunta del chat con cita de página (jgarcia, Matemáticas: "producto notable" → cita la p. 8).
+   - Mapa de calor de `docente9no`: 11 lecciones con celdas en cada asignatura.
+   - `verificar_seed.py` contra la BD restaurada: 72/72, medias de la Tabla 14 y 59/7/6 OK.
+     ```bash
+     docker cp datos/datos_simulados_cap5.csv <backend>:/tmp/ && docker cp datos/mapeo_estudiantes_csv.csv <backend>:/tmp/mapeo.csv
+     python scripts/verificar_seed.py --csv /tmp/datos_simulados_cap5.csv --mapeo /tmp/mapeo.csv
+     ```
+     (en Railway hay que subir esos dos CSV a la shell del backend, o correrlo desde local con
+     `POSTGRES_*`/`DATABASE_URL` apuntando a la BD pública; ojo: con `DATABASE_URL` definida se activan
+     los chequeos de configuración de producción.)
+8. **PDFs**: no hacen falta para el RAG; `libro_texto.archivo_pdf_path` apunta a archivos que no existen
+   en el volumen de producción (solo importa para re-ingestar).
 
 ## Checklist del día de la presentación
 

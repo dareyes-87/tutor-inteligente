@@ -20,3 +20,4 @@ datos/credenciales_docentes.csv
 datos/mapeo_estudiantes_csv.csv
 datos/demo/
 backend/scripts/debug/seed_piloto_pool.json
+datos/credenciales_produccion.csv
