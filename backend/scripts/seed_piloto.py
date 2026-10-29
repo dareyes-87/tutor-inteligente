@@ -86,6 +86,7 @@ def valores_ordenar(n: int) -> list[int]:
 LECCIONES_PRACTICA_POR_LIBRO = 10   # por grado y asignatura, repartidas por todo el libro
 LECCIONES_POR_ESTUDIANTE = (8, 12)   # lecciones de práctica de cada estudiante (si le alcanzan las actividades)
 RONDAS_RUTA_EXTRA_DESDE = 21         # con más actividades que esto, dos rondas de ruta en vez de una
+POSICION_RUTA = {1: [0.6], 2: [0.5, 0.75]}  # dónde van las rondas de ruta, como fracción de los bloques
 POOL_PATH = Path(__file__).parent / "debug" / "seed_piloto_pool.json"
 CUENTAS_DE_PRUEBA = {"carlos"}  # activo en 4to; lo usan las pruebas automáticas, no es de los 87
 
@@ -134,9 +135,11 @@ def compatible_creciente(tasa: float, inicio: str, final: str) -> bool:
 
 
 def planificar_puntajes(actividades: int, tasa: float, inicio: str, final: str, rng: random.Random,
-                        slots: dict[int, list[int]] | None = None):
+                        slots: dict[int, list[int]] | None = None, rondas_ruta: list[int] | None = None):
     """Secuencia de puntajes: 0/100, o en las posiciones de "ordenar" (`slots`: posición ->
-    puntajes posibles) uno de esos valores. Sin `slots`, rondas de 5 con ordenar de 5 elementos."""
+    puntajes posibles) uno de esos valores. Sin `slots`, rondas de 5 con ordenar de 5 elementos.
+    `rondas_ruta`: posición inicial de cada ronda completa de ruta; se favorece (sin exigirlo)
+    que tenga las 4 de 5 aprobadas que pide completar_nivel, para que haya puntos."""
     if slots is None:
         slots = {}
         for r, tam in enumerate(tamanos_rondas(actividades)):
@@ -152,6 +155,9 @@ def planificar_puntajes(actividades: int, tasa: float, inicio: str, final: str, 
     def penal(s):
         p = 1000 * (_fuera(sum(s[:w]) / w, inicio) + _fuera(sum(s[-w:]) / w, final))
         p += 300 * max(0.0, abs(sum(s) / len(s) - tasa) - 1.0)
+        for i in rondas_ruta or ():
+            aprobadas = sum(x >= APROBADA for x in s[i:i + ACTIVIDADES_POR_RONDA])
+            p += 60 * max(0, math.ceil(FRACCION_APROBAR * ACTIVIDADES_POR_RONDA) - aprobadas)
         if creciente:
             p += 0.02 * sum((x - t) ** 2 for x, t in zip(s, tendencia)) / len(s)
         return p
@@ -203,7 +209,8 @@ def lecciones_de_practica(total: int) -> list[int]:
 
 
 def plan_bloques(actividades: int, elegidas: list[tuple[int, int]], rng: random.Random) -> list[dict]:
-    """Bloques en orden temporal. Ruta: rondas de 5 (la primera al inicio, alternando asignatura).
+    """Bloques en orden temporal. Ruta: rondas de 5 en la segunda mitad (cuando la curva de
+    acierto ya va alta y se pueden aprobar niveles), alternando asignatura.
     Práctica: un bloque por lección elegida (asignatura, orden), de 1–5 actividades tomadas del
     banco de 5 de esa lección desde `offset` (la sesión de práctica que se deja a medias)."""
     n_ruta = (actividades >= ACTIVIDADES_POR_RONDA) + (actividades >= RONDAS_RUTA_EXTRA_DESDE)
@@ -219,7 +226,7 @@ def plan_bloques(actividades: int, elegidas: list[tuple[int, int]], rng: random.
     for i in range(n_ruta):
         ruta = {"tipo": "ruta", "asignatura": primera if i % 2 == 0 else CIENCIAS + MATEMATICAS - primera,
                 "orden": None, "tam": ACTIVIDADES_POR_RONDA, "offset": 0}
-        bloques.insert(i * (len(bloques) + 1) // n_ruta, ruta)
+        bloques.insert(round(len(bloques) * POSICION_RUTA[n_ruta][i]), ruta)
     return bloques
 
 
@@ -388,6 +395,26 @@ async def borrar_actividades_estudiante(db, estudiante_id: int) -> None:
     await db.execute(update(Usuario).where(Usuario.id == estudiante_id).values(
         racha_actual=0, mejor_racha=0, ultima_actividad=None, puntos_totales=0))
     await db.commit()
+
+
+async def recalcular_racha(db, estudiante_id: int) -> None:
+    """Rehace racha_actual / mejor_racha / ultima_actividad aplicando actualizar_racha (la misma que
+    llaman el chat y responder_actividad) a cada día de uso en orden. Hace falta al rehacer solo las
+    actividades: el chat conservado no vuelve a pasar por actualizar_racha."""
+    from freezegun import freeze_time
+
+    from app.modules.lecciones.service import actualizar_racha
+    dias = set((await db.execute(select(Mensaje.fecha_creacion).join(Conversacion).where(
+        Conversacion.estudiante_id == estudiante_id, Mensaje.rol == RolMensaje.usuario))).scalars())
+    dias |= set((await db.execute(select(ResultadoActividad.fecha).where(
+        ResultadoActividad.estudiante_id == estudiante_id))).scalars())
+    await db.execute(update(Usuario).where(Usuario.id == estudiante_id).values(
+        racha_actual=0, mejor_racha=0, ultima_actividad=None))
+    await db.commit()
+    for dia in sorted({d.astimezone(ZONA).date() for d in dias}):
+        with freeze_time(datetime.combine(dia, time(12, 0), ZONA), real_asyncio=True):
+            await actualizar_racha(estudiante_id, db)
+            await db.commit()
 
 
 def cuadra(h: dict, r: dict) -> bool:
@@ -668,6 +695,16 @@ def mover_offsets(en_orden: list[dict], rng: random.Random) -> None:
             b["offset"], pos = pos, pos + b["tam"]
 
 
+def inicios_ruta(en_orden: list[dict]) -> list[int]:
+    """Posición global de inicio de cada ronda de ruta completa (las que llaman a completar_nivel)."""
+    inicios, k = [], 0
+    for b in en_orden:
+        if b["tipo"] == "ruta" and b["tam"] == ACTIVIDADES_POR_RONDA:
+            inicios.append(k)
+        k += b["tam"]
+    return inicios
+
+
 def construir_planes(filas: list[dict], libros: dict, tipos: dict | None = None) -> dict[int, dict]:
     """`tipos`: clave del banco ("leccion_id:nivel") -> tipos reales de sus actividades ya generadas."""
     planes = {}
@@ -683,7 +720,8 @@ def construir_planes(filas: list[dict], libros: dict, tipos: dict | None = None)
             slots = slots_ordenar(en_orden)
             for _ in range(5):  # los bancos de la ruta dependen del avance, que depende de los puntajes
                 puntajes, ok, creciente = planificar_puntajes(r["actividades"], r["tasa_acierto"], r["dominio_inicio"],
-                                                              r["dominio_final"], rng, slots=slots)
+                                                              r["dominio_final"], rng, slots=slots,
+                                                              rondas_ruta=inicios_ruta(en_orden))
                 pasos, lecciones_chat = recorrer(r, sesiones, puntajes, libros)
                 nuevos = slots_reales(r, en_orden, pasos, libros, tipos or {})
                 if nuevos == slots:
@@ -709,6 +747,9 @@ def construir_planes(filas: list[dict], libros: dict, tipos: dict | None = None)
             "bancos": bancos, "lecciones_chat": lecciones_chat,
             "celdas": {c: nivel_por_puntaje(sum(v) / len(v)) for c, v in celdas.items()},
             "act_ruta": sum(b["tam"] for b in en_orden if b["tipo"] == "ruta"),
+            "niveles_aprobados": sum(sum(x >= APROBADA for x in puntajes[i:i + ACTIVIDADES_POR_RONDA])
+                                     >= math.ceil(FRACCION_APROBAR * ACTIVIDADES_POR_RONDA)
+                                     for i in inicios_ruta(en_orden)),
             "lecciones_practica": len({(b["asignatura"], b["orden"]) for b in en_orden if b["tipo"] == "practica"}),
             "faltan_libros": [a for a in (CIENCIAS, MATEMATICAS) if (r["grado_id"], a) not in libros],
         }
@@ -765,6 +806,9 @@ def imprimir_plan(filas, asignado, planes, por_grado, nombres_grado, presupuesto
           f"{100 * total['ruta'] / total['act']:>5.0f}% {total['bancos']:>6} {total['gen']:>5} {total['lchat']:>10} {total['usd']:>8.2f}")
     print(f"\nActividades: {total['ruta']} en la ruta ({100 * total['ruta'] / total['act']:.0f} %), "
           f"{total['act'] - total['ruta']} en práctica por lección ({100 - 100 * total['ruta'] / total['act']:.0f} %)")
+    con_puntos = Counter(r["grado_id"] for r in filas if planes[r["fila"]]["niveles_aprobados"])
+    print("Estudiantes que aprobarán al menos un nivel (puntos > 0), por grado:",
+          {nombres_grado[g]: f"{con_puntos[g]}/{len(por_grado[g])}" for g in sorted(por_grado)})
     n_lecc = Counter(planes[r["fila"]]["lecciones_practica"] for r in filas)
     print("Lecciones de práctica por estudiante:", dict(sorted(n_lecc.items())))
 
@@ -819,7 +863,7 @@ async def main_async(args) -> None:
                 est = asignado[r["fila"]]
                 hecho = await contar_piloto(db, est.id)
                 completo = (hecho["actividades"], hecho["consultas"]) == (r["actividades"], r["consultas"])
-                if completo and not (args.rehacer_actividades and not cuadra(hecho, r)):
+                if completo and not (args.rehacer_actividades and (args.todas or not cuadra(hecho, r))):
                     print(f"[{i}/{len(objetivo)}] fila {r['fila']} ({est.username}) ya sembrada, se salta")
                     continue
                 # Con --rehacer-actividades, una fila completa que no cuadra conserva su chat.
@@ -829,6 +873,8 @@ async def main_async(args) -> None:
                 try:
                     await sembrar_estudiante(db, r, est, planes[r["fila"]], libros, pool, presupuesto,
                                              con_chat=not solo_actividades)
+                    if solo_actividades:
+                        await recalcular_racha(db, est.id)
                 except BaseException:
                     await db.rollback()
                     await borrar(db, est.id)
@@ -851,6 +897,8 @@ def main() -> None:
     ap.add_argument("--grado", type=int, action="append", help="solo este grado_id (repetible)")
     ap.add_argument("--rehacer-actividades", action="store_true",
                     help="rehace solo las actividades de las filas completas que no cuadran (conserva el chat)")
+    ap.add_argument("--todas", action="store_true",
+                    help="con --rehacer-actividades: rehace las actividades de TODAS las filas (no solo las que fallan)")
     ap.add_argument("--borrar", action="store_true", help="borra los datos de uso de los estudiantes reales y el pool")
     agregar_argumento_max_usd(ap, defecto=3.0)
     args = ap.parse_args()
