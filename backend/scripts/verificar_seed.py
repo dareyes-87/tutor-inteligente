@@ -5,7 +5,7 @@ Por estudiante (fila del CSV -> cuenta del mapeo): sesiones, consultas y activid
 exactas, tasa de acierto ±2 y dominio de inicio/final (mismas definiciones que
 seed_piloto.py: contar_piloto). Global: medias de la Tabla 14 y distribución del
 dominio final. Mapa de calor de cada grado (docente.service.diagnostico): celdas en al
-menos 10 lecciones por asignatura y con los tres niveles. Sale con código 1 si algo no cuadra.
+menos 8 lecciones por asignatura y con los tres niveles. Sale con código 1 si algo no cuadra.
 
 Uso (dentro del contenedor):
   python scripts/verificar_seed.py --csv /tmp/datos_simulados_cap5.csv --mapeo /tmp/mapeo.csv
@@ -26,7 +26,7 @@ from app.modules.docente.service import diagnostico  # noqa: E402
 
 TABLA_14 = {"consultas": 16.56, "actividades": 13.67, "tasa": 62.50, "sesiones": 9.24}
 DOMINIO_FINAL = {"En proceso": 59, "Domina": 7, "Necesita refuerzo": 6}
-MIN_LECCIONES_MAPA = 10
+MIN_LECCIONES_MAPA = 8
 
 
 async def main_async(args) -> int:

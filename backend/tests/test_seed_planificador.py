@@ -34,12 +34,14 @@ def test_bloques_una_ronda_de_ruta_y_practica_en_lecciones_distintas():
     practica = [b for b in bloques if b["tipo"] == "practica"]
     assert [b["tam"] for b in ruta] == [5]
     assert bloques.index(ruta[0]) >= len(bloques) // 2  # en la segunda mitad, con la curva ya alta
-    assert sum(b["tam"] for b in practica) == 13 and len({(b["asignatura"], b["orden"]) for b in practica}) == 10
+    # 13 de práctica en 4 lecciones (al menos 3 por lección: celdas que no son solo 0/100)
+    assert sum(b["tam"] for b in practica) == 13 and len({(b["asignatura"], b["orden"]) for b in practica}) == 4
+    assert all(b["tam"] >= sp.MIN_ACT_POR_LECCION for b in practica)
     assert all(b["offset"] + b["tam"] <= 5 for b in practica)
 
 
 def test_sesiones_parten_bloques_si_faltan_unidades():
-    # Fila 3: 5 sesiones, 2 consultas, 9 actividades -> 1 ronda de ruta + 4 de práctica en 4 lecciones.
+    # Fila 3: 5 sesiones, 2 consultas, 9 actividades -> 1 ronda de ruta + 4 de práctica en 1 lección (se parte entre días).
     rng = random.Random(1)
     elegidas = [(sp.CIENCIAS, 2), (sp.MATEMATICAS, 3), (sp.CIENCIAS, 4), (sp.MATEMATICAS, 5)]
     plan = sp.plan_sesiones(5, 2, sp.plan_bloques(9, elegidas, rng), elegidas, rng)
@@ -72,3 +74,16 @@ def test_progreso_sube_de_nivel_con_4_de_5():
     assert (estado["orden"], estado["nivel"]) == (1, 2)
     sp.simular_progreso(estado, [100, 0, 100, 0, 100])
     assert (estado["orden"], estado["nivel"]) == (1, 2)
+
+
+def test_fechas_sobre_chat_cuadra_sesiones_y_conserva_orden():
+    from datetime import date
+    rng = random.Random(1)
+    elegidas = [(sp.CIENCIAS, 2), (sp.MATEMATICAS, 3), (sp.CIENCIAS, 4)]
+    plan = {"sesiones": sp.plan_sesiones(9, 12, sp.plan_bloques(14, elegidas, rng), elegidas, rng)}
+    chat = {date(2026, 9, d) for d in (2, 3, 8, 15, 22, 29)}
+    nuevo = sp.fechas_sobre_chat(plan, 9, chat, random.Random(2))
+    fechas = [x["fecha"] for x in nuevo["sesiones"]]
+    assert fechas == sorted(fechas)
+    assert len({f.date() for f in fechas} | chat) == 9
+    assert sum(b["tam"] for x in nuevo["sesiones"] for b in x["bloques"]) == 14
