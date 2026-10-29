@@ -18,4 +18,5 @@ backend/scripts/evaluacion/*.bak
 datos/estudiantes/
 datos/credenciales_docentes.csv
 datos/mapeo_estudiantes_csv.csv
+datos/demo/
 backend/scripts/debug/seed_piloto_pool.json
