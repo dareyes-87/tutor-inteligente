@@ -49,7 +49,12 @@ def test_sesiones_parten_bloques_si_faltan_unidades():
 
 def test_slots_ordenar_siguen_la_posicion_en_el_banco():
     bloques = [{"tipo": "ruta", "tam": 5, "offset": 0}, {"tipo": "practica", "tam": 2, "offset": 2}]
-    assert sp.slots_ordenar(bloques) == {1, 3, 6}
+    assert set(sp.slots_ordenar(bloques)) == {1, 3, 6}
+
+
+def test_valores_ordenar_excluyen_n_menos_1():
+    assert sp.valores_ordenar(4) == [0, 25, 50, 100]
+    assert sp.valores_ordenar(5) == [0, 20, 40, 60, 100]
 
 
 def test_ordenar_da_el_parcial_mas_cercano():
