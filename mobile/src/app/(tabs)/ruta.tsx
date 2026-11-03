@@ -22,6 +22,7 @@ import {
   obtenerRuta,
   type LibroDisponible,
   type RutaAprendizaje,
+  textoPct,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Colors } from "@/lib/colors";
@@ -147,7 +148,7 @@ export default function MiRutaScreen() {
   const actual = ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1);
   const nivelesAprobados = ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
   const pctNiveles = ruta.total_lecciones
-    ? Math.round((nivelesAprobados / (ruta.total_lecciones * 3)) * 100)
+    ? (nivelesAprobados / (ruta.total_lecciones * 3)) * 100
     : 0;
 
   return (
@@ -207,7 +208,7 @@ export default function MiRutaScreen() {
                   <View style={{ flex: 1 }}>
                     <ProgressBar progress={pctNiveles} color={Colors.orange} trackColor="rgba(255,255,255,0.15)" height={12} />
                   </View>
-                  <Text style={styles.progressPct}>{pctNiveles}%</Text>
+                  <Text style={styles.progressPct}>{textoPct(pctNiveles)}</Text>
                 </View>
               </View>
             </SafeAreaView>

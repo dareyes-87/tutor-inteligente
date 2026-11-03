@@ -290,6 +290,12 @@ export function obtenerRanking(): Promise<RankingResponse> {
 }
 /** Dominio = promedio del puntaje ponderado por nº de actividades (igual que la web):
  * lo usan "Mi progreso" y "Mis asignaturas" del inicio, para que coincidan. */
+/** % de avance para mostrar: "<1%" si hay avance pero redondea a 0 (no ocultarlo). */
+export function textoPct(pct: number): string {
+  const r = Math.round(pct);
+  return pct > 0 && r === 0 ? "<1%" : `${r}%`;
+}
+
 export function dominioDe(temas: PerfilTema[]): number {
   const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
   return tot === 0

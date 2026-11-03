@@ -257,6 +257,12 @@ export interface PerfilTema {
 /** Dominio = promedio ponderado del puntaje por nº de actividades (temas con más
  * práctica pesan más). Lo usan "Mi progreso" y los círculos de "Mis asignaturas"
  * del inicio, para que muestren el mismo valor. */
+/** % de avance para mostrar: "<1%" si hay avance pero redondea a 0 (no ocultarlo). */
+export function textoPct(pct: number): string {
+  const r = Math.round(pct);
+  return pct > 0 && r === 0 ? "<1%" : `${r}%`;
+}
+
 export function dominioDe(temas: PerfilTema[]): number {
   const tot = temas.reduce((s, p) => s + p.total_actividades, 0);
   return tot === 0

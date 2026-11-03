@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { ApiError, adminDashboard, type DashboardAdmin } from "@/lib/api";
+import { ApiError, adminDashboard, textoPct, type DashboardAdmin } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const ESTADO_LIBRO: Record<string, { bg: string; color: string; label: string }> = {
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
                 Progreso general del colegio
               </div>
               <div className="mb-3 text-[40px] font-black leading-none text-slate-900">
-                {Math.round(data?.progreso_general ?? 0)}%
+                {textoPct(data?.progreso_general ?? 0)}
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                 <div

@@ -23,6 +23,7 @@ import {
   type PerfilTema,
   type RachaResponse,
   type RutaAprendizaje,
+  textoPct,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Colors } from "@/lib/colors";
@@ -86,7 +87,7 @@ export default function InicioScreen() {
   const nivelesDe = (r: RutaAprendizaje) =>
     r.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
   const pctNiveles = ruta?.total_lecciones
-    ? Math.round((nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100)
+    ? (nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100
     : 0;
 
   return (
@@ -160,7 +161,7 @@ export default function InicioScreen() {
                   <Text style={styles.rutaFootText}>
                     {nivelesDe(ruta)} de {ruta.total_lecciones * 3} niveles aprobados
                   </Text>
-                  <Text style={styles.rutaPct}>{pctNiveles}%</Text>
+                  <Text style={styles.rutaPct}>{textoPct(pctNiveles)}</Text>
                 </View>
               </>
             ) : (

@@ -9,6 +9,7 @@ import {
   obtenerEstadisticas,
   obtenerEstudiantes,
   type EstudianteResumen,
+  textoPct,
 } from "@/lib/api";
 import { colorProgreso } from "@/lib/docente";
 
@@ -37,7 +38,7 @@ export default function EstudiantesPage() {
   }, []);
 
   const pctEstudiante = (e: EstudianteResumen) =>
-    totalLecciones > 0 ? Math.round((e.niveles_aprobados / (totalLecciones * 3)) * 100) : 0;
+    totalLecciones > 0 ? (e.niveles_aprobados / (totalLecciones * 3)) * 100 : 0;
 
   return (
     <div className="px-9 py-8">
@@ -49,7 +50,7 @@ export default function EstudiantesPage() {
       <div className="overflow-hidden rounded-[16px] border border-[#E6E9F0] bg-white shadow-[0_5px_16px_rgba(30,43,77,.05)]">
         <div className="flex items-center border-b border-[#EEF1F6] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
           <div className="flex-1">Estudiante</div>
-          <div className="w-[200px]">Progreso</div>
+          <div className="w-[260px]">Avance de ruta</div>
           <div className="w-[90px] text-center">Puntos</div>
           <div className="w-[80px] text-center">Racha</div>
           <div className="w-[120px] text-right">Última act.</div>
@@ -83,15 +84,18 @@ export default function EstudiantesPage() {
                     {e.nombre} {e.apellido}
                   </span>
                 </div>
-                <div className="flex w-[200px] items-center gap-2.5">
+                <div className="flex w-[260px] items-center gap-2.5">
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#ECE7DE]">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${pct}%`, background: colorProgreso(pct) }}
                     />
                   </div>
-                  <span className="w-9 text-xs font-extrabold" style={{ color: colorProgreso(pct) }}>
-                    {pct}%
+                  <span className="w-[110px] text-xs font-extrabold" style={{ color: colorProgreso(pct) }}>
+                    {textoPct(pct)}{" "}
+                    <span className="font-bold text-muted-foreground">
+                      · {e.niveles_aprobados} de {totalLecciones * 3} niveles
+                    </span>
                   </span>
                 </div>
                 <div className="w-[90px] text-center text-sm font-black text-navy">

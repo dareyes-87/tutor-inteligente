@@ -12,6 +12,7 @@ import {
   type PerfilTema,
   type RachaResponse,
   type RutaAprendizaje,
+  textoPct,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ProgressRing } from "@/components/progress-ring";
@@ -56,7 +57,7 @@ export default function InicioPage() {
   const nivelesDe = (r: RutaAprendizaje) =>
     r.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
   const pctNiveles = ruta?.total_lecciones
-    ? Math.round((nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100)
+    ? (nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100
     : 0;
 
   return (
@@ -141,7 +142,7 @@ export default function InicioPage() {
               {ruta ? nivelesDe(ruta) : 0} de {(ruta?.total_lecciones ?? 0) * 3} niveles aprobados
             </span>
             <span className="text-brand-orange">
-              {pctNiveles}%
+              {textoPct(pctNiveles)}
             </span>
           </div>
         </div>

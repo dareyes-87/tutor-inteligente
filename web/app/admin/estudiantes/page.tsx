@@ -14,6 +14,7 @@ import {
   type EstudianteAdminResumen,
   type EstudianteCreado,
   type GradoResumen,
+  textoPct,
 } from "@/lib/api";
 import {
   BotonPrimario,
@@ -129,7 +130,7 @@ export default function EstudiantesAdminPage() {
                 <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <div className="h-full rounded-full bg-slate-700" style={{ width: `${Math.min(100, e.progreso)}%` }} />
                 </div>
-                <span className="w-9 text-xs font-extrabold text-slate-600">{Math.round(e.progreso)}%</span>
+                <span className="w-9 text-xs font-extrabold text-slate-600">{textoPct(e.progreso)}</span>
               </div>
               <div className="w-[90px] text-center">
                 <EstadoBadge activo={e.activo} />

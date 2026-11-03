@@ -17,6 +17,7 @@ import {
   type LeccionEnRuta,
   type LibroDisponible,
   type RutaAprendizaje,
+  textoPct,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Mascota } from "@/components/mascota";
@@ -221,7 +222,7 @@ export default function RutaPage() {
   const actual = ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1);
   const nivelesAprobados = ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
   const pctNiveles = ruta.total_lecciones
-    ? Math.round((nivelesAprobados / (ruta.total_lecciones * 3)) * 100)
+    ? (nivelesAprobados / (ruta.total_lecciones * 3)) * 100
     : 0;
   const nombre = user?.nombre ?? "estudiante";
 
@@ -289,7 +290,7 @@ export default function RutaPage() {
               />
             </div>
             <div className="text-[15px] font-black text-brand-orange">
-              {pctNiveles}%
+              {textoPct(pctNiveles)}
             </div>
           </div>
         </div>

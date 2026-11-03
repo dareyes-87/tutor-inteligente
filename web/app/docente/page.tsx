@@ -12,6 +12,7 @@ import {
   type EstadisticasDocente,
   type EstudianteResumen,
   type LibroDocente,
+  textoPct,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colorProgreso, ESTADO_LIBRO } from "@/lib/docente";
@@ -53,7 +54,7 @@ export default function DocentePage() {
 
   const totalLecciones = stats?.total_lecciones ?? 0;
   const pctEstudiante = (e: EstudianteResumen) =>
-    totalLecciones > 0 ? Math.round((e.niveles_aprobados / (totalLecciones * 3)) * 100) : 0;
+    totalLecciones > 0 ? (e.niveles_aprobados / (totalLecciones * 3)) * 100 : 0;
 
   // Últimos 3 estudiantes activos (por fecha de última actividad; nulos al final).
   const recientes = useMemo(() => {
@@ -80,7 +81,7 @@ export default function DocentePage() {
           { label: "Lecciones", val: stats?.total_lecciones ?? "—" },
           {
             label: "Progreso promedio",
-            val: stats ? `${Math.round(stats.promedio_progreso)}%` : "—",
+            val: stats ? textoPct(stats.promedio_progreso) : "—",
           },
         ].map((c) => (
           <div
@@ -130,9 +131,14 @@ export default function DocentePage() {
                       {e.ultima_actividad ?? "Sin actividad"} · 🔥 {e.racha_actual}
                     </div>
                   </div>
-                  <span className="flex-none text-sm font-black" style={{ color: colorProgreso(pct) }}>
-                    {pct}%
-                  </span>
+                  <div className="flex-none text-right">
+                    <div className="text-sm font-black" style={{ color: colorProgreso(pct) }}>
+                      {textoPct(pct)}
+                    </div>
+                    <div className="text-[11px] font-bold text-muted-foreground">
+                      {e.niveles_aprobados} de {totalLecciones * 3} niveles
+                    </div>
+                  </div>
                 </Link>
               );
             })}
