@@ -45,7 +45,7 @@ Obligatorias (si faltan o tienen el valor por defecto, el arranque **falla a pro
 | `DATABASE_URL` | la inyecta Railway (también activa la validación de secretos) |
 | `TOGETHER_API_KEY` | con saldo |
 | `CHROMA_HOST`, `CHROMA_PORT` | host interno del servicio Chroma en Railway |
-| `ALLOWED_ORIGINS` | dominio(s) del frontend web, separados por comas |
+| `ALLOWED_ORIGINS` | dominio de la web de producción, con esquema y sin `/` final: `https://just-blessing-production-6164.up.railway.app` (verificado con preflight el 2026-11-02). Si son varios, separados por comas. Si falta, el login web falla con "No se pudo conectar con el servidor" aunque `curl` funcione. Si el dominio cambia, actualizarla |
 
 **`ACCESS_TOKEN_EXPIRE_MINUTES` debe quedar en `720`** (12 h; con 60 la app móvil y la web piden volver a ingresar cada hora, en plena demo). Debe ser un número: una variable vacía tumba el backend (es `int`).
 
