@@ -29,6 +29,7 @@ class LeccionEnRuta(BaseModel):
     nivel_actual: int = 1
     nivel_completado: int = 0
     tiene_corona: bool = False
+    emoji: str = "📚"  # determinístico por tema y asignatura (emoji_map)
 
 
 class RutaAprendizaje(BaseModel):

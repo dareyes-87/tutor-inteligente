@@ -22,9 +22,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Mascota } from "@/components/mascota";
 
-// Iconos kid-friendly por lección (el backend no guarda emoji): se ciclan por orden.
-const ICONOS = ["🌿", "💧", "🧪", "⚡", "🪐", "🌻", "🦎", "🫀", "🔬", "🌎", "🧬", "🍎"];
-const iconoLeccion = (orden: number) => ICONOS[(orden - 1) % ICONOS.length];
 
 interface EstiloEstado {
   glyph: string;
@@ -370,10 +367,8 @@ function LeccionFila({
   actuando: boolean;
 }) {
   const s = estiloDe(l.estado);
-  const pct =
-    l.actividades_requeridas > 0
-      ? Math.round((l.actividades_completadas / l.actividades_requeridas) * 100)
-      : 0;
+  // Mismo dato que las estrellas: niveles aprobados de la lección (de 3).
+  const pct = Math.round((l.nivel_completado / 3) * 100);
   const mostrarBarra = l.estado === "completada" || l.estado === "en_progreso";
 
   return (
@@ -407,7 +402,7 @@ function LeccionFila({
           className="grid h-14 w-14 flex-none place-items-center rounded-2xl text-[28px]"
           style={{ background: s.iconBg }}
         >
-          {iconoLeccion(l.orden)}
+          {l.emoji}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -423,7 +418,7 @@ function LeccionFila({
                 className="rounded-full px-2.5 py-[3px] text-[11px] font-extrabold"
                 style={{ color: s.chipColor, background: s.chipBg }}
               >
-                {s.chip}
+                {s.chip}{l.estado === "en_progreso" ? ` · ${l.nivel_completado}/3` : ""}
               </span>
             )}
           </div>
@@ -453,7 +448,7 @@ function LeccionFila({
                 />
               </div>
               <span className="text-xs font-black" style={{ color: s.barColor }}>
-                {l.actividades_completadas}/{l.actividades_requeridas}
+                {l.nivel_completado}/3 niveles
               </span>
             </div>
           )}

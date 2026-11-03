@@ -59,9 +59,8 @@ export function LeccionCard({
   ocupado?: boolean;
 }) {
   const s = estiloDe(l.estado);
-  const pct = l.actividades_requeridas > 0
-    ? Math.round((l.actividades_completadas / l.actividades_requeridas) * 100)
-    : 0;
+  // Mismo dato que las estrellas: niveles aprobados de la lección (de 3).
+  const pct = Math.round((l.nivel_completado / 3) * 100);
   const mostrarBarra = l.estado === "completada" || l.estado === "en_progreso";
 
   return (
@@ -77,7 +76,7 @@ export function LeccionCard({
             </View>
             {!!s.chip && (
               <View style={[styles.chip, { backgroundColor: s.chipBg }]}>
-                <Text style={[styles.chipText, { color: s.chipColor }]}>{s.chip}</Text>
+                <Text style={[styles.chipText, { color: s.chipColor }]}>{s.chip}{l.estado === "en_progreso" ? ` · ${l.nivel_completado}/3` : ""}</Text>
               </View>
             )}
           </View>
@@ -98,7 +97,7 @@ export function LeccionCard({
                 <ProgressBar progress={pct} color={s.barColor} />
               </View>
               <Text style={[styles.barLabel, { color: s.barColor }]}>
-                {l.actividades_completadas}/{l.actividades_requeridas}
+                {l.nivel_completado}/3 niveles
               </Text>
             </View>
           )}

@@ -168,7 +168,7 @@ async def _get_or_create_progreso(
     return progreso
 
 
-def _to_leccion_en_ruta(leccion: Leccion, progreso: ProgresoLeccion) -> LeccionEnRuta:
+def _to_leccion_en_ruta(leccion: Leccion, progreso: ProgresoLeccion, asignatura_nombre: str) -> LeccionEnRuta:
     return LeccionEnRuta(
         id=leccion.id,
         nombre=leccion.nombre,
@@ -183,6 +183,7 @@ def _to_leccion_en_ruta(leccion: Leccion, progreso: ProgresoLeccion) -> LeccionE
         nivel_actual=progreso.nivel_actual,
         nivel_completado=progreso.nivel_completado,
         tiene_corona=progreso.nivel_completado >= 3,
+        emoji=get_emoji_for_topic(f"{leccion.tema_clave or ''} {leccion.nombre}", asignatura_nombre),
     )
 
 
@@ -215,7 +216,7 @@ async def obtener_ruta(
         progreso = await _get_or_create_progreso(estudiante_id, leccion, db)
         if progreso.estado == EstadoLeccion.completada:
             completadas += 1
-        items.append(_to_leccion_en_ruta(leccion, progreso))
+        items.append(_to_leccion_en_ruta(leccion, progreso, asignatura_nombre))
 
     await db.commit()
 
@@ -695,7 +696,11 @@ async def iniciar_leccion(
     progreso.estado = EstadoLeccion.en_progreso
     progreso.fecha_inicio = datetime.now(timezone.utc)
     await db.commit()
-    return _to_leccion_en_ruta(leccion, progreso)
+    asignatura_nombre = (await db.execute(
+        select(Asignatura.nombre).join(LibroTexto, LibroTexto.asignatura_id == Asignatura.id)
+        .where(LibroTexto.id == leccion.libro_id)
+    )).scalar_one_or_none() or ""
+    return _to_leccion_en_ruta(leccion, progreso, asignatura_nombre)
 
 
 async def _posicion_en_ranking(

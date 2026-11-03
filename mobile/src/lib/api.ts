@@ -129,6 +129,7 @@ export interface LeccionEnRuta {
   nivel_actual: number;
   nivel_completado: number;
   tiene_corona: boolean;
+  emoji: string;
 }
 export interface RutaAprendizaje {
   libro_id: number;
