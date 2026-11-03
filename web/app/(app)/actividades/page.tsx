@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
   ApiError,
   generarActividad,
+  obtenerMisLibros,
+  obtenerRuta,
   responderActividad,
   type ActividadResponse,
+  type LeccionEnRuta,
+  type LibroDisponible,
   type ResultadoResponse,
   type TipoActividad,
 } from "@/lib/api";
-import { ASIGNATURAS } from "@/lib/constants";
 import { Mascota } from "@/components/mascota";
 
 /** Configuración visual de los 5 tipos de actividad del backend. */
@@ -34,7 +37,36 @@ const tipoMeta = (t: TipoActividad) => TIPOS.find((x) => x.key === t)!;
 type Fase = "seleccion" | "generando" | "respondiendo" | "resultado";
 
 export default function ActividadesPage() {
-  const asignaturaId = ASIGNATURAS[0].id;
+  // Práctica libre / repaso: cualquier lección del libro, también las bloqueadas en la ruta.
+  // Lleva leccion_id (cuenta para el perfil y el mapa de calor) pero no toca la ruta:
+  // aquí nunca se llama a completar-actividad, así que no cambian niveles ni desbloqueos.
+  const [libros, setLibros] = useState<LibroDisponible[]>([]);
+  const [libroId, setLibroId] = useState<number | null>(null);
+  const [lecciones, setLecciones] = useState<LeccionEnRuta[]>([]);
+  const [leccionId, setLeccionId] = useState<number | null>(null);
+  const libro = libros.find((l) => l.libro_id === libroId) ?? null;
+
+  useEffect(() => {
+    obtenerMisLibros()
+      .then((ls) => {
+        setLibros(ls);
+        if (ls.length) setLibroId(ls[0].libro_id);
+      })
+      .catch(() => toast.error("No se pudieron cargar tus libros"));
+  }, []);
+
+  useEffect(() => {
+    setLecciones([]);
+    setLeccionId(null);
+    if (libroId === null) return;
+    let activo = true;
+    obtenerRuta(libroId)
+      .then((r) => activo && setLecciones(r.lecciones))
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [libroId]);
 
   const [fase, setFase] = useState<Fase>("seleccion");
   const [tema, setTema] = useState("");
@@ -53,7 +85,10 @@ export default function ActividadesPage() {
     setSeleccion("");
     setOrden([]);
     try {
-      const act = await generarActividad(asignaturaId, tipo, tema.trim() || null);
+      if (!libro) throw new ApiError(400, "Aún no tienes libros asignados");
+      const act = leccionId
+        ? await generarActividad(libro.asignatura_id, tipo, null, leccionId)
+        : await generarActividad(libro.asignatura_id, tipo, tema.trim() || null);
       setActividad(act);
       if (tipo === "ordenar") {
         const c = act.contenido as Record<string, unknown>;
@@ -121,11 +156,21 @@ export default function ActividadesPage() {
     <div className="px-[38px] py-[34px]">
       <div className="mb-1 text-2xl font-black text-navy">Actividades de hoy</div>
       <div className="mb-[22px] text-sm font-bold text-muted-foreground">
-        Practica y gana estrellas ⭐ · {ASIGNATURAS[0].nombre}
+        Práctica libre / repaso{libro ? ` · ${libro.asignatura_nombre}` : ""}
       </div>
 
       {fase === "seleccion" && (
-        <Seleccion tema={tema} setTema={setTema} onGenerar={generar} />
+        <Seleccion
+          tema={tema}
+          setTema={setTema}
+          onGenerar={generar}
+          libros={libros}
+          libroId={libroId}
+          setLibroId={setLibroId}
+          lecciones={lecciones}
+          leccionId={leccionId}
+          setLeccionId={setLeccionId}
+        />
       )}
 
       {fase === "generando" && <Generando />}
@@ -157,23 +202,82 @@ function Seleccion({
   tema,
   setTema,
   onGenerar,
+  libros,
+  libroId,
+  setLibroId,
+  lecciones,
+  leccionId,
+  setLeccionId,
 }: {
   tema: string;
   setTema: (v: string) => void;
   onGenerar: (t: TipoActividad) => void;
+  libros: LibroDisponible[];
+  libroId: number | null;
+  setLibroId: (v: number) => void;
+  lecciones: LeccionEnRuta[];
+  leccionId: number | null;
+  setLeccionId: (v: number | null) => void;
 }) {
+  const campo =
+    "mb-6 w-full rounded-2xl border-2 border-border bg-muted/50 px-4 py-[14px] text-[15px] font-semibold text-navy outline-none placeholder:text-[#B6BBC6] focus:border-brand-orange";
+  const etiqueta = "mb-[7px] block text-[13px] font-extrabold text-[#5A6170]";
   return (
-    <div className="flex items-start gap-[26px]">
-      <div className="flex-1">
-        <label className="mb-[7px] block text-[13px] font-extrabold text-[#5A6170]">
-          Tema (opcional)
+    <div className="flex flex-col items-start gap-[26px] lg:flex-row">
+      <div className="w-full flex-1">
+        {libros.length > 1 && (
+          <>
+            <label htmlFor="libro" className={etiqueta}>
+              Asignatura
+            </label>
+            <select
+              id="libro"
+              value={libroId ?? ""}
+              onChange={(e) => setLibroId(Number(e.target.value))}
+              className={campo}
+            >
+              {libros.map((l) => (
+                <option key={l.libro_id} value={l.libro_id}>
+                  {l.asignatura_nombre}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        <label htmlFor="leccion" className={etiqueta}>
+          Lección · práctica libre / repaso
         </label>
-        <input
-          value={tema}
-          onChange={(e) => setTema(e.target.value)}
-          placeholder="Ej: el ciclo del agua, las plantas…"
-          className="mb-6 w-full rounded-2xl border-2 border-border bg-muted/50 px-4 py-[14px] text-[15px] font-semibold text-navy outline-none placeholder:text-[#B6BBC6] focus:border-brand-orange"
-        />
+        <select
+          id="leccion"
+          value={leccionId ?? ""}
+          onChange={(e) => setLeccionId(e.target.value ? Number(e.target.value) : null)}
+          className={campo.replace("mb-6", "mb-2")}
+        >
+          <option value="">Cualquier tema del libro</option>
+          {lecciones.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.estado === "bloqueada" ? "🔒 " : ""}Lección {l.orden} · {l.nombre}
+            </option>
+          ))}
+        </select>
+        <div className="mb-6 text-xs font-bold text-muted-foreground">
+          Puedes repasar cualquier lección, también las que aún no desbloqueas. La práctica libre
+          cuenta para tu progreso por tema, pero no cambia tu ruta (niveles ni estrellas).
+        </div>
+        {leccionId === null && (
+          <>
+            <label htmlFor="tema" className={etiqueta}>
+              Tema (opcional)
+            </label>
+            <input
+              id="tema"
+              value={tema}
+              onChange={(e) => setTema(e.target.value)}
+              placeholder="Ej: el ciclo del agua, las plantas…"
+              className={campo}
+            />
+          </>
+        )}
         <div className="flex flex-col gap-3.5">
           {TIPOS.map((a) => (
             <div
@@ -209,7 +313,7 @@ function Seleccion({
         </div>
       </div>
 
-      <aside className="w-[300px] flex-none rounded-[22px] border border-border bg-white p-6 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
+      <aside className="w-full flex-none lg:w-[300px] rounded-[22px] border border-border bg-white p-6 text-center shadow-[0_6px_20px_rgba(30,43,77,.05)]">
         <div className="mx-auto mb-3 h-[74px] w-[74px] overflow-hidden rounded-full bg-navy ring-4 ring-brand-orange">
           <Mascota size={74} />
         </div>

@@ -1,8 +1,12 @@
 """Endpoints del módulo de actividades."""
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.leccion import Leccion
+from app.models.libro import LibroTexto
+from app.models.usuario import RolUsuario
 from app.modules.auth.dependencies import get_current_user
 from app.modules.actividades.schemas import (
     GenerarActividadRequest, ResponderActividadRequest,
@@ -24,7 +28,18 @@ async def generar(
     """
     Genera una actividad nueva basada en el contenido de los libros.
     El tipo puede ser: opcion_multiple, verdadero_falso, completar, ordenar, respuesta_corta.
+
+    Con `leccion_id` sirve también para la práctica libre / repaso de CUALQUIER lección
+    del libro (incluso bloqueada en la ruta): la actividad cuenta para el perfil y el
+    mapa de calor, pero no toca el progreso de la ruta (eso solo lo hace completar-actividad).
     """
+    if body.leccion_id is not None and current_user.rol == RolUsuario.estudiante:
+        libro = (await db.execute(
+            select(LibroTexto).join(Leccion, Leccion.libro_id == LibroTexto.id)
+            .where(Leccion.id == body.leccion_id)
+        )).scalar_one_or_none()
+        if libro is None or libro.grado_id != current_user.grado_id or libro.asignatura_id != body.asignatura_id:
+            raise HTTPException(status_code=404, detail="Lección no encontrada para tu grado y asignatura")
     actividad = await crear_actividad(
         db=db,
         asignatura_id=body.asignatura_id,
