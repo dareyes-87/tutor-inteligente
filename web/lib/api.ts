@@ -487,6 +487,7 @@ export interface EstudianteDetalle {
   racha_actual: number;
   puntos_totales: number;
   ruta: RutaAprendizaje | null;
+  rutas: RutaAprendizaje[];
   perfil: PerfilTemaDocente[];
 }
 

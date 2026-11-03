@@ -58,7 +58,8 @@ class EstudianteDetalle(BaseModel):
     grado: str | None
     racha_actual: int
     puntos_totales: int
-    ruta: RutaAprendizaje | None
+    ruta: RutaAprendizaje | None  # primera asignatura (compatibilidad); ver `rutas`
+    rutas: list[RutaAprendizaje]  # una por asignatura, como las ve el estudiante
     perfil: list[PerfilTemaDocente]
 
 

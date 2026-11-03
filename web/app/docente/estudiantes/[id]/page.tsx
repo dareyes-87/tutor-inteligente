@@ -91,20 +91,24 @@ export default function DetalleEstudiantePage() {
             <span className="rounded-full bg-[#EAF1FF] px-4 py-2 text-brand-blue">
               ⭐ {detalle.puntos_totales} pts
             </span>
-            {detalle.ruta && (
-              <span className="rounded-full bg-[#E9F9EF] px-4 py-2 text-[#16A34A]">
-                📚 {detalle.ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0)} de{" "}
-                {detalle.ruta.total_lecciones * 3} niveles aprobados
+            {detalle.rutas.map((r) => (
+              <span key={r.libro_id} className="rounded-full bg-[#E9F9EF] px-4 py-2 text-[#16A34A]">
+                📚 {r.asignatura}: {r.lecciones.reduce((s, l) => s + l.nivel_completado, 0)} de{" "}
+                {r.total_lecciones * 3} niveles aprobados
               </span>
-            )}
+            ))}
           </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr]">
             {/* Ruta de aprendizaje */}
             <section>
               <div className="mb-4 text-lg font-black text-navy">🗺️ Ruta de aprendizaje</div>
-              <div className="flex flex-col gap-2">
-                {(detalle.ruta?.lecciones ?? []).map((l) => (
+              {detalle.rutas.map((r) => (
+              <div key={r.libro_id} className="mb-6 flex flex-col gap-2">
+                {detalle.rutas.length > 1 && (
+                  <div className="text-sm font-black text-[#7B8194]">{r.asignatura}</div>
+                )}
+                {r.lecciones.map((l) => (
                   <div
                     key={l.id}
                     className="flex items-center gap-3 rounded-[14px] border border-[#E6E9F0] bg-white px-4 py-3 shadow-[0_3px_10px_rgba(30,43,77,.04)]"
@@ -126,12 +130,13 @@ export default function DetalleEstudiantePage() {
                     </span>
                   </div>
                 ))}
-                {(!detalle.ruta || detalle.ruta.lecciones.length === 0) && (
-                  <div className="rounded-[14px] border border-dashed border-[#D8DEE9] bg-white px-4 py-6 text-center text-sm font-bold text-muted-foreground">
-                    Sin ruta asignada todavía.
-                  </div>
-                )}
               </div>
+              ))}
+              {detalle.rutas.every((r) => r.lecciones.length === 0) && (
+                <div className="rounded-[14px] border border-dashed border-[#D8DEE9] bg-white px-4 py-6 text-center text-sm font-bold text-muted-foreground">
+                  Sin ruta asignada todavía.
+                </div>
+              )}
             </section>
 
             {/* Perfil de comprensión */}

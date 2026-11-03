@@ -17,7 +17,7 @@ from app.models.perfil_comprension import nivel_por_puntaje
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion
 from app.models.usuario import RolUsuario, Usuario
 from app.modules.actividades.service import obtener_perfil_estudiante
-from app.modules.lecciones.service import obtener_ruta, racha_vigente
+from app.modules.lecciones.service import obtener_mis_libros, obtener_ruta, racha_vigente
 from app.modules.docente.schemas import (
     AsignaturaOpcion,
     CeldaDiagnostico,
@@ -127,7 +127,7 @@ async def listar_estudiantes(
     stmt = (
         select(Usuario, Grado.nombre)
         .outerjoin(Grado, Usuario.grado_id == Grado.id)
-        .where(Usuario.rol == RolUsuario.estudiante)
+        .where(Usuario.rol == RolUsuario.estudiante, Usuario.activo.is_(True))
     )
     if grado_id is not None:
         stmt = stmt.where(Usuario.grado_id == grado_id)
@@ -182,15 +182,11 @@ async def detalle_estudiante(
         return None
     usuario, grado_nombre = fila
 
-    # Ruta: libro del grado del estudiante (reusa obtener_ruta).
-    libro = (
-        await db.execute(
-            select(LibroTexto)
-            .where(LibroTexto.grado_id == usuario.grado_id)
-            .order_by(LibroTexto.id)
-        )
-    ).scalars().first()
-    ruta = await obtener_ruta(estudiante_id, libro.id, db) if libro else None
+    # Rutas: los mismos libros que ve el estudiante (una por asignatura).
+    rutas = [
+        await obtener_ruta(estudiante_id, libro.libro_id, db)
+        for libro in await obtener_mis_libros(usuario, db)
+    ]
 
     # Perfil de comprensión (reusa la lógica de actividades).
     perfil_raw = await obtener_perfil_estudiante(db, estudiante_id)
@@ -203,7 +199,8 @@ async def detalle_estudiante(
         grado=grado_nombre,
         racha_actual=racha_vigente(usuario),
         puntos_totales=usuario.puntos_totales,
-        ruta=ruta,
+        ruta=rutas[0] if rutas else None,
+        rutas=rutas,
         perfil=perfil,
     )
 
@@ -214,7 +211,9 @@ async def estadisticas(
     """Estadísticas del panel. Si `grado_id` viene (docente), todo se acota a ese
     grado; si es None (administrador), son globales."""
     total_estudiantes_stmt = (
-        select(func.count()).select_from(Usuario).where(Usuario.rol == RolUsuario.estudiante)
+        select(func.count()).select_from(Usuario).where(
+            Usuario.rol == RolUsuario.estudiante, Usuario.activo.is_(True)
+        )
     )
     total_libros_stmt = select(func.count()).select_from(LibroTexto)
     total_lecciones_stmt = select(func.count()).select_from(Leccion)
@@ -232,13 +231,14 @@ async def estadisticas(
     # Promedio de progreso: considera los 3 niveles de cada lección.
     # SUM(nivel_completado de todas las lecciones de todos los estudiantes)
     #   / (total_lecciones * 3 * total_estudiantes) * 100.
-    suma_niveles_stmt = select(
-        func.coalesce(func.sum(ProgresoLeccion.nivel_completado), 0)
+    # Solo estudiantes activos: los mismos que cuenta `total_estudiantes` y la lista.
+    suma_niveles_stmt = (
+        select(func.coalesce(func.sum(ProgresoLeccion.nivel_completado), 0))
+        .join(Usuario, ProgresoLeccion.estudiante_id == Usuario.id)
+        .where(Usuario.rol == RolUsuario.estudiante, Usuario.activo.is_(True))
     )
     if grado_id is not None:
-        suma_niveles_stmt = suma_niveles_stmt.join(
-            Usuario, ProgresoLeccion.estudiante_id == Usuario.id
-        ).where(Usuario.grado_id == grado_id)
+        suma_niveles_stmt = suma_niveles_stmt.where(Usuario.grado_id == grado_id)
     suma_niveles = (await db.execute(suma_niveles_stmt)).scalar_one()
     denom = total_lecciones * 3 * total_estudiantes
     promedio_progreso = round(min(100.0, suma_niveles / denom * 100), 1) if denom > 0 else 0.0
