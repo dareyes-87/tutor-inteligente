@@ -21,6 +21,7 @@ export default function LoginScreen() {
   const { login, aviso } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -71,14 +72,26 @@ export default function LoginScreen() {
             style={styles.input}
           />
           <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            placeholderTextColor="#B6BBC6"
-            secureTextEntry
-            style={styles.input}
-          />
+          <View>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#B6BBC6"
+              secureTextEntry={!mostrarPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.input, { paddingRight: 52 }]}
+            />
+            <Pressable
+              onPress={() => setMostrarPassword((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={mostrarPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              style={styles.ojo}
+            >
+              <Text style={styles.ojoText}>{mostrarPassword ? "🙈" : "👁️"}</Text>
+            </Pressable>
+          </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -124,6 +137,9 @@ const styles = StyleSheet.create({
     color: Colors.navy,
     marginBottom: 14,
   },
+  // bottom: 14 descuenta el marginBottom del input para centrar el ojo en el campo.
+  ojo: { position: "absolute", right: 0, top: 0, bottom: 14, width: 52, alignItems: "center", justifyContent: "center" },
+  ojoText: { fontSize: 18 },
   error: { color: Colors.red, fontWeight: "700", fontSize: 13, marginBottom: 10 },
   boton: { backgroundColor: Colors.orange, borderRadius: 18, paddingVertical: 16, alignItems: "center", marginTop: 6 },
   botonText: { color: Colors.white, fontWeight: "900", fontSize: 17 },

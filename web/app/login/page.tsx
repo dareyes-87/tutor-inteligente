@@ -15,6 +15,7 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Si ya hay sesión, no mostrar el login.
@@ -109,7 +110,7 @@ export default function LoginPage() {
               <span className="text-[17px]">🔒</span>
               <input
                 id="password"
-                type="password"
+                type={mostrarPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -117,6 +118,14 @@ export default function LoginPage() {
                 required
                 className="w-full bg-transparent text-[15px] font-bold text-navy outline-none placeholder:text-[#B6BBC6]"
               />
+              <button
+                type="button"
+                onClick={() => setMostrarPassword((v) => !v)}
+                aria-label={mostrarPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                className="flex-none text-[17px] leading-none"
+              >
+                {mostrarPassword ? "🙈" : "👁️"}
+              </button>
             </div>
 
             <button
