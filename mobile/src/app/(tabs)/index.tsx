@@ -79,8 +79,14 @@ export default function InicioScreen() {
 
   // "Mi ruta" (hero) muestra la primera asignatura del estudiante.
   const ruta = rutas.length > 0 ? rutas[0] : null;
-  const leccionActual = ruta
-    ? Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1)
+  // Lección actual = primera sin dominar (3 niveles); si todas lo están, la última.
+  const actual = ruta
+    ? (ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1))
+    : undefined;
+  const nivelesDe = (r: RutaAprendizaje) =>
+    r.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
+  const pctNiveles = ruta?.total_lecciones
+    ? Math.round((nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100)
     : 0;
 
   return (
@@ -145,16 +151,16 @@ export default function InicioScreen() {
                 <Text style={styles.rutaLinea}>
                   Vas en la{" "}
                   <Text style={{ color: Colors.orange, fontWeight: "900" }}>
-                    Lección {leccionActual} de {ruta.total_lecciones}
+                    Lección {actual?.orden ?? 1} · Nivel {actual?.nivel_actual ?? 1} de 3
                   </Text>{" "}
                   · {ruta.asignatura}
                 </Text>
-                <ProgressBar progress={ruta.progreso_porcentaje} height={12} />
+                <ProgressBar progress={pctNiveles} height={12} />
                 <View style={styles.rutaFoot}>
                   <Text style={styles.rutaFootText}>
-                    {ruta.lecciones_completadas} de {ruta.total_lecciones} completadas
+                    {nivelesDe(ruta)} de {ruta.total_lecciones * 3} niveles aprobados
                   </Text>
-                  <Text style={styles.rutaPct}>{Math.round(ruta.progreso_porcentaje)}%</Text>
+                  <Text style={styles.rutaPct}>{pctNiveles}%</Text>
                 </View>
               </>
             ) : (
@@ -166,18 +172,23 @@ export default function InicioScreen() {
           <Text style={styles.seccionTitulo}>Mis asignaturas</Text>
           {rutas.length > 0 ? (
             rutas.map((r) => {
-              // Mismo dominio que "Mi progreso"; las lecciones completadas van como texto.
+              // Mismo dominio que "Mi progreso"; el avance de la ruta va en niveles aprobados.
               const temas = perfil.filter((p) => p.asignatura === r.asignatura);
               const dominio = dominioDe(temas);
               return (
                 <View key={r.libro_id} style={styles.asigCard}>
                   <View style={styles.asigHead}>
                     <Text style={styles.asigNombre}>📚 {r.asignatura}</Text>
-                    <Text style={styles.asigPct}>{temas.length ? `${dominio}% dominio` : "Sin actividad"}</Text>
+                    <Text style={styles.asigPct}>{temas.length ? `${dominio}%` : "Sin actividad"}</Text>
                   </View>
                   <ProgressBar progress={temas.length ? dominio : 0} color={Colors.green} height={10} />
+                  {temas.length > 0 && (
+                    <Text style={styles.asigMeta}>
+                      Dominio en {temas.length} {temas.length === 1 ? "tema practicado" : "temas practicados"}
+                    </Text>
+                  )}
                   <Text style={styles.asigMeta}>
-                    {r.lecciones_completadas} de {r.total_lecciones} lecciones completadas
+                    {nivelesDe(r)} de {r.total_lecciones * 3} niveles aprobados en la ruta
                   </Text>
                 </View>
               );

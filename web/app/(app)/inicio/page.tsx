@@ -49,8 +49,14 @@ export default function InicioPage() {
 
   // "Mi ruta" (hero) muestra la primera asignatura del estudiante.
   const ruta = rutas && rutas.length > 0 ? rutas[0] : null;
-  const leccionActual = ruta
-    ? Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1)
+  // Lección actual = primera sin dominar (3 niveles); si todas lo están, la última.
+  const actual = ruta
+    ? (ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1))
+    : undefined;
+  const nivelesDe = (r: RutaAprendizaje) =>
+    r.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
+  const pctNiveles = ruta?.total_lecciones
+    ? Math.round((nivelesDe(ruta) / (ruta.total_lecciones * 3)) * 100)
     : 0;
 
   return (
@@ -116,7 +122,7 @@ export default function InicioPage() {
               <>
                 Vas en la{" "}
                 <span className="font-black text-brand-orange">
-                  Lección {leccionActual} de {ruta.total_lecciones}
+                  Lección {actual?.orden ?? 1} · Nivel {actual?.nivel_actual ?? 1} de 3
                 </span>{" "}
                 · {ruta.asignatura}
               </>
@@ -127,15 +133,15 @@ export default function InicioPage() {
           <div className="h-3.5 overflow-hidden rounded-full bg-[#ECE7DE]">
             <div
               className="h-full rounded-full bg-gradient-to-r from-brand-orange to-[#FB923C]"
-              style={{ width: `${ruta?.progreso_porcentaje ?? 0}%` }}
+              style={{ width: `${pctNiveles}%` }}
             />
           </div>
           <div className="mt-2.5 flex items-center justify-between text-[13px] font-extrabold">
             <span className="text-muted-foreground">
-              {ruta?.lecciones_completadas ?? 0} de {ruta?.total_lecciones ?? 0} completadas
+              {ruta ? nivelesDe(ruta) : 0} de {(ruta?.total_lecciones ?? 0) * 3} niveles aprobados
             </span>
             <span className="text-brand-orange">
-              {Math.round(ruta?.progreso_porcentaje ?? 0)}%
+              {pctNiveles}%
             </span>
           </div>
         </div>
@@ -151,7 +157,7 @@ export default function InicioPage() {
       {rutas && rutas.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:gap-[18px] md:grid-cols-4">
           {rutas.map((r) => {
-            // Mismo dominio que "Mi progreso"; las lecciones completadas van como texto.
+            // Mismo dominio que "Mi progreso"; el avance de la ruta va en niveles aprobados.
             const temas = perfil.filter((p) => p.asignatura === r.asignatura);
             const dominio = dominioDe(temas);
             return (
@@ -178,11 +184,11 @@ export default function InicioPage() {
               </div>
               {temas.length > 0 && (
                 <div className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
-                  dominio
+                  Dominio en {temas.length} {temas.length === 1 ? "tema practicado" : "temas practicados"}
                 </div>
               )}
               <div className="mt-1 text-xs font-bold text-muted-foreground">
-                {r.lecciones_completadas} de {r.total_lecciones} lecciones completadas
+                {nivelesDe(r)} de {r.total_lecciones * 3} niveles aprobados en la ruta
               </div>
             </div>
             );
