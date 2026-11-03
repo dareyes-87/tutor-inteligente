@@ -107,8 +107,8 @@ export default function RankingPage() {
                     )}
                   </div>
                   <div className="text-xs font-bold text-muted-foreground">
-                    {r.lecciones_completadas}{" "}
-                    {r.lecciones_completadas === 1 ? "lección" : "lecciones"} · 🔥 {r.racha_actual}
+                    {r.niveles_aprobados}{" "}
+                    {r.niveles_aprobados === 1 ? "nivel aprobado" : "niveles aprobados"} · 🔥 {r.racha_actual}
                   </div>
                 </div>
                 <div className="w-auto flex-none text-right text-base font-black text-navy sm:w-[110px]">

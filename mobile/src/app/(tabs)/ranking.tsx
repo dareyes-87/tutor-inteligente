@@ -69,7 +69,7 @@ export default function RankingScreen() {
                       )}
                     </View>
                     <Text style={styles.meta}>
-                      {r.lecciones_completadas} {r.lecciones_completadas === 1 ? "lección" : "lecciones"} · 🔥 {r.racha_actual}
+                      {r.niveles_aprobados} {r.niveles_aprobados === 1 ? "nivel aprobado" : "niveles aprobados"} · 🔥 {r.racha_actual}
                     </Text>
                   </View>
                   <Text style={styles.pts}>{r.puntos_totales}</Text>

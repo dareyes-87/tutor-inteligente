@@ -418,6 +418,7 @@ export interface RankingEstudiante {
   nombre: string;
   apellido: string;
   lecciones_completadas: number;
+  niveles_aprobados: number;
   puntos_totales: number;
   racha_actual: number;
 }
@@ -460,6 +461,7 @@ export interface EstudianteResumen {
   racha_actual: number;
   puntos_totales: number;
   lecciones_completadas: number;
+  niveles_aprobados: number;
   ultima_actividad: string | null;
 }
 

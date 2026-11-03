@@ -37,7 +37,7 @@ export default function EstudiantesPage() {
   }, []);
 
   const pctEstudiante = (e: EstudianteResumen) =>
-    totalLecciones > 0 ? Math.round((e.lecciones_completadas / totalLecciones) * 100) : 0;
+    totalLecciones > 0 ? Math.round((e.niveles_aprobados / (totalLecciones * 3)) * 100) : 0;
 
   return (
     <div className="px-9 py-8">

@@ -128,6 +128,7 @@ class RankingEstudiante(BaseModel):
     nombre: str
     apellido: str
     lecciones_completadas: int
+    niveles_aprobados: int  # SUM(nivel_completado): avance de ruta por niveles
     puntos_totales: int
     racha_actual: int
 

@@ -39,6 +39,7 @@ class EstudianteResumen(BaseModel):
     racha_actual: int
     puntos_totales: int
     lecciones_completadas: int
+    niveles_aprobados: int  # SUM(nivel_completado): avance de ruta por niveles
     ultima_actividad: date | None
 
 

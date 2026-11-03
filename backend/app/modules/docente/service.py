@@ -106,12 +106,24 @@ async def _completadas_por_estudiante(db: AsyncSession) -> dict[int, int]:
     return {est_id: total for est_id, total in rows}
 
 
+async def _niveles_por_estudiante(db: AsyncSession) -> dict[int, int]:
+    """Niveles aprobados por estudiante (misma suma que `estadisticas`)."""
+    rows = (
+        await db.execute(
+            select(ProgresoLeccion.estudiante_id, func.sum(ProgresoLeccion.nivel_completado))
+            .group_by(ProgresoLeccion.estudiante_id)
+        )
+    ).all()
+    return {est_id: int(total or 0) for est_id, total in rows}
+
+
 async def listar_estudiantes(
     db: AsyncSession, grado_id: int | None = None
 ) -> list[EstudianteResumen]:
     """Lista estudiantes. Si `grado_id` viene (docente), se acota a ese grado;
     si es None (administrador), devuelve todos."""
     completadas = await _completadas_por_estudiante(db)
+    niveles = await _niveles_por_estudiante(db)
     stmt = (
         select(Usuario, Grado.nombre)
         .outerjoin(Grado, Usuario.grado_id == Grado.id)
@@ -129,6 +141,7 @@ async def listar_estudiantes(
             racha_actual=racha_vigente(u),
             puntos_totales=u.puntos_totales,
             lecciones_completadas=completadas.get(u.id, 0),
+            niveles_aprobados=niveles.get(u.id, 0),
             ultima_actividad=u.ultima_actividad,
         )
         for u, grado in rows

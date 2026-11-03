@@ -925,6 +925,13 @@ async def obtener_ranking(
         )
     ).all()
     completadas_por = {est_id: total for est_id, total in comp_rows}
+    niv_rows = (
+        await db.execute(
+            select(ProgresoLeccion.estudiante_id, func.sum(ProgresoLeccion.nivel_completado))
+            .group_by(ProgresoLeccion.estudiante_id)
+        )
+    ).all()
+    niveles_por = {est_id: int(total or 0) for est_id, total in niv_rows}
 
     estudiantes.sort(
         key=lambda u: (u.puntos_totales, completadas_por.get(u.id, 0)),
@@ -940,6 +947,7 @@ async def obtener_ranking(
                 nombre=u.nombre,
                 apellido=u.apellido,
                 lecciones_completadas=completadas_por.get(u.id, 0),
+                niveles_aprobados=niveles_por.get(u.id, 0),
                 puntos_totales=u.puntos_totales,
                 racha_actual=racha_vigente(u),
             )

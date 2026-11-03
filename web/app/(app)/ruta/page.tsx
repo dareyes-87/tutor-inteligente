@@ -217,7 +217,12 @@ export default function RutaPage() {
     );
   }
 
-  const leccionActual = Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1);
+  // Avance de ruta por niveles (3 por lección), igual que la tarjeta del inicio.
+  const actual = ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1);
+  const nivelesAprobados = ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
+  const pctNiveles = ruta.total_lecciones
+    ? Math.round((nivelesAprobados / (ruta.total_lecciones * 3)) * 100)
+    : 0;
   const nombre = user?.nombre ?? "estudiante";
 
   return (
@@ -267,7 +272,7 @@ export default function RutaPage() {
             🐯 ¡Tú puedes, {nombre}!
           </div>
           <div className="text-[28px] font-black leading-tight text-white">
-            Lección {leccionActual} de {ruta.total_lecciones}
+            Lección {actual?.orden ?? 1} · Nivel {actual?.nivel_actual ?? 1} de 3
           </div>
           <div className="mt-[5px] text-[15px] font-bold text-[#CBD5E1]">
             {ruta.asignatura}
@@ -278,13 +283,13 @@ export default function RutaPage() {
               <div
                 className="animate-shimmer h-full rounded-full"
                 style={{
-                  width: `${ruta.progreso_porcentaje}%`,
+                  width: `${pctNiveles}%`,
                   background: "linear-gradient(90deg,#F97316,#FB923C)",
                 }}
               />
             </div>
             <div className="text-[15px] font-black text-brand-orange">
-              {Math.round(ruta.progreso_porcentaje)}%
+              {pctNiveles}%
             </div>
           </div>
         </div>

@@ -143,7 +143,12 @@ export default function MiRutaScreen() {
     );
   }
 
-  const leccionActual = Math.min(ruta.total_lecciones, ruta.lecciones_completadas + 1);
+  // Avance de ruta por niveles (3 por lección), igual que la tarjeta del inicio.
+  const actual = ruta.lecciones.find((l) => l.nivel_completado < 3) ?? ruta.lecciones.at(-1);
+  const nivelesAprobados = ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0);
+  const pctNiveles = ruta.total_lecciones
+    ? Math.round((nivelesAprobados / (ruta.total_lecciones * 3)) * 100)
+    : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
@@ -183,7 +188,7 @@ export default function MiRutaScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.hola}>¡Hola, {user?.nombre ?? "estudiante"}! 🐯</Text>
                     <Text style={styles.leccionN}>
-                      Lección {leccionActual} de {ruta.total_lecciones}
+                      Lección {actual?.orden ?? 1} · Nivel {actual?.nivel_actual ?? 1} de 3
                     </Text>
                     <Text style={styles.asignatura}>{ruta.asignatura}</Text>
                   </View>
@@ -200,9 +205,9 @@ export default function MiRutaScreen() {
                 </View>
                 <View style={styles.progressRow}>
                   <View style={{ flex: 1 }}>
-                    <ProgressBar progress={ruta.progreso_porcentaje} color={Colors.orange} trackColor="rgba(255,255,255,0.15)" height={12} />
+                    <ProgressBar progress={pctNiveles} color={Colors.orange} trackColor="rgba(255,255,255,0.15)" height={12} />
                   </View>
-                  <Text style={styles.progressPct}>{Math.round(ruta.progreso_porcentaje)}%</Text>
+                  <Text style={styles.progressPct}>{pctNiveles}%</Text>
                 </View>
               </View>
             </SafeAreaView>

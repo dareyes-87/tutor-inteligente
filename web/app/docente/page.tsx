@@ -53,7 +53,7 @@ export default function DocentePage() {
 
   const totalLecciones = stats?.total_lecciones ?? 0;
   const pctEstudiante = (e: EstudianteResumen) =>
-    totalLecciones > 0 ? Math.round((e.lecciones_completadas / totalLecciones) * 100) : 0;
+    totalLecciones > 0 ? Math.round((e.niveles_aprobados / (totalLecciones * 3)) * 100) : 0;
 
   // Últimos 3 estudiantes activos (por fecha de última actividad; nulos al final).
   const recientes = useMemo(() => {

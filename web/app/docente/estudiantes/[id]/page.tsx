@@ -93,7 +93,8 @@ export default function DetalleEstudiantePage() {
             </span>
             {detalle.ruta && (
               <span className="rounded-full bg-[#E9F9EF] px-4 py-2 text-[#16A34A]">
-                📚 {detalle.ruta.lecciones_completadas}/{detalle.ruta.total_lecciones} lecciones
+                📚 {detalle.ruta.lecciones.reduce((s, l) => s + l.nivel_completado, 0)} de{" "}
+                {detalle.ruta.total_lecciones * 3} niveles aprobados
               </span>
             )}
           </div>
@@ -135,7 +136,7 @@ export default function DetalleEstudiantePage() {
 
             {/* Perfil de comprensión */}
             <section>
-              <div className="mb-4 text-lg font-black text-navy">📊 Puntaje por tema</div>
+              <div className="mb-4 text-lg font-black text-navy">📊 Dominio por tema</div>
               <div className="flex flex-col gap-2.5">
                 {detalle.perfil.map((p) => (
                   <div

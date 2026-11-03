@@ -149,6 +149,7 @@ export interface RankingEstudiante {
   nombre: string;
   apellido: string;
   lecciones_completadas: number;
+  niveles_aprobados: number;
   puntos_totales: number;
   racha_actual: number;
 }
