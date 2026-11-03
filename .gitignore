@@ -15,9 +15,5 @@ tmp/
 backend/scripts/evaluacion/*.bak
 
 # Credenciales reales de estudiantes y docentes (nunca al repo)
-datos/estudiantes/
-datos/credenciales_docentes.csv
-datos/mapeo_estudiantes_csv.csv
-datos/demo/
+datos/
 backend/scripts/debug/seed_piloto_pool.json
-datos/credenciales_produccion.csv
