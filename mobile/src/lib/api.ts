@@ -160,6 +160,7 @@ export interface RankingResponse {
 }
 
 export interface PerfilTema {
+  asignatura_id: number;
   asignatura: string;
   tema: string;
   puntaje_promedio: number;
@@ -315,6 +316,39 @@ export function getPerfil(): Promise<PerfilTema[]> {
 }
 
 // ----------------------- Chat + actividades (para Parte 2) -----------------------
+
+export interface Conversacion {
+  id: number;
+  titulo: string;
+  asignatura_id: number;
+  fecha_creacion: string;
+  fecha_ultimo_mensaje: string;
+}
+
+export interface ConversacionCompleta {
+  id: number;
+  titulo: string;
+  asignatura_id: number;
+  mensajes: {
+    id: number;
+    rol: "usuario" | "asistente";
+    contenido: string;
+    referencias: {
+      fragmentos?: ChatResponse["referencias"];
+      leccion?: ChatResponse["leccion"];
+    } | null;
+    fecha_creacion: string;
+  }[];
+}
+
+/** Conversaciones anteriores del estudiante (más reciente primero). */
+export function getConversaciones(): Promise<Conversacion[]> {
+  return request<Conversacion[]>("/chat/conversaciones");
+}
+
+export function getConversacion(id: number): Promise<ConversacionCompleta> {
+  return request<ConversacionCompleta>(`/chat/conversaciones/${id}`);
+}
 
 export function preguntar(
   pregunta: string,

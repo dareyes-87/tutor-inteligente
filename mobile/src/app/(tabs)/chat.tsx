@@ -13,7 +13,14 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { obtenerMisLibros, preguntar, type ChatResponse } from "@/lib/api";
+import {
+  getConversacion,
+  getConversaciones,
+  obtenerMisLibros,
+  preguntar,
+  type ChatResponse,
+  type Conversacion,
+} from "@/lib/api";
 import { Colors } from "@/lib/colors";
 import { Mascota } from "@/components/Mascota";
 
@@ -22,6 +29,7 @@ type Msg = {
   texto: string;
   referencias?: ChatResponse["referencias"];
   leccion?: ChatResponse["leccion"];
+  asignaturaId?: number;
 };
 
 export default function ChatScreen() {
@@ -34,6 +42,8 @@ export default function ChatScreen() {
   const [mensajes, setMensajes] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [verHistorial, setVerHistorial] = useState(false);
+  const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -71,7 +81,13 @@ export default function ChatScreen() {
       setConversacionId(res.conversacion_id);
       setMensajes((prev) => [
         ...prev,
-        { rol: "tutor", texto: res.respuesta, referencias: res.referencias, leccion: res.leccion },
+        {
+          rol: "tutor",
+          texto: res.respuesta,
+          referencias: res.referencias,
+          leccion: res.leccion,
+          asignaturaId,
+        },
       ]);
     } catch {
       setMensajes((prev) => [
@@ -80,6 +96,36 @@ export default function ChatScreen() {
       ]);
     } finally {
       setEnviando(false);
+    }
+  }
+
+  function alternarHistorial() {
+    if (!verHistorial) {
+      setConversaciones(null);
+      getConversaciones()
+        .then(setConversaciones)
+        .catch(() => setConversaciones([]));
+    }
+    setVerHistorial((v) => !v);
+  }
+
+  async function abrirConversacion(id: number) {
+    try {
+      const conv = await getConversacion(id);
+      setAsignaturaId(conv.asignatura_id);
+      setConversacionId(conv.id);
+      setMensajes(
+        conv.mensajes.map((m) => ({
+          rol: m.rol === "usuario" ? "me" : "tutor",
+          texto: m.contenido,
+          referencias: m.referencias?.fragmentos ?? [],
+          leccion: m.referencias?.leccion ?? null,
+          asignaturaId: conv.asignatura_id,
+        })),
+      );
+      setVerHistorial(false);
+    } catch {
+      setVerHistorial(false);
     }
   }
 
@@ -100,6 +146,9 @@ export default function ChatScreen() {
             <Text style={styles.enLinea}>En línea</Text>
           </View>
         </View>
+        <Pressable onPress={alternarHistorial} style={styles.nuevo} hitSlop={8} accessibilityRole="button">
+          <Text style={styles.nuevoText}>🕘 Anteriores</Text>
+        </Pressable>
         {mensajes.length > 0 && (
           <Pressable
             onPress={() => {
@@ -113,6 +162,31 @@ export default function ChatScreen() {
           </Pressable>
         )}
       </View>
+
+      {verHistorial && (
+        <View style={styles.historial}>
+          <Text style={styles.historialTitulo}>Conversaciones anteriores</Text>
+          {conversaciones === null ? (
+            <ActivityIndicator color={Colors.orange} />
+          ) : conversaciones.length === 0 ? (
+            <Text style={styles.historialVacio}>Aún no tienes conversaciones.</Text>
+          ) : (
+            <ScrollView style={{ maxHeight: 260 }}>
+              {conversaciones.map((c) => (
+                <Pressable key={c.id} onPress={() => abrirConversacion(c.id)} style={styles.historialItem}>
+                  <Text style={styles.historialItemTitulo} numberOfLines={1}>
+                    {c.titulo}
+                  </Text>
+                  <Text style={styles.historialItemMeta}>
+                    {asignaturas.find((a) => a.id === c.asignatura_id)?.nombre ?? "Asignatura"} ·{" "}
+                    {new Date(c.fecha_ultimo_mensaje).toLocaleDateString("es-GT", { day: "numeric", month: "short" })}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
       {/* Selector de asignatura (solo si hay más de una) */}
       {hayVariasAsignaturas ? (
@@ -197,10 +271,14 @@ export default function ChatScreen() {
                     <Pressable
                       accessibilityRole="button"
                       onPress={() =>
-                        // Práctica libre de la lección citada: no toca la ruta.
-                        router.push({
-                          pathname: "/leccion/[id]/practicar",
-                          params: { id: String(m.leccion!.id), libre: "1" },
+                        // Práctica libre de la lección citada en la pestaña Actividades: no toca la ruta.
+                        router.navigate({
+                          pathname: "/(tabs)/actividades",
+                          params: {
+                            asignatura: String(m.asignaturaId ?? asignaturaId ?? ""),
+                            leccion: String(m.leccion!.id),
+                            t: String(Date.now()),
+                          },
                         })
                       }
                       style={styles.ponAPrueba}
@@ -343,6 +421,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   refChipText: { color: "#92400E", fontSize: 11.5, fontWeight: "800" },
+  historial: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border, padding: 14 },
+  historialTitulo: { fontSize: 13, fontWeight: "800", color: "#5A6170", marginBottom: 8 },
+  historialVacio: { fontSize: 13, fontWeight: "700", color: Colors.textLight },
+  historialItem: { paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  historialItemTitulo: { fontSize: 14, fontWeight: "800", color: Colors.navy },
+  historialItemMeta: { fontSize: 12, fontWeight: "700", color: Colors.textLight, marginTop: 2 },
   ponAPrueba: {
     marginTop: 10,
     alignSelf: "flex-start",

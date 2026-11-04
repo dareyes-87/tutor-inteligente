@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProgressBar } from "@/components/ProgressBar";
@@ -16,6 +16,7 @@ const NIVEL: Record<string, { color: string; label: string }> = {
 export default function ProgresoScreen() {
   const [perfil, setPerfil] = useState<PerfilTema[] | null>(null);
   const [cargando, setCargando] = useState(true);
+  const router = useRouter();
 
   const cargar = useCallback(async () => {
     try {
@@ -98,9 +99,26 @@ export default function ProgresoScreen() {
                     </View>
                     <Text style={[styles.barVal, { color: nv.color }]}>{Math.round(p.puntaje_promedio)}</Text>
                   </View>
-                  <Text style={styles.meta}>
-                    {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
-                  </Text>
+                  <View style={styles.pie}>
+                    <Text style={styles.meta}>
+                      {p.total_actividades} {p.total_actividades === 1 ? "actividad" : "actividades"}
+                    </Text>
+                    {p.nivel !== "domina" && (
+                      // Práctica libre de ese tema en la pestaña Actividades (no toca la ruta).
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() =>
+                          router.navigate({
+                            pathname: "/(tabs)/actividades",
+                            params: { asignatura: String(p.asignatura_id), tema: p.tema, t: String(Date.now()) },
+                          })
+                        }
+                        style={styles.practicar}
+                      >
+                        <Text style={styles.practicarText}>Practicar</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               );
             })}
@@ -133,6 +151,9 @@ const styles = StyleSheet.create({
   barRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   barVal: { fontSize: 14, fontWeight: "900", width: 32, textAlign: "right" },
   meta: { fontSize: 12, fontWeight: "700", color: Colors.textLight, marginTop: 8 },
+  pie: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  practicar: { backgroundColor: Colors.blue, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7, marginTop: 8 },
+  practicarText: { color: Colors.white, fontSize: 13, fontWeight: "800" },
   vacio: { backgroundColor: Colors.white, borderRadius: 20, padding: 32, alignItems: "center", marginTop: 30, borderWidth: 1, borderColor: Colors.border },
   vacioTitulo: { fontSize: 17, fontWeight: "900", color: Colors.navy, textAlign: "center" },
   vacioSub: { fontSize: 13.5, fontWeight: "700", color: Colors.textLight, textAlign: "center", marginTop: 6 },

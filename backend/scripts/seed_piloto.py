@@ -68,6 +68,7 @@ from app.models.perfil_comprension import PerfilComprension, nivel_por_puntaje  
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion  # noqa: E402
 from app.models.usuario import RolUsuario, Usuario  # noqa: E402
 from costos_llm import Presupuesto, PresupuestoAgotado, agregar_argumento_max_usd  # noqa: E402
+from cuentas_demo import USUARIOS_DEMO  # noqa: E402
 
 ZONA = ZoneInfo("America/Guatemala")
 INICIO_PILOTO = date(2026, 9, 1)
@@ -97,7 +98,9 @@ CUENTAS_DE_PRUEBA = {"carlos"}  # activo en 4to; lo usan las pruebas automática
 GRADO_CSV = {"4to Primaria": 1, "5to Primaria": 2, "6to Primaria": 3,
              "1ro Basico": 5, "2do Basico": 6, "3ro Basico": 7}
 MOVER_FILAS = {30: 1, 31: 1, 62: 5, 67: 5}  # 6to -> 4to y 9no -> 7mo, mismo nivel y perfil típico
-CUENTAS_DEMO = {66: "jgarcia", 11: "naldana", 34: "layala", 61: "cpaz"}
+# Filas del CSV con cuenta fija en el mapeo (el resto se reparte al azar con SEMILLA); cambiarlas
+# rehace el mapeo. Las cuentas de la demo están en cuentas_demo.py.
+FILAS_FIJAS = {66: "jgarcia", 11: "naldana", 34: "layala", 61: "cpaz"}
 ESTUDIANTES_ESPERADOS = {1: 22, 2: 19, 3: 9, 5: 15, 6: 12, 7: 10}
 
 # Estimación de tokens por llamada (para --dry-run; la corrida real registra el uso real).
@@ -361,7 +364,7 @@ async def estudiantes_reales(db) -> dict[int, list[Usuario]]:
 def mapear(filas: list[dict], por_grado: dict[int, list[Usuario]]) -> dict[int, Usuario]:
     rng = random.Random(SEMILLA)
     por_username = {u.username: u for us in por_grado.values() for u in us}
-    asignado = {fila: por_username[u] for fila, u in CUENTAS_DEMO.items()}
+    asignado = {fila: por_username[u] for fila, u in FILAS_FIJAS.items()}
     for g, us in sorted(por_grado.items()):
         libres = [u for u in us if u not in asignado.values()]
         rng.shuffle(libres)
@@ -414,6 +417,21 @@ async def contar_piloto(db, estudiante_id: int) -> dict:
         "tasa": sum(puntajes) / len(puntajes) if puntajes else None,
         "dominio_inicio": nivel_csv(sum(puntajes[:w]) / w) if puntajes else None,
         "dominio_final": nivel_csv(sum(puntajes[-w:]) / w) if puntajes else None,
+    }
+
+
+async def contar_posterior(db, estudiante_id: int) -> dict:
+    """Uso posterior al piloto (desde el 2026-10-01, hora de Guatemala): resultados, consultas y
+    conversaciones nuevas. Lo borra limpiar_pruebas.py; verificar_seed.py lo reporta."""
+    corte = VENTANA_UTC[1]
+    return {
+        "resultados": (await db.execute(select(func.count()).select_from(ResultadoActividad).where(
+            ResultadoActividad.estudiante_id == estudiante_id, ResultadoActividad.fecha >= corte))).scalar(),
+        "consultas": (await db.execute(select(func.count()).select_from(Mensaje).join(Conversacion).where(
+            Conversacion.estudiante_id == estudiante_id, Mensaje.rol == RolMensaje.usuario,
+            Mensaje.fecha_creacion >= corte))).scalar(),
+        "conversaciones": (await db.execute(select(func.count()).select_from(Conversacion).where(
+            Conversacion.estudiante_id == estudiante_id, Conversacion.fecha_creacion >= corte))).scalar(),
     }
 
 
@@ -926,7 +944,7 @@ def escribir_mapeo(ruta: Path, filas, asignado, planes, nombres_grado) -> None:
         for r in sorted(filas, key=lambda r: r["fila"]):
             u, p = asignado[r["fila"]], planes[r["fila"]]
             w.writerow([r["fila"], u.id, u.username, u.nombre, u.apellido, r["grado"], nombres_grado[r["grado_id"]],
-                        "sí" if r["fila"] in CUENTAS_DEMO else "", "creciente" if p["creciente"] else "no creciente (opción A)",
+                        "sí" if u.username in USUARIOS_DEMO else "", "creciente" if p["creciente"] else "no creciente (opción A)",
                         "sí" if p["ok"] else "NO"])
 
 

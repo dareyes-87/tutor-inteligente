@@ -118,3 +118,16 @@ def test_limpiar_pruebas_reconoce_rondas_de_ruta():
     res += [SimpleNamespace(actividad_id=a, fecha=d2) for a in [3, 4]]  # bloque partido entre días
     rondas = lp.rondas_de_ruta(res, banco)
     assert [[r.actividad_id for r in x] for x in rondas] == [[0, 1, 2, 3, 4], [0, 1, 2], [3, 4]]
+
+
+def test_cuentas_demo_una_por_grado_del_piloto():
+    from sqlalchemy import create_engine, text
+
+    from app.config import settings
+    from cuentas_demo import CUENTAS_DEMO, USUARIOS_DEMO
+    assert len(CUENTAS_DEMO) == len(USUARIOS_DEMO) == len(sp.GRADO_CSV) == 6
+    with create_engine(settings.database_url_sync).connect() as c:
+        reales = dict(c.execute(text(
+            "select u.username, g.nombre from usuario u join grado g on g.id = u.grado_id"
+            " where u.rol = 'estudiante' and u.activo and u.username = any(:u)"), {"u": list(USUARIOS_DEMO)}).all())
+    assert {g: u for u, g in reales.items()} == CUENTAS_DEMO

@@ -8,6 +8,11 @@ dominio final. Mapa de calor de cada grado (docente.service.diagnostico): celdas
 menos MIN_LECCIONES_MAPA (6) lecciones por asignatura y con los tres niveles. Sale con código 1
 si algo no cuadra.
 
+Las comparaciones con las Tablas 14 y 15 cuentan SOLO el piloto (1–30 de septiembre, hora de
+Guatemala: contar_piloto filtra por VENTANA_UTC). El uso posterior se reporta aparte: las cuentas
+de demo (cuentas_demo.py) pueden tenerlo (ensayos); cualquier otra cuenta del piloto con uso
+posterior es una falla (correr limpiar_pruebas.py --aplicar).
+
 Criterio del mínimo de 6: el mapa de calor se llena con la ruta (lecciones 1–2, respetando los
 desbloqueos reales) y con la práctica libre / repaso de la página Actividades (cualquier lección
 del libro). Desde que la ruta pesa ~95/70/40 % según el nivel de uso, queda menos práctica para
@@ -27,7 +32,10 @@ from pathlib import Path
 from statistics import mean
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from seed_piloto import CIENCIAS, MATEMATICAS, AsyncSessionLocal, contar_piloto, leer_csv  # noqa: E402
+from cuentas_demo import USUARIOS_DEMO  # noqa: E402
+from seed_piloto import (  # noqa: E402
+    CIENCIAS, MATEMATICAS, AsyncSessionLocal, contar_piloto, contar_posterior, leer_csv,
+)
 
 from app.modules.docente.service import diagnostico  # noqa: E402
 
@@ -72,6 +80,18 @@ async def main_async(args) -> int:
     ok = dict(dist) == DOMINIO_FINAL
     errores += not ok
     print(f"Dominio final (BD / CSV): {dict(dist)} / {DOMINIO_FINAL}  {'OK' if ok else 'FALLA'}")
+    print("Uso posterior al piloto (desde el 2026-10-01):")
+    async with AsyncSessionLocal() as db:
+        for fila in sorted(filas):
+            username = mapeo[fila]["username"]
+            p = await contar_posterior(db, int(mapeo[fila]["estudiante_id"]))
+            demo = username in USUARIOS_DEMO
+            if demo or any(p.values()):
+                falla = not demo and any(p.values())
+                errores += falla
+                print(f"  {username:13} {'demo ' if demo else ''}{p['resultados']} resultados, "
+                      f"{p['consultas']} consultas, {p['conversaciones']} conversaciones"
+                      f"{'  FALLA: no es cuenta de demo' if falla else ''}")
     print("Mapa de calor (lecciones con celdas · domina/en_proceso/refuerzo):")
     async with AsyncSessionLocal() as db:
         for g in sorted({r["grado_id"] for r in filas.values()}):

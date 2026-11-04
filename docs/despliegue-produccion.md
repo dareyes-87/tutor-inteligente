@@ -132,6 +132,15 @@ otro Chroma 1.5.9 vacíos, compose project aparte) con estos tiempos reales:
 
 En Railway el paso 6 depende de su CPU (puede tardar varias veces más); lo demás es despreciable.
 
+0. **Limpiar el uso de prueba** posterior al piloto en la BD de trabajo, antes de copiarla: borra lo
+   posterior al 2026-09-30 de los estudiantes del piloto (salvo las cuentas de demo de
+   `backend/scripts/cuentas_demo.py`) y recalcula perfil, ruta, puntos y racha. Primero en dry-run;
+   `verificar_seed.py` debe dar OK después (falla si alguna cuenta que no es de demo conserva uso posterior).
+   ```bash
+   docker compose exec -T backend python scripts/limpiar_pruebas.py --mapeo /tmp/mapeo.csv            # dry-run
+   docker compose exec -T backend python scripts/limpiar_pruebas.py --mapeo /tmp/mapeo.csv --aplicar
+   docker compose exec -T backend python scripts/verificar_seed.py --csv /tmp/datos_simulados_cap5.csv --mapeo /tmp/mapeo.csv
+   ```
 1. **Copia local** (no se toca la BD de trabajo ni hace falta parar el backend; `createdb -T` exigía
    cerrar todas las conexiones a `tutor`, por eso se usa `pg_dump | psql`):
    ```bash

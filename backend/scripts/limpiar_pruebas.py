@@ -1,5 +1,6 @@
 """
-Limpia el uso de PRUEBA posterior al piloto en los 72 estudiantes del piloto (los del mapeo).
+Limpia el uso de PRUEBA posterior al piloto en los estudiantes del piloto (los 72 del mapeo),
+salvo las cuentas de demo (cuentas_demo.py), que lo conservan para ensayar; --todas las incluye.
 
 Borra, por estudiante, lo que tenga fecha posterior al 2026-09-30 23:59 (hora de Guatemala):
 resultados de actividades (y las actividades que solo esos resultados usaban), mensajes y
@@ -17,6 +18,7 @@ Por defecto es --dry-run (muestra qué borraría y qué cambiaría, y deshace); 
 Uso (dentro del contenedor):
   python scripts/limpiar_pruebas.py --mapeo /tmp/mapeo.csv            # dry-run
   python scripts/limpiar_pruebas.py --mapeo /tmp/mapeo.csv --aplicar
+  python scripts/limpiar_pruebas.py --mapeo /tmp/mapeo.csv --aplicar --todas   # también las de demo
 """
 import argparse
 import asyncio
@@ -24,13 +26,14 @@ import csv
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cuentas_demo import USUARIOS_DEMO  # noqa: E402
 from seed_piloto import (  # noqa: E402
-    ACTIVIDADES_POR_RONDA, APROBADA, ZONA, _cargar_pool, iniciar_leccion_si_falta, leccion_actual,
-    libros_y_lecciones, recalcular_racha,
+    ACTIVIDADES_POR_RONDA, APROBADA, VENTANA_UTC, ZONA, _cargar_pool, iniciar_leccion_si_falta,
+    leccion_actual, libros_y_lecciones, recalcular_racha,
 )
 from sqlalchemy import delete, func, select, update  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
@@ -44,7 +47,7 @@ from app.models.perfil_comprension import PerfilComprension  # noqa: E402
 from app.models.progreso_leccion import EstadoLeccion, ProgresoLeccion  # noqa: E402
 from app.models.usuario import Usuario  # noqa: E402
 
-CORTE = datetime(2026, 10, 1, tzinfo=ZONA)  # posterior a 2026-09-30 23:59 en Guatemala
+CORTE = VENTANA_UTC[1]  # 2026-10-01 00:00 en Guatemala: posterior a 2026-09-30 23:59
 
 
 async def foto(db, est_id: int) -> dict:
@@ -155,7 +158,11 @@ async def rehacer_ruta(db, est: Usuario, banco: dict, libros: dict) -> None:
 
 async def main_async(args) -> int:
     with open(args.mapeo, encoding="utf-8") as f:
-        ids = [int(m["estudiante_id"]) for m in csv.DictReader(f)]
+        mapeo = list(csv.DictReader(f))
+    ids = [int(m["estudiante_id"]) for m in mapeo]
+    faltan = USUARIOS_DEMO - {m["username"] for m in mapeo}
+    if faltan:
+        sys.exit(f"cuentas de demo que no están en el mapeo del piloto: {sorted(faltan)}")
     pool = _cargar_pool()
     banco = {i: (clave, pos) for clave, v in pool["actividades"].items() for pos, i in enumerate(v)}
     async with engine.connect() as conn:
@@ -166,6 +173,9 @@ async def main_async(args) -> int:
         cambiados, distintos_sin_borrar = 0, []
         for est_id in ids:
             est = (await db.execute(select(Usuario).where(Usuario.id == est_id))).scalar_one()
+            if est.username in USUARIOS_DEMO and not args.todas:
+                print(f"{est.username:14} cuenta de demo: se conserva (usar --todas para limpiarla)")
+                continue
             antes = await foto(db, est_id)
             borrado = await borrar_posteriores(db, est_id)
             await rehacer_perfil(db, est_id)
@@ -208,6 +218,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mapeo", type=Path, required=True, help="mapeo fila -> estudiante (los 72 del piloto)")
     ap.add_argument("--aplicar", action="store_true", help="guarda los cambios (por defecto, dry-run)")
+    ap.add_argument("--todas", action="store_true", help="limpia también las cuentas de demo")
     sys.exit(asyncio.run(main_async(ap.parse_args())))
 
 
