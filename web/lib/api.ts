@@ -36,12 +36,20 @@ export interface ReferenciaFragment {
   page_num: number | null;
   libro_id: number | null;
   distance: number | null;
+  libro_titulo?: string | null;
+}
+
+/** Lección de la página principal citada: "🎯 Pon a prueba lo que aprendiste". */
+export interface LeccionCitada {
+  id: number;
+  nombre: string;
 }
 
 export interface ChatResponse {
   conversacion_id: number;
   respuesta: string;
   referencias: ReferenciaFragment[];
+  leccion?: LeccionCitada | null;
 }
 
 export interface Conversacion {
@@ -175,8 +183,21 @@ export function getConversaciones(): Promise<Conversacion[]> {
   return request<Conversacion[]>("/chat/conversaciones");
 }
 
-export function getConversacion(id: number): Promise<unknown> {
-  return request<unknown>(`/chat/conversaciones/${id}`);
+export interface ConversacionCompleta {
+  id: number;
+  titulo: string;
+  asignatura_id: number;
+  mensajes: {
+    id: number;
+    rol: "usuario" | "asistente";
+    contenido: string;
+    referencias: { fragmentos?: ReferenciaFragment[]; leccion?: LeccionCitada | null } | null;
+    fecha_creacion: string;
+  }[];
+}
+
+export function getConversacion(id: number): Promise<ConversacionCompleta> {
+  return request<ConversacionCompleta>(`/chat/conversaciones/${id}`);
 }
 
 // ----------------------- Actividades -----------------------
@@ -187,6 +208,15 @@ export type TipoActividad =
   | "completar"
   | "ordenar"
   | "respuesta_corta";
+
+/** Nombre visible de cada tipo, con tildes ("OPCIÓN MÚLTIPLE" en mayúsculas). */
+export const TIPO_ETIQUETA: Record<TipoActividad, string> = {
+  opcion_multiple: "Opción múltiple",
+  verdadero_falso: "Verdadero o falso",
+  completar: "Completar",
+  ordenar: "Ordenar",
+  respuesta_corta: "Respuesta corta",
+};
 
 /** Actividad generada por el backend (sin la respuesta correcta). */
 export interface ActividadResponse {
@@ -248,6 +278,7 @@ export type NivelComprension = "domina" | "en_proceso" | "refuerzo";
 /** Una entrada del perfil de comprensión del estudiante (por tema). */
 export interface PerfilTema {
   asignatura: string;
+  asignatura_id: number;
   tema: string;
   puntaje_promedio: number; // 0–100
   nivel: NivelComprension;

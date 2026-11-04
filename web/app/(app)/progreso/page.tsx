@@ -245,13 +245,22 @@ function TemaRow({
           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: nv.bar }} />
         </div>
       </div>
-      <div className="w-auto flex-none text-right sm:w-[180px]">
+      <div className="flex w-auto flex-none flex-col items-end gap-2 sm:w-[180px]">
         <span
           className="inline-block rounded-full px-4 py-2 text-[13px] font-extrabold"
           style={{ background: nv.chipBg, color: nv.chipColor }}
         >
           {nv.chip}
         </span>
+        {p.nivel !== "domina" && (
+          // Práctica libre de ese tema (no toca la ruta).
+          <Link
+            href={`/actividades?asignatura=${p.asignatura_id}&tema=${encodeURIComponent(p.tema)}`}
+            className="rounded-[12px] bg-brand-blue px-4 py-1.5 text-[13px] font-extrabold text-white"
+          >
+            Practicar
+          </Link>
+        )}
       </div>
     </div>
   );

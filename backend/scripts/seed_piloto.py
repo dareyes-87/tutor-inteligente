@@ -626,13 +626,23 @@ async def leccion_actual(db, libro_lecciones: dict, estudiante_id: int) -> tuple
     return ultima, 3
 
 
+async def iniciar_leccion_si_falta(db, leccion: Leccion, estudiante_id: int) -> None:
+    """Como el botón Empezar de la ruta: una lección disponible pasa a en_progreso."""
+    from app.modules.lecciones.service import iniciar_leccion
+    prog = (await db.execute(select(ProgresoLeccion).where(
+        ProgresoLeccion.estudiante_id == estudiante_id, ProgresoLeccion.leccion_id == leccion.id))).scalar_one_or_none()
+    if prog is None or prog.estado == EstadoLeccion.disponible:
+        if leccion.orden == 1 or prog is not None:
+            await iniciar_leccion(estudiante_id, leccion.id, db)
+
+
 async def sembrar_estudiante(db, fila: dict, est: Usuario, plan: dict, libros: dict, pool: dict, presupuesto,
                              con_chat: bool = True) -> None:
     from freezegun import freeze_time
 
     from app.modules.actividades.service import responder_actividad
     from app.modules.chat.service import RESPUESTA_LLM_NO_DISPONIBLE, procesar_pregunta
-    from app.modules.lecciones.service import completar_nivel, iniciar_leccion
+    from app.modules.lecciones.service import completar_nivel
 
     grado = (await db.execute(select(Grado.nombre).where(Grado.id == est.grado_id))).scalar()
     rng = random.Random(SEMILLA * 1000 + fila["fila"])
@@ -667,11 +677,7 @@ async def sembrar_estudiante(db, fila: dict, est: Usuario, plan: dict, libros: d
                 if b["tipo"] == "ruta":
                     leccion, nivel = await leccion_actual(db, libro, est.id)
                     intento = intentos[(leccion.id, nivel)]
-                    prog = (await db.execute(select(ProgresoLeccion).where(
-                        ProgresoLeccion.estudiante_id == est.id, ProgresoLeccion.leccion_id == leccion.id))).scalar_one_or_none()
-                    if prog is None or prog.estado == EstadoLeccion.disponible:
-                        if leccion.orden == 1 or prog is not None:
-                            await iniciar_leccion(est.id, leccion.id, db)
+                    await iniciar_leccion_si_falta(db, leccion, est.id)
                 else:
                     leccion, nivel = libro["lecciones"][b["orden"]], "p"
                 acts = await actividades_de_ronda(db, pool, leccion, nivel, asig, est, presupuesto,

@@ -60,6 +60,7 @@ class ResultadoResponse(BaseModel):
 
 class PerfilResponse(BaseModel):
     asignatura: str
+    asignatura_id: int
     tema: str
     puntaje_promedio: float
     nivel: str  # "domina", "en_proceso", "refuerzo"

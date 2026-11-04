@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { obtenerMisLibros, preguntar, type ChatResponse } from "@/lib/api";
@@ -20,10 +21,12 @@ type Msg = {
   rol: "me" | "tutor";
   texto: string;
   referencias?: ChatResponse["referencias"];
+  leccion?: ChatResponse["leccion"];
 };
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   // Asignaturas del chat = las de los libros del grado del estudiante (sin repetir).
   const [asignaturas, setAsignaturas] = useState<{ id: number; nombre: string }[]>([]);
   const [asignaturaId, setAsignaturaId] = useState<number | null>(null);
@@ -68,7 +71,7 @@ export default function ChatScreen() {
       setConversacionId(res.conversacion_id);
       setMensajes((prev) => [
         ...prev,
-        { rol: "tutor", texto: res.respuesta, referencias: res.referencias },
+        { rol: "tutor", texto: res.respuesta, referencias: res.referencias, leccion: res.leccion },
       ]);
     } catch {
       setMensajes((prev) => [
@@ -157,7 +160,14 @@ export default function ChatScreen() {
           )}
 
           {mensajes.map((m, i) => {
-            const conPagina = (m.referencias ?? []).filter((r) => r.page_num != null);
+            // Una ficha por página (varios fragmentos pueden ser de la misma).
+            const conPagina = [
+              ...new Map(
+                (m.referencias ?? [])
+                  .filter((r) => r.page_num != null)
+                  .map((r) => [`${r.libro_id}:${r.page_num}`, r] as const),
+              ).values(),
+            ];
             return (
               <View key={i} style={[styles.fila, m.rol === "me" ? styles.filaMe : styles.filaTutor]}>
                 <View
@@ -175,10 +185,28 @@ export default function ChatScreen() {
                     <View style={styles.refsRow}>
                       {conPagina.map((r, j) => (
                         <View key={j} style={styles.refChip}>
-                          <Text style={styles.refChipText}>📖 Página {r.page_num}</Text>
+                          <Text style={styles.refChipText}>
+                            📖 Página {r.page_num}
+                            {r.libro_titulo ? ` · ${r.libro_titulo}` : ""}
+                          </Text>
                         </View>
                       ))}
                     </View>
+                  )}
+                  {m.rol === "tutor" && m.leccion && conPagina.length > 0 && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        // Práctica libre de la lección citada: no toca la ruta.
+                        router.push({
+                          pathname: "/leccion/[id]/practicar",
+                          params: { id: String(m.leccion!.id), libre: "1" },
+                        })
+                      }
+                      style={styles.ponAPrueba}
+                    >
+                      <Text style={styles.ponAPruebaText}>🎯 Pon a prueba lo que aprendiste</Text>
+                    </Pressable>
                   )}
                 </View>
               </View>
@@ -315,6 +343,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   refChipText: { color: "#92400E", fontSize: 11.5, fontWeight: "800" },
+  ponAPrueba: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    borderWidth: 2,
+    borderColor: Colors.orange,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  ponAPruebaText: { color: Colors.orange, fontSize: 13, fontWeight: "800" },
 
   inputRow: {
     flexDirection: "row",

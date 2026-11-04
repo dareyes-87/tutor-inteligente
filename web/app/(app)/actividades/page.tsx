@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -45,12 +45,21 @@ export default function ActividadesPage() {
   const [lecciones, setLecciones] = useState<LeccionEnRuta[]>([]);
   const [leccionId, setLeccionId] = useState<number | null>(null);
   const libro = libros.find((l) => l.libro_id === libroId) ?? null;
+  const [tema, setTema] = useState("");
+  // Lección pedida por la URL (?asignatura=&leccion=&tema=, desde el chat o Mi progreso):
+  // se aplica una vez, cuando carga la ruta de ese libro.
+  const leccionInicial = useRef<number | null>(null);
 
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const asignatura = Number(q.get("asignatura")) || null;
+    leccionInicial.current = Number(q.get("leccion")) || null;
     obtenerMisLibros()
       .then((ls) => {
+        setTema(q.get("tema") ?? "");
         setLibros(ls);
-        if (ls.length) setLibroId(ls[0].libro_id);
+        const pedido = ls.find((l) => l.asignatura_id === asignatura);
+        if (ls.length) setLibroId((pedido ?? ls[0]).libro_id);
       })
       .catch(() => toast.error("No se pudieron cargar tus libros"));
   }, []);
@@ -61,7 +70,13 @@ export default function ActividadesPage() {
     if (libroId === null) return;
     let activo = true;
     obtenerRuta(libroId)
-      .then((r) => activo && setLecciones(r.lecciones))
+      .then((r) => {
+        if (!activo) return;
+        setLecciones(r.lecciones);
+        const pedida = r.lecciones.find((l) => l.id === leccionInicial.current);
+        if (pedida) setLeccionId(pedida.id);
+        leccionInicial.current = null;
+      })
       .catch(() => {});
     return () => {
       activo = false;
@@ -69,7 +84,8 @@ export default function ActividadesPage() {
   }, [libroId]);
 
   const [fase, setFase] = useState<Fase>("seleccion");
-  const [tema, setTema] = useState("");
+  // Preguntas ya salidas en esta sesión: "Otra igual" se las pasa al generador para no repetirlas.
+  const [preguntasSesion, setPreguntasSesion] = useState<string[]>([]);
   const [actividad, setActividad] = useState<ActividadResponse | null>(null);
   const [resultado, setResultado] = useState<ResultadoResponse | null>(null);
 
@@ -87,9 +103,11 @@ export default function ActividadesPage() {
     try {
       if (!libro) throw new ApiError(400, "Aún no tienes libros asignados");
       const act = leccionId
-        ? await generarActividad(libro.asignatura_id, tipo, null, leccionId)
-        : await generarActividad(libro.asignatura_id, tipo, tema.trim() || null);
+        ? await generarActividad(libro.asignatura_id, tipo, null, leccionId, [], preguntasSesion)
+        : await generarActividad(libro.asignatura_id, tipo, tema.trim() || null, null, [], preguntasSesion);
       setActividad(act);
+      const texto = textoPregunta(act);
+      if (texto) setPreguntasSesion((prev) => [...prev, texto]);
       if (tipo === "ordenar") {
         const c = act.contenido as Record<string, unknown>;
         setOrden(((c.elementos_desordenados as string[]) ?? []).slice());
@@ -190,10 +208,22 @@ export default function ActividadesPage() {
       )}
 
       {fase === "resultado" && actividad && resultado && (
-        <Resultado actividad={actividad} resultado={resultado} onReiniciar={reiniciar} />
+        <Resultado
+          actividad={actividad}
+          resultado={resultado}
+          onOtraIgual={() => generar(actividad.tipo)}
+          onCambiarTipo={reiniciar}
+        />
       )}
     </div>
   );
+}
+
+/** Texto de la pregunta según el tipo (el mismo criterio que la práctica de la ruta). */
+function textoPregunta(a: ActividadResponse): string | null {
+  const c = a.contenido as Record<string, unknown>;
+  const t = c.pregunta ?? c.afirmacion ?? c.oracion ?? c.instruccion;
+  return typeof t === "string" && t.trim() ? t : null;
 }
 
 /* ---------------- Selección ---------------- */
@@ -530,11 +560,13 @@ function Pregunta({
 function Resultado({
   actividad,
   resultado,
-  onReiniciar,
+  onOtraIgual,
+  onCambiarTipo,
 }: {
   actividad: ActividadResponse;
   resultado: ResultadoResponse;
-  onReiniciar: () => void;
+  onOtraIgual: () => void;
+  onCambiarTipo: () => void;
 }) {
   const aprobado = resultado.puntaje >= 60;
   const rc = resultado.respuesta_correcta as Record<string, unknown>;
@@ -594,13 +626,21 @@ function Resultado({
         </div>
       )}
 
-      <button
-        onClick={onReiniciar}
-        className="btn-relief mt-7 rounded-[16px] bg-brand-blue px-8 py-3.5 text-base font-black text-white"
-        style={{ ["--btn-relief-color" as string]: "var(--brand-blue-dark)" }}
-      >
-        Otra actividad →
-      </button>
+      <div className="mt-7 flex flex-wrap justify-center gap-3">
+        <button
+          onClick={onCambiarTipo}
+          className="rounded-[16px] border-2 border-border bg-white px-6 py-3.5 text-base font-extrabold text-[#5A6170] hover:bg-muted/60"
+        >
+          ← Cambiar tipo
+        </button>
+        <button
+          onClick={onOtraIgual}
+          className="btn-relief rounded-[16px] bg-brand-blue px-8 py-3.5 text-base font-black text-white"
+          style={{ ["--btn-relief-color" as string]: "var(--brand-blue-dark)" }}
+        >
+          🔁 Otra igual
+        </button>
+      </div>
     </div>
   );
 }

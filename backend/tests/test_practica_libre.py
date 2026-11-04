@@ -48,6 +48,10 @@ async def test_practica_libre_en_leccion_bloqueada_no_toca_la_ruta(token_estudia
         perfil = {p["tema"]: p["total_actividades"]
                   for p in (await client.get("/actividades/perfil", headers=h_est)).json()}
         assert perfil[act["tema"]] == perfil_antes.get(act["tema"], 0) + 1
+        # Mi progreso abre la práctica de un tema con su asignatura: el perfil trae el id.
+        fila_perfil = next(p for p in (await client.get("/actividades/perfil", headers=h_est)).json()
+                           if p["tema"] == act["tema"])
+        assert fila_perfil["asignatura_id"] == libro["asignatura_id"]
 
         # Y para el mapa de calor del docente, en la celda de esa lección.
         diag = (await client.get(f"/docente/diagnostico?libro_id={libro['libro_id']}", headers=h_doc)).json()

@@ -16,6 +16,7 @@ import {
   type LeccionEnRuta,
   type RankingResponse,
   type ResultadoResponse,
+  TIPO_ETIQUETA,
 } from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
 import {
@@ -492,7 +493,7 @@ function Ejercicio({
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-1 text-xs font-extrabold uppercase tracking-wider text-brand-orange">
-        {act.tipo.replace("_", " ")}
+        {TIPO_ETIQUETA[act.tipo]}
       </div>
       <div className="mb-7 text-[24px] font-black leading-snug text-white">{pregunta}</div>
 

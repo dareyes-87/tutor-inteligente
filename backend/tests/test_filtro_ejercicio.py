@@ -12,6 +12,14 @@ def test_paso_con_que_necesitamos_saber_es_teoria():
     )
 
 
+def test_paso_con_que_necesito_saber_es_teoria():
+    # Ciencias 9no, p. 115: la definición de simbiosis va detrás de "Paso 4".
+    assert not es_ejercicio_del_libro(
+        "SESIÓN 5 UNIDAD 5 Paso 4 Leo el texto y realizo un cuadro de resumen. ¿Qué necesito saber? "
+        "Relaciones interactivas Simbiosis: relación estrecha entre dos especies"
+    )
+
+
 def test_procedimiento_de_matematicas_es_teoria():
     assert not es_ejercicio_del_libro("Para reducir términos semejantes: Paso 1. Se agrupan los términos.")
     assert not es_ejercicio_del_libro("Paso 1: trazamos un eje horizontal con el nombre «Deportes»")

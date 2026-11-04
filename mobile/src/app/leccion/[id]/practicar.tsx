@@ -28,6 +28,7 @@ import {
   type LeccionEnRuta,
   type RankingResponse,
   type ResultadoResponse,
+  TIPO_ETIQUETA,
 } from "@/lib/api";
 import { Colors } from "@/lib/colors";
 import {
@@ -43,13 +44,18 @@ export default function PracticarScreen() {
     fragmentIds: fragmentIdsParam,
     nivel: nivelParam,
     conceptos: conceptosParam,
+    libre: libreParam,
   } = useLocalSearchParams<{
     id: string;
     fragmentIds?: string;
     nivel?: string;
     conceptos?: string;
+    libre?: string;
   }>();
   const leccionId = Number(id);
+  // Práctica libre / repaso (desde el chat): cualquier lección, también bloqueada; cuenta
+  // para el perfil por tema pero NO toca la ruta (no inicia la lección ni llama a completar-actividad).
+  const libre = libreParam === "1";
   const nivel = Number(nivelParam) || 1;
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -91,8 +97,8 @@ export default function PracticarScreen() {
           }
         }
         if (!leccion) throw new Error("no encontrada");
-        if (leccion.estado === "bloqueada") throw new Error("bloqueada");
-        if (leccion.estado === "disponible") await iniciarLeccion(leccionId);
+        if (!libre && leccion.estado === "bloqueada") throw new Error("bloqueada");
+        if (!libre && leccion.estado === "disponible") await iniciarLeccion(leccionId);
         const tema = leccion.tema_clave || leccion.nombre;
         // Reusar los fragmentos que vio la micro-lección (vienen por params).
         let fragmentIds: number[] = [];
@@ -113,7 +119,7 @@ export default function PracticarScreen() {
         // generando (o están listas) en segundo plano: se consumen aquí. Si no
         // hay pre-carga (entró directo) o quedó vacía, se generan sobre la
         // marcha. La generación es SECUENCIAL para no repetir preguntas.
-        const precargadas = tomarActividadesPrecargadas(leccionId, nivel);
+        const precargadas = libre ? null : tomarActividadesPrecargadas(leccionId, nivel);
         let generadas = precargadas
           ? await precargadas
           : await generarActividadesSesion({ leccionId, asignaturaId, tema, fragmentIds, conceptos });
@@ -202,6 +208,10 @@ export default function PracticarScreen() {
     setDuracion(Math.round((Date.now() - inicio) / 1000));
     const aprobadas = resultados.filter((r) => r.puntaje >= 70).length;
     const ultimoPuntaje = resultados.length ? resultados[resultados.length - 1].puntaje : 0;
+    if (libre) {
+      setFase("resultado");
+      return;
+    }
     try {
       // total real de la sesión: el umbral de aprobación es proporcional (no fijo).
       const res = await completarNivel(leccionId, ultimoPuntaje, nivel, aprobadas, acts.length);
@@ -273,7 +283,9 @@ export default function PracticarScreen() {
     const scale = starAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] });
     const aprobado = resultadoNivel?.aprobado ?? false;
     const domino = aprobado && resultadoNivel?.nivel_completado === 3;
-    const titulo = domino
+    const titulo = libre
+      ? "¡Práctica terminada! 🎯"
+      : domino
       ? "¡Lección Dominada! 👑"
       : aprobado
         ? `¡Nivel ${nivel} completado! 🎉`
@@ -297,6 +309,11 @@ export default function PracticarScreen() {
           {domino ? "👑 ⭐⭐⭐" : "⭐ 🎉 ⭐"}
         </Animated.Text>
         <Text style={styles.resultTitulo}>{titulo}</Text>
+        {libre && (
+          <Text style={styles.resultMensaje}>
+            Cuenta para tu progreso por tema. Tu ruta no cambia.
+          </Text>
+        )}
         {!!resultadoNivel?.mensaje_feedback && (
           <Text style={styles.resultMensaje}>{resultadoNivel.mensaje_feedback}</Text>
         )}
@@ -362,7 +379,7 @@ export default function PracticarScreen() {
             <Text style={[styles.botonGrandeText, { fontSize: 16 }]}>Continuar al Nivel {nivel + 1} →</Text>
           </Pressable>
         )}
-        {!aprobado && (
+        {!aprobado && !libre && (
           <Pressable onPress={irEstudiar} style={[styles.botonGrande, { backgroundColor: Colors.orange, marginTop: 24, paddingHorizontal: 32 }]}>
             <Text style={[styles.botonGrandeText, { fontSize: 16 }]}>Intentar de nuevo 🔄</Text>
           </Pressable>
@@ -378,7 +395,9 @@ export default function PracticarScreen() {
         )}
 
         <Pressable onPress={() => router.dismissAll()} style={{ marginTop: 14, paddingVertical: 10 }}>
-          <Text style={{ color: Colors.white, fontWeight: "800", fontSize: 14 }}>Volver a Mi Ruta</Text>
+          <Text style={{ color: Colors.white, fontWeight: "800", fontSize: 14 }}>
+            {libre ? "Volver" : "Volver a Mi Ruta"}
+          </Text>
         </Pressable>
       </View>
     );
@@ -418,7 +437,7 @@ export default function PracticarScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <Text style={styles.tipoLabel}>{act.tipo.replace("_", " ").toUpperCase()}</Text>
+        <Text style={styles.tipoLabel}>{TIPO_ETIQUETA[act.tipo].toUpperCase()}</Text>
         <Text style={styles.pregunta}>{pregunta}</Text>
 
         {/* opción múltiple */}

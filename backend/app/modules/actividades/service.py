@@ -336,6 +336,7 @@ async def obtener_perfil_estudiante(
     return [
         {
             "asignatura": nombre,
+            "asignatura_id": perfil.asignatura_id,
             "tema": perfil.tema,
             "puntaje_promedio": round(perfil.puntaje_promedio, 1),
             "nivel": perfil.nivel,

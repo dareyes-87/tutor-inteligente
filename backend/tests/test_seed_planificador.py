@@ -105,3 +105,16 @@ def test_reintento_de_nivel_usa_banco_nuevo():
     assert pasos == [(sp.CIENCIAS, 1, 1, 0), (sp.CIENCIAS, 1, 1, 1)]
     assert sp.clave_banco(101, 1, 0) != sp.clave_banco(101, 1, 1)
     assert sp.avance(estado)["niveles"] == 1
+
+
+def test_limpiar_pruebas_reconoce_rondas_de_ruta():
+    # Banco del seed: actividad -> (lección:nivel[:intento], posición). Práctica ("p") no es ruta;
+    # una ronda nueva empieza en la 1ª actividad del banco aunque el banco se repita.
+    import limpiar_pruebas as lp
+    banco = {i: ("101:1", i) for i in range(5)} | {10 + i: ("101:p", i) for i in range(3)}
+    from datetime import datetime, timezone
+    d1, d2 = datetime(2026, 9, 10, 18, tzinfo=timezone.utc), datetime(2026, 9, 12, 18, tzinfo=timezone.utc)
+    res = [SimpleNamespace(actividad_id=a, fecha=d1) for a in [10, 11, 0, 1, 2, 3, 4, 12, 0, 1, 2]]
+    res += [SimpleNamespace(actividad_id=a, fecha=d2) for a in [3, 4]]  # bloque partido entre días
+    rondas = lp.rondas_de_ruta(res, banco)
+    assert [[r.actividad_id for r in x] for x in rondas] == [[0, 1, 2, 3, 4], [0, 1, 2], [3, 4]]

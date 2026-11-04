@@ -14,13 +14,21 @@ class ReferenciaFragment(BaseModel):
     page_num: int | None
     libro_id: int | None
     distance: float | None
+    libro_titulo: str | None = None
+
+
+class LeccionCitada(BaseModel):
+    """Lección de la página principal citada (para la práctica libre desde el chat)."""
+    id: int
+    nombre: str
 
 
 class ChatResponse(BaseModel):
     """La respuesta del tutor."""
     conversacion_id: int
     respuesta: str
-    referencias: list[ReferenciaFragment]
+    referencias: list[ReferenciaFragment]  # solo las páginas que la respuesta usó
+    leccion: LeccionCitada | None = None
 
 
 class ConversacionResponse(BaseModel):

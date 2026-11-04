@@ -170,7 +170,14 @@ export interface PerfilTema {
 export interface ChatResponse {
   conversacion_id: number;
   respuesta: string;
-  referencias: { page_num: number | null; libro_id: number | null; distance: number | null }[];
+  referencias: {
+    page_num: number | null;
+    libro_id: number | null;
+    distance: number | null;
+    libro_titulo?: string | null;
+  }[];
+  // Lección de la página principal citada: "🎯 Pon a prueba lo que aprendiste".
+  leccion?: { id: number; nombre: string } | null;
 }
 
 // ----------------------- Auth -----------------------
@@ -325,6 +332,15 @@ export type TipoActividad =
   | "completar"
   | "ordenar"
   | "respuesta_corta";
+
+/** Nombre visible de cada tipo, con tildes ("OPCIÓN MÚLTIPLE" en mayúsculas). */
+export const TIPO_ETIQUETA: Record<TipoActividad, string> = {
+  opcion_multiple: "Opción múltiple",
+  verdadero_falso: "Verdadero o falso",
+  completar: "Completar",
+  ordenar: "Ordenar",
+  respuesta_corta: "Respuesta corta",
+};
 
 export interface ActividadResponse {
   id: number;

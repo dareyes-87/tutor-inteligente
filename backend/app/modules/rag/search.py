@@ -201,8 +201,10 @@ _MARCADORES_EJERCICIO = (
 # Libros del MINEDUC de básico (2026-10, variante V5 del simulador). En las Guías
 # de Ciencias "Paso N" es la cabecera de un paso de actividad ("Paso 1 Comparamos…");
 # en Matemáticas "Paso 1." / "Paso 1:" es un procedimiento (teoría), de ahí el
-# lookahead. "¿Qué (más) necesitamos saber?" introduce la teoría de la Guía.
+# lookahead. "¿Qué (más) necesitamos saber?" introduce la teoría de la Guía; en Ciencias 9no
+# va en singular ("¿Qué necesito saber?", 20 fragmentos: p. ej. la definición de simbiosis, p. 115).
 _PASO_GUIA = re.compile(r"\bpaso\s+\d+(?![\d.:])")
+_TEORIA_GUIA = re.compile(r"necesit(?:amos|o)\s+saber")
 # Instrucción numerada de Matemática ("1. Escriba…", "2. Calcule…"); verbos
 # contados en 1B/2B/3B.
 _INSTRUCCION_NUMERADA = re.compile(
@@ -230,7 +232,7 @@ def es_ejercicio_del_libro(texto: str) -> bool:
     definiciones (decimales p. 65, divisibilidad p. 34). Ver
     docs/limitaciones-conocidas.md.
 
-    Libros de básico: "Paso N" de Guía sin "necesitamos saber", o instrucción
+    Libros de básico: "Paso N" de Guía sin "necesitamos/necesito saber", o instrucción
     numerada sin "Ejemplo" (el ejemplo resuelto se conserva como teoría).
     """
     t = (texto or "").lower()
@@ -240,7 +242,7 @@ def es_ejercicio_del_libro(texto: str) -> bool:
         normalizado = re.sub(r"\s+", " ", t)
         if any(marcador in normalizado for marcador in _MARCADORES_EJERCICIO):
             return True
-    if _PASO_GUIA.search(t) and "necesitamos saber" not in t:
+    if _PASO_GUIA.search(t) and not _TEORIA_GUIA.search(t):
         return True
     return bool(_INSTRUCCION_NUMERADA.search(t)) and "ejemplo" not in t
 

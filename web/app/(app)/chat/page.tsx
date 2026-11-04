@@ -1,10 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
-import { preguntar, ApiError, type ReferenciaFragment } from "@/lib/api";
+import {
+  getConversacion,
+  getConversaciones,
+  preguntar,
+  ApiError,
+  type Conversacion,
+  type LeccionCitada,
+  type ReferenciaFragment,
+} from "@/lib/api";
 import { ASIGNATURAS } from "@/lib/constants";
 import { Mascota } from "@/components/mascota";
 
@@ -12,6 +21,8 @@ interface ChatMessage {
   rol: "usuario" | "asistente";
   contenido: string;
   referencias?: ReferenciaFragment[];
+  leccion?: LeccionCitada | null;
+  asignaturaId?: number;
 }
 
 // Estilos del markdown del tutor. Tailwind resetea listas (sin viñetas/números)
@@ -39,7 +50,12 @@ const mdComponents = {
 };
 
 function Referencias({ refs }: { refs: ReferenciaFragment[] }) {
-  const conPagina = refs.filter((r) => r.page_num != null);
+  // Una ficha por página (varios fragmentos pueden ser de la misma).
+  const conPagina = [
+    ...new Map(
+      refs.filter((r) => r.page_num != null).map((r) => [`${r.libro_id}:${r.page_num}`, r]),
+    ).values(),
+  ];
   if (conPagina.length === 0) return null;
   return (
     <div className="mt-2 flex flex-wrap gap-2">
@@ -49,10 +65,64 @@ function Referencias({ refs }: { refs: ReferenciaFragment[] }) {
           className="inline-flex items-center gap-1.5 rounded-full bg-accent px-[13px] py-[7px] text-[12.5px] font-extrabold text-accent-foreground"
         >
           📖 Página {r.page_num}
-          {r.libro_id != null ? ` · libro ${r.libro_id}` : ""}
+          {r.libro_titulo ? ` · ${r.libro_titulo}` : ""}
         </span>
       ))}
     </div>
+  );
+}
+
+/** Abre la práctica libre de la lección de la página principal citada (no toca la ruta). */
+function PonAPrueba({ leccion, asignaturaId }: { leccion: LeccionCitada; asignaturaId: number }) {
+  return (
+    <Link
+      href={`/actividades?asignatura=${asignaturaId}&leccion=${leccion.id}`}
+      className="mt-2 inline-flex items-center gap-1.5 rounded-[14px] border-2 border-brand-orange bg-white px-4 py-2 text-[13px] font-extrabold text-brand-orange hover:bg-[#FFF1E7]"
+      title={leccion.nombre}
+    >
+      🎯 Pon a prueba lo que aprendiste
+    </Link>
+  );
+}
+
+/** Conversaciones anteriores del estudiante (más reciente primero). */
+function Historial({
+  conversaciones,
+  actual,
+  onAbrir,
+}: {
+  conversaciones: Conversacion[] | null;
+  actual: number | null;
+  onAbrir: (c: Conversacion) => void;
+}) {
+  if (conversaciones === null) {
+    return <div className="text-sm font-bold text-muted-foreground">Cargando…</div>;
+  }
+  if (conversaciones.length === 0) {
+    return <div className="text-sm font-bold text-muted-foreground">Aún no tienes conversaciones.</div>;
+  }
+  return (
+    <ul className="flex max-h-[40vh] flex-col gap-1.5 overflow-y-auto">
+      {conversaciones.map((c) => (
+        <li key={c.id}>
+          <button
+            onClick={() => onAbrir(c)}
+            className={`w-full rounded-xl px-3 py-2 text-left hover:bg-muted/60 ${
+              c.id === actual ? "bg-muted/60" : ""
+            }`}
+          >
+            <div className="truncate text-sm font-extrabold text-navy">{c.titulo}</div>
+            <div className="text-xs font-bold text-muted-foreground">
+              {ASIGNATURAS.find((a) => a.id === c.asignatura_id)?.nombre ?? "Asignatura"} ·{" "}
+              {new Date(c.fecha_ultimo_mensaje).toLocaleDateString("es-GT", {
+                day: "numeric",
+                month: "short",
+              })}
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -63,6 +133,8 @@ export default function ChatPage() {
   const [pregunta, setPregunta] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [tardando, setTardando] = useState(false);
+  const [verHistorial, setVerHistorial] = useState(false);
+  const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const tardandoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,8 +153,7 @@ export default function ChatPage() {
     setPregunta("");
     setEnviando(true);
     setTardando(false);
-    // Si la respuesta tarda más de lo normal (p. ej. el modelo fine-tuned
-    // "despertando" tras estar inactivo), se avisa en vez de parecer colgado.
+    // Si la respuesta tarda más de lo normal, se avisa en vez de parecer colgado.
     tardandoTimer.current = setTimeout(() => setTardando(true), 10_000);
 
     try {
@@ -90,7 +161,13 @@ export default function ChatPage() {
       setConversacionId(res.conversacion_id);
       setMensajes((prev) => [
         ...prev,
-        { rol: "asistente", contenido: res.respuesta, referencias: res.referencias },
+        {
+          rol: "asistente",
+          contenido: res.respuesta,
+          referencias: res.referencias,
+          leccion: res.leccion,
+          asignaturaId,
+        },
       ]);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "No se pudo conectar con el servidor";
@@ -108,6 +185,39 @@ export default function ChatPage() {
   function nuevaConversacion() {
     setConversacionId(null);
     setMensajes([]);
+  }
+
+  function alternarHistorial() {
+    if (!verHistorial) {
+      setConversaciones(null);
+      getConversaciones()
+        .then(setConversaciones)
+        .catch(() => {
+          setConversaciones([]);
+          toast.error("No se pudo cargar tu historial");
+        });
+    }
+    setVerHistorial((v) => !v);
+  }
+
+  async function abrirConversacion(c: Conversacion) {
+    try {
+      const conv = await getConversacion(c.id);
+      setAsignaturaId(conv.asignatura_id);
+      setConversacionId(conv.id);
+      setMensajes(
+        conv.mensajes.map((m) => ({
+          rol: m.rol,
+          contenido: m.contenido,
+          referencias: m.referencias?.fragmentos ?? [],
+          leccion: m.referencias?.leccion ?? null,
+          asignaturaId: conv.asignatura_id,
+        })),
+      );
+      setVerHistorial(false);
+    } catch {
+      toast.error("No se pudo abrir la conversación");
+    }
   }
 
   const asignatura = ASIGNATURAS.find((a) => a.id === asignaturaId);
@@ -144,6 +254,13 @@ export default function ChatPage() {
             </select>
           </div>
           <button
+            onClick={alternarHistorial}
+            aria-expanded={verHistorial}
+            className="rounded-[14px] border-2 border-border bg-white px-4 py-[11px] text-sm font-extrabold text-[#5A6170] hover:bg-muted/60"
+          >
+            🕘 Anteriores
+          </button>
+          <button
             onClick={nuevaConversacion}
             className="rounded-[14px] border-2 border-border bg-white px-4 py-[11px] text-sm font-extrabold text-[#5A6170] hover:bg-muted/60"
           >
@@ -151,6 +268,19 @@ export default function ChatPage() {
           </button>
         </div>
       </header>
+
+      {verHistorial && (
+        <div className="border-b border-border bg-white px-4 py-3 sm:px-8">
+          <div className="mx-auto max-w-3xl">
+            <div className="mb-2 text-[13px] font-extrabold text-[#5A6170]">Conversaciones anteriores</div>
+            <Historial
+              conversaciones={conversaciones}
+              actual={conversacionId}
+              onAbrir={abrirConversacion}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Mensajes */}
       <div
@@ -204,6 +334,9 @@ export default function ChatPage() {
                     )}
                   </div>
                   {tutor && m.referencias && <Referencias refs={m.referencias} />}
+                  {tutor && m.leccion && !!m.referencias?.length && (
+                    <PonAPrueba leccion={m.leccion} asignaturaId={m.asignaturaId ?? asignaturaId} />
+                  )}
                 </div>
               </div>
             );

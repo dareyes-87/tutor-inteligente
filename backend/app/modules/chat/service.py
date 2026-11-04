@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import re
+import unicodedata
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -14,6 +15,8 @@ from app.models.mensaje import Mensaje, RolMensaje
 from app.models.asignatura import Asignatura
 from app.models.usuario import Usuario
 from app.models.grado import Grado
+from app.models.leccion import Leccion
+from app.models.libro import LibroTexto
 from app.modules.rag.search import (
     TOP_K,
     es_ejercicio_del_libro,
@@ -22,7 +25,7 @@ from app.modules.rag.search import (
 )
 from app.modules.chat.prompts import build_context_prompt, build_messages
 from app.modules.rag.paginas import etiqueta_paginas
-from app.modules.lecciones.service import actualizar_racha
+from app.modules.lecciones.service import _parsear_rango_paginas, actualizar_racha
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +179,57 @@ def _referencia_paginas(fragments: list[dict], asignatura_nombre: str | None) ->
         return ""
     materia = asignatura_nombre or "tu libro"
     return f"\n\n📖 Basado en tu libro de {materia}, {etiqueta_paginas(paginas)}."
+
+
+def _palabras(texto: str) -> set[str]:
+    """Palabras de 5+ letras, en minúsculas y sin tildes (para comparar vocabulario)."""
+    t = unicodedata.normalize("NFKD", (texto or "").lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return set(re.findall(r"[a-zñ]{5,}", t))
+
+
+# Sin citas en el texto, un fragmento cuenta como usado si comparte con la respuesta al menos
+# este número de palabras y este tanto del mejor (calibrado con 25 respuestas reales del piloto:
+# las páginas que el LLM cita son siempre las de mayor solape).
+MIN_PALABRAS_USADO = 3
+FRACCION_DEL_MEJOR = 0.6
+
+
+def _fragmentos_usados(respuesta: str, fragments: list[dict]) -> list[dict]:
+    """Fragmentos que la respuesta usó, de más a menos solape de vocabulario (el primero es la
+    página principal). Si la respuesta cita páginas (ya validadas), solo esas; si no, los que
+    comparten vocabulario con ella; como mínimo, el de más solape."""
+    if not fragments:
+        return []
+    palabras = _palabras(respuesta)
+    puntaje = {id(f): len(_palabras(f.get("text", "")) & palabras) for f in fragments}
+    ordenados = sorted(fragments, key=lambda f: -puntaje[id(f)])
+    citadas = set(_paginas_citadas(respuesta))
+    if citadas:
+        usados = [f for f in ordenados if f.get("page_num") in citadas]
+    else:
+        mejor = puntaje[id(ordenados[0])]
+        usados = [f for f in ordenados
+                  if puntaje[id(f)] >= max(MIN_PALABRAS_USADO, FRACCION_DEL_MEJOR * mejor)]
+    return usados or ordenados[:1]
+
+
+async def _leccion_de_pagina(db: AsyncSession, libro_id: int | None, pagina: int | None) -> dict | None:
+    """Lección del libro cuyo rango de páginas contiene la página (para "Pon a prueba…")."""
+    if libro_id is None or pagina is None:
+        return None
+    for leccion in (await db.execute(select(Leccion).where(Leccion.libro_id == libro_id))).scalars():
+        rango = _parsear_rango_paginas(leccion.paginas)
+        if rango and rango[0] <= pagina <= rango[1]:
+            return {"id": leccion.id, "nombre": leccion.nombre}
+    return None
+
+
+async def _titulos_libros(db: AsyncSession, libro_ids: set) -> dict[int, str]:
+    ids = {i for i in libro_ids if i is not None}
+    if not ids:
+        return {}
+    return dict((await db.execute(select(LibroTexto.id, LibroTexto.titulo).where(LibroTexto.id.in_(ids)))).all())
 
 
 # Marcador fijo con el que SIEMPRE empieza el footer de _referencia_paginas.
@@ -456,19 +510,27 @@ async def procesar_pregunta(
             respuesta, {f.get("page_num") for f in fragments if f.get("page_num") is not None}
         )
 
-    # Referencia de página SIEMPRE visible (determinística, no depende del LLM):
-    # se arma a partir de page_num de los fragmentos que sobrevivieron al
-    # grounding de arriba, no de lo que el LLM haya citado en el texto. Si el
-    # pre-grounding rechazó la pregunta (fragments_referencia vacío), no hay
-    # nada que anexar.
+    # Solo las páginas que la respuesta usó (las citadas o, sin citas, las que comparten
+    # vocabulario con ella), no todas las recuperadas.
+    fragments_referencia = _fragmentos_usados(respuesta, fragments_referencia)
+
+    # Referencia de página SIEMPRE visible (determinística): toda respuesta con fragmentos
+    # lleva el pie. Si el pre-grounding o el LLM rechazaron la pregunta, no hay nada que anexar.
     if fragments_referencia:
         respuesta = respuesta + _referencia_paginas(fragments_referencia, asignatura_nombre)
 
     # 5. Guardar mensajes
+    titulos = await _titulos_libros(db, {f.get("libro_id") for f in fragments_referencia})
     referencias_json = [
-        {"page_num": f.get("page_num"), "libro_id": f.get("libro_id"), "distance": f.get("distance")}
+        {"page_num": f.get("page_num"), "libro_id": f.get("libro_id"), "distance": f.get("distance"),
+         "libro_titulo": titulos.get(f.get("libro_id"))}
         for f in fragments_referencia
     ]
+    # Lección de la página principal: el botón "🎯 Pon a prueba lo que aprendiste" abre su
+    # práctica libre (no toca la ruta).
+    leccion = (await _leccion_de_pagina(db, fragments_referencia[0].get("libro_id"),
+                                        fragments_referencia[0].get("page_num"))
+               if fragments_referencia else None)
 
     msg_usuario = Mensaje(
         conversacion_id=conv.id,
@@ -479,7 +541,7 @@ async def procesar_pregunta(
         conversacion_id=conv.id,
         rol=RolMensaje.asistente,
         contenido=respuesta,
-        referencias={"fragmentos": referencias_json},
+        referencias={"fragmentos": referencias_json, "leccion": leccion},
     )
     db.add(msg_usuario)
     db.add(msg_asistente)
@@ -499,6 +561,7 @@ async def procesar_pregunta(
         "conversacion_id": conv.id,
         "respuesta": respuesta,
         "referencias": referencias_json,
+        "leccion": leccion,
     }
 
 
@@ -525,6 +588,11 @@ async def obtener_conversacion_completa(
     conv = result.scalar_one_or_none()
     if not conv:
         return None
+    # Mensajes guardados antes de que las referencias llevaran el título del libro.
+    refs = [r for m in conv.mensajes for r in ((m.referencias or {}).get("fragmentos") or [])]
+    titulos = await _titulos_libros(db, {r.get("libro_id") for r in refs if not r.get("libro_titulo")})
+    for r in refs:
+        r.setdefault("libro_titulo", titulos.get(r.get("libro_id")))
     return {
         "id": conv.id,
         "titulo": conv.titulo,
