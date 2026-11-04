@@ -13,21 +13,25 @@ Sin OCR ni LLM. Re-ejecutable (upsert). Si la colección ya tiene vectores, abor
 con --vaciar (la borra antes: evita fragmentos fantasma que ya no están en Postgres).
 
 Uso (DENTRO del contenedor backend, working dir /app):
-    PYTHONPATH=/app python scripts/reconstruir_chroma.py [--vaciar] [--lote 256]
+    python scripts/reconstruir_chroma.py [--vaciar] [--lote 256]
 """
 import argparse
 import asyncio
+import os
+import sys
 import time
 
-from sqlalchemy import select
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from app.database import AsyncSessionLocal
-from app.models.asignatura import Asignatura
-from app.models.fragmento import Fragmento
-from app.models.grado import Grado
-from app.models.libro import LibroTexto
-from app.modules.ingesta.embeddings import generate_embeddings
-from app.modules.ingesta.indexer import COLLECTION_NAME, get_chroma_client, get_collection
+from sqlalchemy import select  # noqa: E402
+
+from app.database import AsyncSessionLocal  # noqa: E402
+from app.models.asignatura import Asignatura  # noqa: E402
+from app.models.fragmento import Fragmento  # noqa: E402
+from app.models.grado import Grado  # noqa: E402
+from app.models.libro import LibroTexto  # noqa: E402
+from app.modules.ingesta.embeddings import generate_embeddings  # noqa: E402
+from app.modules.ingesta.indexer import COLLECTION_NAME, get_chroma_client, get_collection  # noqa: E402
 
 
 async def main(vaciar: bool, lote: int) -> None:
