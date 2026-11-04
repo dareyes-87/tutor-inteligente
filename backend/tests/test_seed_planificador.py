@@ -29,7 +29,7 @@ def test_fila_incompatible_con_tendencia_creciente_usa_opcion_a():
 
 def test_bloques_una_ronda_de_ruta_y_practica_en_lecciones_distintas():
     elegidas = [(sp.CIENCIAS, o) for o in range(2, 7)] + [(sp.MATEMATICAS, o) for o in range(2, 7)]
-    bloques = sp.plan_bloques(18, elegidas, random.Random(1))
+    bloques = sp.plan_bloques(18, "Bajo", elegidas, random.Random(1))
     ruta = [b for b in bloques if b["tipo"] == "ruta"]
     practica = [b for b in bloques if b["tipo"] == "practica"]
     assert [b["tam"] for b in ruta] == [5]
@@ -44,7 +44,7 @@ def test_sesiones_parten_bloques_si_faltan_unidades():
     # Fila 3: 5 sesiones, 2 consultas, 9 actividades -> 1 ronda de ruta + 4 de práctica en 1 lección (se parte entre días).
     rng = random.Random(1)
     elegidas = [(sp.CIENCIAS, 2), (sp.MATEMATICAS, 3), (sp.CIENCIAS, 4), (sp.MATEMATICAS, 5)]
-    plan = sp.plan_sesiones(5, 2, sp.plan_bloques(9, elegidas, rng), elegidas, rng)
+    plan = sp.plan_sesiones(5, 2, sp.plan_bloques(9, "Bajo", elegidas, rng), elegidas, rng)
     assert len(plan) == 5 and all(p["bloques"] or p["consultas"] for p in plan)
     assert sum(b["tam"] for p in plan for b in p["bloques"]) == 9 and sum(p["consultas"] for p in plan) == 2
     assert len({p["fecha"].date() for p in plan}) == 5
@@ -80,10 +80,28 @@ def test_fechas_sobre_chat_cuadra_sesiones_y_conserva_orden():
     from datetime import date
     rng = random.Random(1)
     elegidas = [(sp.CIENCIAS, 2), (sp.MATEMATICAS, 3), (sp.CIENCIAS, 4)]
-    plan = {"sesiones": sp.plan_sesiones(9, 12, sp.plan_bloques(14, elegidas, rng), elegidas, rng)}
+    plan = {"sesiones": sp.plan_sesiones(9, 12, sp.plan_bloques(14, "Bajo", elegidas, rng), elegidas, rng)}
     chat = {date(2026, 9, d) for d in (2, 3, 8, 15, 22, 29)}
     nuevo = sp.fechas_sobre_chat(plan, 9, chat, random.Random(2))
     fechas = [x["fecha"] for x in nuevo["sesiones"]]
     assert fechas == sorted(fechas)
     assert len({f.date() for f in fechas} | chat) == 9
     assert sum(b["tam"] for x in nuevo["sesiones"] for b in x["bloques"]) == 14
+
+
+def test_rondas_de_ruta_segun_nivel_de_uso():
+    # 20 actividades: alto ≈ 95 % (4 rondas), medio ≈ 70 % (3), bajo ≈ 40 % (2); nunca más de act // 5.
+    assert [sp.rondas_de_ruta(20, u) for u in ("Alto", "Medio", "Bajo")] == [4, 3, 2]
+    assert sp.rondas_de_ruta(9, "Alto") == 1 and sp.rondas_de_ruta(6, "Bajo") == 0
+
+
+def test_reintento_de_nivel_usa_banco_nuevo():
+    # Ronda 1 falla (3 de 5) y ronda 2 aprueba en el mismo nivel: la 2ª usa otro banco.
+    r = {"grado_id": 1}
+    libros = {(1, sp.CIENCIAS): {"lecciones": {o: SimpleNamespace(id=100 + o) for o in range(1, 6)}}}
+    ronda = {"tipo": "ruta", "asignatura": sp.CIENCIAS, "orden": None, "tam": 5, "offset": 0}
+    sesiones = [{"consultas": 0, "bloques": [dict(ronda), dict(ronda)]}]
+    pasos, _, estado = sp.recorrer(r, sesiones, [100, 100, 100, 0, 0] + [100] * 5, libros)
+    assert pasos == [(sp.CIENCIAS, 1, 1, 0), (sp.CIENCIAS, 1, 1, 1)]
+    assert sp.clave_banco(101, 1, 0) != sp.clave_banco(101, 1, 1)
+    assert sp.avance(estado)["niveles"] == 1

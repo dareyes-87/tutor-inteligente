@@ -5,7 +5,14 @@ Por estudiante (fila del CSV -> cuenta del mapeo): sesiones, consultas y activid
 exactas, tasa de acierto ±2 y dominio de inicio/final (mismas definiciones que
 seed_piloto.py: contar_piloto). Global: medias de la Tabla 14 y distribución del
 dominio final. Mapa de calor de cada grado (docente.service.diagnostico): celdas en al
-menos 8 lecciones por asignatura y con los tres niveles. Sale con código 1 si algo no cuadra.
+menos MIN_LECCIONES_MAPA (6) lecciones por asignatura y con los tres niveles. Sale con código 1
+si algo no cuadra.
+
+Criterio del mínimo de 6: el mapa de calor se llena con la ruta (lecciones 1–2, respetando los
+desbloqueos reales) y con la práctica libre / repaso de la página Actividades (cualquier lección
+del libro). Desde que la ruta pesa ~95/70/40 % según el nivel de uso, queda menos práctica para
+repartir por el libro; 6 lecciones por asignatura y grado siguen mostrando el repaso de fin de
+ciclo (requerimiento r) sin forzar práctica que el CSV no tiene.
 
 Uso (dentro del contenedor):
   python scripts/verificar_seed.py --csv /tmp/datos_simulados_cap5.csv --mapeo /tmp/mapeo.csv
@@ -26,7 +33,7 @@ from app.modules.docente.service import diagnostico  # noqa: E402
 
 TABLA_14 = {"consultas": 16.56, "actividades": 13.67, "tasa": 62.50, "sesiones": 9.24}
 DOMINIO_FINAL = {"En proceso": 59, "Domina": 7, "Necesita refuerzo": 6}
-MIN_LECCIONES_MAPA = 8
+MIN_LECCIONES_MAPA = 6  # ver el criterio en el docstring; seed_piloto.py usa el mismo
 
 
 async def main_async(args) -> int:
