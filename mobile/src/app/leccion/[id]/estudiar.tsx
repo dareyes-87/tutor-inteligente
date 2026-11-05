@@ -4,7 +4,6 @@ import {
   Animated,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -392,7 +391,7 @@ function MiniChat({
     <View style={styles.modalRoot}>
       <KeyboardAvoidingView
         style={styles.modalSheet}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         <View style={[styles.modalHeader, { paddingTop: 14 }]}>
           <View style={styles.modalAvatar}>

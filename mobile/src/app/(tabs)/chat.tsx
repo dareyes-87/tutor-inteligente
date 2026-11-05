@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   getConversacion,
@@ -33,7 +32,6 @@ type Msg = {
 };
 
 export default function ChatScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   // Asignaturas del chat = las de los libros del grado del estudiante (sin repetir).
   const [asignaturas, setAsignaturas] = useState<{ id: number; nombre: string }[]>([]);
@@ -216,12 +214,14 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, gap: 12 }}
+          // Al abrir el teclado la lista se achica: volver al último mensaje.
+          onLayout={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
           {mensajes.length === 0 && !enviando && (
             <View style={styles.bienvenida}>
@@ -302,7 +302,8 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.inputRow, { paddingBottom: insets.bottom + 8 }]}>
+        {/* Sin insets.bottom: la tab bar queda debajo y, con teclado, el campo va pegado a él. */}
+        <View style={[styles.inputRow, { paddingBottom: 8 }]}>
           <TextInput
             value={texto}
             onChangeText={setTexto}

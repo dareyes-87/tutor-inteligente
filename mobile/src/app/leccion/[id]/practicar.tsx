@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -400,7 +399,7 @@ export default function PracticarScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.ejRoot}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
     >
       <StatusBar style="light" />
       {/* Header: X + barra de bolitas */}
