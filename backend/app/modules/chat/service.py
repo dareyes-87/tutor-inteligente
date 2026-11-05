@@ -121,33 +121,53 @@ def _detectar_paginas(texto: str) -> list[int]:
     return sorted(p for p in paginas if 1 <= p <= 999)
 
 
-def _instruccion_rango(paginas: list[int], faltantes: list[int]) -> str:
-    """Instrucción para el LLM en una consulta por rango: resumen por página, solo con el contexto."""
-    texto = (
-        f"[El estudiante pide un resumen de las {etiqueta_paginas(paginas)}. "
-        "Organiza la respuesta POR PÁGINA y en orden: para cada página escribe 'Página N:' y resume "
-        "solo lo que dicen las secciones '--- Página N ---' del contexto anterior. No agregues nada "
-        "que no esté en ese contexto."
-    )
-    if faltantes:
-        texto += (
-            f" Estas páginas no tienen contenido en el libro: {', '.join(map(str, faltantes))}. "
-            "Para cada una escribe exactamente 'Página N: sin contenido en tu libro.' y no inventes nada."
+# Resumen por rango: UNA llamada por página con solo sus fragmentos. Con las 6 páginas juntas el
+# LLM reasignaba contenido entre páginas (prod, Ciencias 9no p. 40-45: lo de la 42 bajo la 41).
+INSTRUCCION_RESUMEN_PAGINA = (
+    "Resume en 2 a 4 oraciones lo que dice esta página del libro, usando SOLO el contenido "
+    "anterior. No agregues nada que no esté ahí y no menciones números de página. Si la página "
+    "es un ejercicio (verdadero o falso, completar, preguntas para responder), di que es un "
+    "ejercicio y sobre qué tema, sin presentar sus enunciados como hechos: pueden ser falsos a "
+    "propósito. No resuelvas el ejercicio: no escribas sus respuestas ni nombres conceptos que no "
+    "estén escritos en la página. Responde directamente con el resumen, sin título."
+)
+TEMPERATURA_RESUMEN_PAGINA = 0.1
+SIN_CONTENIDO = "sin contenido en tu libro."
+NO_SE_PUDO_RESUMIR = "no se pudo resumir esta página en este momento; intenta de nuevo."
+_RE_TITULO_PAGINA = re.compile(r"^\W*p[aá]gina\s+\d+\W*", re.IGNORECASE)
+
+
+async def _resumir_pagina(fragments: list[dict], grado: str | None, asignatura: str | None) -> str:
+    """Resumen de una página (sus fragmentos); sin fragmentos no llama al LLM; si falla, lo dice."""
+    if not fragments:
+        return SIN_CONTENIDO
+    messages = build_messages(build_context_prompt(fragments), [], INSTRUCCION_RESUMEN_PAGINA,
+                              grado, asignatura)
+    try:
+        respuesta = await asyncio.to_thread(
+            llm_client.chat, messages, max_tokens=400,
+            temperature=TEMPERATURA_RESUMEN_PAGINA, rol=rol_para_asignatura(asignatura),
         )
-    return texto + "]"
+    except Exception as e:  # noqa: BLE001 — una página caída no tumba el resto del rango
+        logger.error(f"[Chat] Fallo al resumir la página {fragments[0].get('page_num')}: {e}")
+        respuesta = None
+    return _RE_TITULO_PAGINA.sub("", (respuesta or "").strip()) or NO_SE_PUDO_RESUMIR
 
 
-def _completar_rango(respuesta: str, n_pedidas: int, paginas: list[int], faltantes: list[int]) -> str:
-    """Respuesta a un rango: añade 'Página N: sin contenido en tu libro.' por cada página vacía que
-    el LLM no mencionó y, si pidió más de las que se resumen, una línea inicial que lo dice."""
-    for p in faltantes:
-        if not re.search(rf"p[aá]gina\s+{p}\b[^\n]*sin contenido", respuesta, re.IGNORECASE):
-            respuesta += f"\n\nPágina {p}: sin contenido en tu libro."
+async def _resumir_rango(paginas: list[int], fragments: list[dict],
+                         grado: str | None, asignatura: str | None, n_pedidas: int) -> str:
+    """'Página N: <resumen>' por página, en orden, con las llamadas al LLM en paralelo. Si pidió más
+    páginas de las que se resumen, una línea inicial lo dice."""
+    resumenes = await asyncio.gather(*(
+        _resumir_pagina([f for f in fragments if f.get("page_num") == p], grado, asignatura)
+        for p in paginas
+    ))
+    texto = "\n\n".join(f"Página {p}: {r}" for p, r in zip(paginas, resumenes))
     if n_pedidas > len(paginas):
         # Sin "página N" en el texto: no es una cita (no la toca la validación de citas).
-        respuesta = (f"Pediste {n_pedidas} páginas; resumo solo las primeras {len(paginas)} "
-                     f"(de la {paginas[0]} a la {paginas[-1]}).\n\n{respuesta}")
-    return respuesta
+        texto = (f"Pediste {n_pedidas} páginas; resumo solo las primeras {len(paginas)} "
+                 f"(de la {paginas[0]} a la {paginas[-1]}).\n\n{texto}")
+    return texto
 
 
 # Cita de página en una respuesta del LLM: "página 8", "páginas 12 y 13", "págs. 4-6",
@@ -489,15 +509,19 @@ async def procesar_pregunta(
     # semántico: el estudiante pidió explícitamente esa página y ya tenemos su
     # contenido filtrado por page_num (el grounding se mantiene: el contexto
     # sigue siendo SOLO el del libro).
-    if consulta_por_pagina or is_context_relevant(fragments):
+    es_rango = consulta_por_pagina and len(paginas) > 1
+    if es_rango:
+        # Lo arma el código: una llamada al LLM por página (ver _resumir_rango).
+        respuesta = await _resumir_rango(paginas, fragments, grado_nombre, asignatura_nombre,
+                                         len(_detectar_paginas(pregunta)))
+        fragments_referencia = fragments
+    elif consulta_por_pagina or is_context_relevant(fragments):
         context = build_context_prompt(fragments)
         # Para consultas por página, se refuerza el prompt del LLM sin modificar
         # build_messages: se guarda la pregunta ORIGINAL en la BD, pero al LLM se
         # le envía una versión con la instrucción de explicar esa página.
         pregunta_llm = pregunta
-        if consulta_por_pagina and len(paginas) > 1:
-            pregunta_llm = f"{pregunta}\n\n{_instruccion_rango(paginas, faltantes)}"
-        elif consulta_por_pagina:
+        if consulta_por_pagina:
             pregunta_llm = (
                 f"{pregunta}\n\n[El estudiante pregunta sobre el contenido de la "
                 f"página {paginas[0]}. Explícale el contenido de esa página "
@@ -557,7 +581,8 @@ async def procesar_pregunta(
     # Capa 3 del grounding: si el modelo citó una página que no está entre los
     # fragmentos recuperados (alucinación de cita), se quita esa cita del texto
     # (log de auditoría) y se mantiene la referencia determinística.
-    if _es_rechazo(respuesta):
+    # Un rango no es rechazo aunque un resumen diga "no aparece": lo arma el código.
+    if not es_rango and _es_rechazo(respuesta):
         fragments_referencia = []
     if not _citas_validas(respuesta, frags_validacion):
         logger.warning(
@@ -582,8 +607,6 @@ async def procesar_pregunta(
 
     # Referencia de página SIEMPRE visible (determinística): toda respuesta con fragmentos
     # lleva el pie. Si el pre-grounding o el LLM rechazaron la pregunta, no hay nada que anexar.
-    if fragments_referencia and len(paginas) > 1:
-        respuesta = _completar_rango(respuesta, len(_detectar_paginas(pregunta)), paginas, faltantes)
     if fragments_referencia:
         respuesta = respuesta + _referencia_paginas(fragments_referencia, asignatura_nombre)
 
