@@ -92,6 +92,64 @@ def _detectar_pagina(texto: str) -> int | None:
     return n if 1 <= n <= 999 else None
 
 
+# Rango o par de páginas: "páginas 40 a 45", "pág. 40 a la 45", "págs 40-45", "páginas 40 y 41",
+# "página 40 hasta la página 45", y sin la palabra "página": "de la 40 a la 45".
+# Un "40-45" suelto (sin "página") NO cuenta: en Matemáticas es una resta.
+_RE_RANGO_PAGINAS = re.compile(
+    r"\b(?:p[aá]g(?:inas?|s)?\.?|pages?|pp?\.?)\s*(\d{1,3})\s*(-|–|\bal?\b|\bhasta\b|\by\b)\s*"
+    r"(?:la\s+)?(?:p[aá]g(?:ina)?\.?\s*)?(\d{1,3})\b"
+    r"|\bde(?:sde)?\s+la\s+(\d{1,3})\s+(?:a|hasta)\s+la\s+(\d{1,3})\b",
+    re.IGNORECASE,
+)
+
+# Páginas que se resumen como máximo en una consulta por rango (contexto y costo acotados).
+MAX_PAGINAS_RANGO = 6
+
+
+def _detectar_paginas(texto: str) -> list[int]:
+    """Páginas pedidas, en orden y SIN recortar: [] si no menciona página, [n] si es una sola
+    (como _detectar_pagina), varias si es un rango ("40 a 45" -> 40..45) o un par ("40 y 41")."""
+    m = _RE_RANGO_PAGINAS.search(texto or "")
+    if not m:
+        n = _detectar_pagina(texto)
+        return [] if n is None else [n]
+    if m.group(4):
+        a, b, sep = int(m.group(4)), int(m.group(5)), "a"
+    else:
+        a, b, sep = int(m.group(1)), int(m.group(3)), m.group(2).lower()
+    paginas = {a, b} if sep == "y" else set(range(min(a, b), max(a, b) + 1))
+    return sorted(p for p in paginas if 1 <= p <= 999)
+
+
+def _instruccion_rango(paginas: list[int], faltantes: list[int]) -> str:
+    """Instrucción para el LLM en una consulta por rango: resumen por página, solo con el contexto."""
+    texto = (
+        f"[El estudiante pide un resumen de las {etiqueta_paginas(paginas)}. "
+        "Organiza la respuesta POR PÁGINA y en orden: para cada página escribe 'Página N:' y resume "
+        "solo lo que dicen las secciones '--- Página N ---' del contexto anterior. No agregues nada "
+        "que no esté en ese contexto."
+    )
+    if faltantes:
+        texto += (
+            f" Estas páginas no tienen contenido en el libro: {', '.join(map(str, faltantes))}. "
+            "Para cada una escribe exactamente 'Página N: sin contenido en tu libro.' y no inventes nada."
+        )
+    return texto + "]"
+
+
+def _completar_rango(respuesta: str, n_pedidas: int, paginas: list[int], faltantes: list[int]) -> str:
+    """Respuesta a un rango: añade 'Página N: sin contenido en tu libro.' por cada página vacía que
+    el LLM no mencionó y, si pidió más de las que se resumen, una línea inicial que lo dice."""
+    for p in faltantes:
+        if not re.search(rf"p[aá]gina\s+{p}\b[^\n]*sin contenido", respuesta, re.IGNORECASE):
+            respuesta += f"\n\nPágina {p}: sin contenido en tu libro."
+    if n_pedidas > len(paginas):
+        # Sin "página N" en el texto: no es una cita (no la toca la validación de citas).
+        respuesta = (f"Pediste {n_pedidas} páginas; resumo solo las primeras {len(paginas)} "
+                     f"(de la {paginas[0]} a la {paginas[-1]}).\n\n{respuesta}")
+    return respuesta
+
+
 # Cita de página en una respuesta del LLM: "página 8", "páginas 12 y 13", "págs. 4-6",
 # "pág. 7", opcionalmente en negrita ("**página 25**").
 _RE_CITA = re.compile(
@@ -311,32 +369,34 @@ async def obtener_historial(db: AsyncSession, conversacion_id: int) -> list[dict
 
 async def recuperar_contexto(
     pregunta: str, asignatura_nombre: str | None, grado_nombre: str | None
-) -> tuple[list[dict], bool, int | None]:
+) -> tuple[list[dict], bool, list[int]]:
     """Paso 2 del chat (sin LLM): fragmentos para la pregunta. Devuelve
-    (fragments, consulta_por_pagina, pagina_solicitada). Determinístico para un
-    mismo índice; lo reusa scripts/corregir_citas_chat.py."""
-    pagina_solicitada = _detectar_pagina(pregunta)
+    (fragments, consulta_por_pagina, paginas): paginas = [] en la búsqueda semántica,
+    [n] si pidió una página y hasta MAX_PAGINAS_RANGO si pidió un rango. Determinístico
+    para un mismo índice; lo reusa scripts/corregir_citas_chat.py."""
+    paginas = _detectar_paginas(pregunta)[:MAX_PAGINAS_RANGO]
     consulta_por_pagina = False
-    if pagina_solicitada is not None:
+    if paginas:
         fragments = await asyncio.to_thread(
             search_fragments,
             query=pregunta,
             asignatura=asignatura_nombre,
             grado=grado_nombre,
-            page_num=pagina_solicitada,
+            page_num=paginas[0] if len(paginas) == 1 else None,
+            page_nums=paginas if len(paginas) > 1 else None,
         )
         if fragments:
             consulta_por_pagina = True
             logger.info(
-                f"[Chat] Consulta por página {pagina_solicitada}: "
+                f"[Chat] Consulta por {etiqueta_paginas(paginas)}: "
                 f"{len(fragments)} fragmentos por filtro de page_num"
             )
         else:
             logger.info(
-                f"[Chat] Página {pagina_solicitada} sin fragmentos; "
+                f"[Chat] {etiqueta_paginas(paginas)} sin fragmentos; "
                 "fallback a búsqueda semántica normal"
             )
-            pagina_solicitada = None
+            paginas = []
             fragments = await asyncio.to_thread(
                 search_fragments,
                 query=pregunta,
@@ -362,10 +422,10 @@ async def recuperar_contexto(
     # tras filtrar, se rellena hasta TOP_K con los siguientes por distancia: así
     # un ejercicio descartado no deja fuera la teoría que venía justo detrás
     # (caso real: la tabla de propiedades de la multiplicación, puesto 6).
-    if pagina_solicitada is None:
+    if not paginas:
         filtrados = [f for f in fragments if not es_ejercicio_del_libro(f["text"])]
         fragments = (filtrados or fragments)[:TOP_K]
-    return fragments, consulta_por_pagina, pagina_solicitada
+    return fragments, consulta_por_pagina, paginas
 
 
 async def procesar_pregunta(
@@ -411,9 +471,13 @@ async def procesar_pregunta(
     # semántica normal para no romper el flujo.
     # to_thread: search_fragments es síncrona (embedding con torch + query a
     # Chroma) y bloquearía el único worker mientras corre.
-    fragments, consulta_por_pagina, pagina_solicitada = await recuperar_contexto(
+    fragments, consulta_por_pagina, paginas = await recuperar_contexto(
         pregunta, asignatura_nombre, grado_nombre
     )
+    # Rango: páginas pedidas sin fragmentos (se dicen "sin contenido en tu libro"; citarlas es válido).
+    faltantes = ([p for p in paginas if p not in {f.get("page_num") for f in fragments}]
+                 if len(paginas) > 1 else [])
+    frags_validacion = fragments + [{"page_num": p} for p in faltantes]
 
     # Historial (lo usa el prompt del LLM y el título del primer mensaje).
     history = await obtener_historial(db, conv.id)
@@ -431,10 +495,12 @@ async def procesar_pregunta(
         # build_messages: se guarda la pregunta ORIGINAL en la BD, pero al LLM se
         # le envía una versión con la instrucción de explicar esa página.
         pregunta_llm = pregunta
-        if consulta_por_pagina:
+        if consulta_por_pagina and len(paginas) > 1:
+            pregunta_llm = f"{pregunta}\n\n{_instruccion_rango(paginas, faltantes)}"
+        elif consulta_por_pagina:
             pregunta_llm = (
                 f"{pregunta}\n\n[El estudiante pregunta sobre el contenido de la "
-                f"página {pagina_solicitada}. Explícale el contenido de esa página "
+                f"página {paginas[0]}. Explícale el contenido de esa página "
                 f"de forma clara y pedagógica, usando ÚNICAMENTE el contexto anterior.]"
             )
         messages = build_messages(
@@ -493,7 +559,7 @@ async def procesar_pregunta(
     # (log de auditoría) y se mantiene la referencia determinística.
     if _es_rechazo(respuesta):
         fragments_referencia = []
-    if not _citas_validas(respuesta, fragments):
+    if not _citas_validas(respuesta, frags_validacion):
         logger.warning(
             "[Chat] Grounding: el modelo citó una página que NO está en los "
             "fragmentos recuperados. Pregunta=%r, respuesta=%r, "
@@ -507,7 +573,7 @@ async def procesar_pregunta(
         # en el texto que ve el estudiante. Ahora se quita del texto y se conserva
         # la referencia determinística de las páginas recuperadas.
         respuesta = _quitar_citas_invalidas(
-            respuesta, {f.get("page_num") for f in fragments if f.get("page_num") is not None}
+            respuesta, {f.get("page_num") for f in frags_validacion if f.get("page_num") is not None}
         )
 
     # Solo las páginas que la respuesta usó (las citadas o, sin citas, las que comparten
@@ -516,6 +582,8 @@ async def procesar_pregunta(
 
     # Referencia de página SIEMPRE visible (determinística): toda respuesta con fragmentos
     # lleva el pie. Si el pre-grounding o el LLM rechazaron la pregunta, no hay nada que anexar.
+    if fragments_referencia and len(paginas) > 1:
+        respuesta = _completar_rango(respuesta, len(_detectar_paginas(pregunta)), paginas, faltantes)
     if fragments_referencia:
         respuesta = respuesta + _referencia_paginas(fragments_referencia, asignatura_nombre)
 

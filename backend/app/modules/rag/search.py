@@ -30,6 +30,10 @@ MIN_FRAGMENTOS_AMPLIO = 2
 # porque is_context_relevant() ya devolvió False con el umbral de 1.5.
 MAX_DISTANCE = 1.55
 
+# Máximo de fragmentos de una página en los libros indexados (2026-11: 20; p99 = 10).
+# top_k de la búsqueda por rango = esto × nº de páginas, para traerlas completas.
+MAX_FRAGMENTOS_POR_PAGINA = 20
+
 
 def _where_metadatos(
     asignatura: str | None,
@@ -101,6 +105,7 @@ def search_fragments(
     grado: str | None = None,
     top_k: int = TOP_K,
     page_num: int | None = None,
+    page_nums: list[int] | None = None,
 ) -> list[dict]:
     """
     Busca los fragmentos más relevantes para una pregunta.
@@ -115,11 +120,27 @@ def search_fragments(
     distancia semántica. Si esa página no tiene fragmentos, reintenta con las
     páginas adyacentes (±1, por posibles desalineaciones del OCR). Si aun así no
     hay resultados, devuelve lista vacía y el llamador decide el fallback.
+
+    Si `page_nums` viene (rango "resume de la página 40 a la 45"), devuelve TODOS
+    los fragmentos de esas páginas (filtro page_num $in, sin corte por distancia
+    ni reintento con adyacentes), ordenados por página y orden de lectura.
     """
     # Generar embedding de la pregunta
     query_embedding = generate_embeddings([query])[0]
 
     collection = get_collection()
+
+    # --- Rango de páginas: todos sus fragmentos, en orden de página ---
+    if page_nums:
+        where_rango = _where_metadatos(asignatura, grado, {"page_num": {"$in": page_nums}})
+        fragments = _consultar(
+            collection, query_embedding, where_rango,
+            MAX_FRAGMENTOS_POR_PAGINA * len(page_nums), aplicar_max_distance=False,
+        )
+        # chunk_id lleva el nº de chunk con ceros a la izquierda: orden de lectura.
+        fragments.sort(key=lambda f: (f["page_num"], f["chunk_id"] or ""))
+        logger.info(f"RAG query='{query[:50]}' page_nums={page_nums} ({len(fragments)} frags)")
+        return fragments
 
     # --- Búsqueda por número de página (filtro exacto, sin corte por distancia) ---
     if page_num is not None:

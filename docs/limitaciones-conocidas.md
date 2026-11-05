@@ -39,3 +39,17 @@ referencias de página siguen coincidiendo con el libro). En `/docente/libros` s
 **Pendiente de decidir:** la última lección de G2 y G3 (L50, p. 306) es la bibliografía
 ("El Rincón de las Fuentes"). El seed del piloto no la usa (practica entre la 2ª y la
 penúltima lección), pero aparece en la ruta de 8vo y 9no.
+
+## Las citas de página usan la paginación del PDF, no la impresa
+
+Todas las referencias "página N" del tutor (chat, pie "📖 Basado en tu libro…", micro-lecciones,
+actividades y la búsqueda por página o rango "resume de la página 40 a la 45") usan el número de
+página **del PDF** (la ingesta numera desde 1 la primera hoja del archivo). Si el libro tiene
+portada, créditos o índice sin numerar, ese número no coincide con el impreso en la hoja: por
+ejemplo, en Ciencias Naturales 9no Básico la página 40 del PDF es la 38 impresa. Un estudiante
+que pide "la página 38" mirando su libro impreso recibe el contenido de la 36 impresa.
+
+No se corrige en esta versión: haría falta guardar por libro el desfase entre PDF e impreso
+(variable a lo largo del libro si hay láminas sin numerar) y aplicarlo al detectar páginas en la
+pregunta y al citar. Relacionado: la propuesta de `pagina_inicio` de la sección anterior conserva
+la numeración del PDF a propósito.
