@@ -1,0 +1,496 @@
+[
+ {
+  "pregunta": "¿Qué es una célula?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "3-10",
+  "referencia": "Una célula es la unidad más pequeña de los seres vivos. Es la base de la estructura de la vida porque, en conjunto, forma los organismos. También puede considerarse un organismo vivo porque es capaz de nutrirse, relacionarse y reproducirse.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son los niveles de organización del cuerpo humano?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "3-10",
+  "referencia": "Los niveles de organización del cuerpo humano son: las células se unen para formar tejidos, los tejidos se juntan para formar órganos, los órganos forman los sistemas y los sistemas forman un organismo.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es el sistema óseo?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "11-16",
+  "referencia": "El sistema óseo está formado por todos los huesos del cuerpo. Sirve para proteger los órganos internos, facilitar el movimiento y sostener los músculos y el cuerpo.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es el sistema digestivo y cuáles son sus partes?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "17-25",
+  "referencia": "El sistema digestivo procesa los alimentos que comemos y los transforma en energía para las células del cuerpo. Sus partes incluyen la boca, la faringe, el esófago, el estómago, el intestino delgado y el intestino grueso. También participan las glándulas digestivas, como las salivales y las gástricas.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es el sistema circulatorio?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "17-25",
+  "referencia": "El sistema circulatorio hace que la sangre se mueva por todo el cuerpo. Lleva los nutrientes y el oxígeno a todas las células. También defiende al cuerpo de infecciones y recoge desechos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es el sistema nervioso?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "26-29",
+  "referencia": "El sistema nervioso es el encargado de dirigir las funciones de los demás sistemas del cuerpo. Se divide en sistema nervioso central y sistema nervioso periférico. También ayuda a generar pensamientos, mover brazos y piernas, regular la respiración y la circulación, y permitir la alimentación y el funcionamiento de otros órganos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son los nutrientes y para qué sirven?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "30-36",
+  "referencia": "Los nutrientes son los componentes que se encuentran en todos los alimentos que consumimos y ayudan al cuerpo a realizar diferentes funciones. Por ejemplo, los carbohidratos y las grasas dan energía al organismo, las proteínas construyen las células y ayudan al crecimiento, y las vitaminas y minerales ayudan al correcto funcionamiento del cuerpo.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son las bacterias?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "53",
+  "referencia": "Las bacterias son seres vivos diminutos que pertenecen al dominio Bacteria. Son organismos unicelulares y solo pueden verse con microscopio. Han existido desde hace unos 3.5 mil millones de años y habitan en cualquier lugar del mundo.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es la fotosíntesis?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "59-71",
+  "referencia": "La fotosíntesis es el proceso en el que las plantas necesitan dióxido de carbono, agua y luz solar para producir oxígeno y glucosa. Ocurre en las hojas de la planta. El oxígeno se libera al ambiente y la glucosa la utiliza la planta para su nutrición.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es un ecosistema?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "85-99",
+  "referencia": "Un ecosistema son las relaciones entre los seres bióticos y los elementos abióticos que comparten un área determinada o un ambiente. Los seres bióticos son los vivos y los abióticos son los que no tienen vida. En los ecosistemas se identifican componentes como especie, población y comunidad.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son los reinos de los seres vivos?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "50-58",
+  "referencia": "Según el texto, los seres vivos se clasifican en dominios y reinos. Los reinos que se mencionan son el Reino Protista, el Reino Fungi, el Reino Plantae y el reino de los animales.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son las vitaminas y en qué alimentos se encuentran?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "30-36",
+  "referencia": "Las vitaminas se identifican con letras. La vitamina A ayuda a la vista y a la piel; el complejo B, al sistema nervioso central, el corazón y los músculos; la C ayuda a prevenir enfermedades e infecciones, y la D, a que los huesos y dientes absorban el calcio. La E mejora el funcionamiento de las membranas celulares y la K ayuda a la coagulación de la sangre; se encuentran en frutas, hierbas y verduras como el tomate, la zanahoria, la papaya, el brócoli y la espinaca.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "corregida_por": "revisión docente (2026-11-10)"
+ },
+ {
+  "pregunta": "¿Qué animales son vertebrados y cuáles invertebrados?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "72-84",
+  "referencia": "Los vertebrados son los que tienen espina dorsal o esqueleto interno, como los peces, anfibios, reptiles, aves y mamíferos. Los invertebrados son los que carecen de esqueleto, como los poríferos, celenterados, gusanos, moluscos, equinodermos y artrópodos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son los planetas del sistema solar?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "111-120",
+  "referencia": "Los planetas del sistema solar son Mercurio, Venus, Tierra y Marte, que son interiores, y Júpiter, Saturno, Urano y Neptuno, que son exteriores. Además hay planetas enanos, como Plutón, que son más pequeños y orbitan en una zona que no está despejada; por eso Plutón ya no se cuenta como planeta.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "corregida_por": "revisión docente (2026-11-10)"
+ },
+ {
+  "pregunta": "¿Cuáles son los estados de la materia?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "148-165",
+  "referencia": "Los estados de la materia son sólido, líquido y gaseoso. En el universo también se pueden encontrar otros estados, como el plasma y el condensado.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué tipos de energía existen?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "166-180",
+  "referencia": "En el libro se mencionan la energía eléctrica, la energía química de los alimentos y la energía mecánica, que puede ser cinética, cuando el cuerpo está en movimiento, o potencial, cuando está en reposo. También se explica el calor, que es la energía de un objeto producida por el movimiento de sus átomos o moléculas.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "corregida_por": "revisión docente (2026-11-10)"
+ },
+ {
+  "pregunta": "¿Cuáles son las fuentes de energía renovable?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "166-180",
+  "referencia": "Las fuentes de energía renovable son aquellas que no se agotan o tienen un ciclo que permite su regeneración. Por ejemplo, la luz del Sol, el viento y el agua. También se consideran renovables la hidroeléctrica, la geotérmica, la solar, la eólica y la biomasa.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es una cadena alimenticia?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "85-99",
+  "referencia": "La cadena alimenticia muestra cómo fluye la energía entre los seres vivos de un ecosistema. Primero están los productores, que producen su propio alimento, luego los consumidores primarios se alimentan de ellos, y siguen los secundarios, terciarios y cuaternarios. Al final, los descomponedores se alimentan de los restos de todos, y la energía regresa al ambiente en forma de nutrientes. Las flechas nos indican el flujo de energía.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo funciona el sistema respiratorio?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "17-25",
+  "referencia": "El sistema respiratorio se encarga de tomar el aire que respiramos, llevarlo a los pulmones y expulsar dióxido de carbono. La respiración ocurre en dos movimientos: la inspiración, cuando el aire entra por la nariz, pasa por la tráquea y los bronquios hasta los alvéolos, y la espiración, cuando el aire sale por el mismo camino lleno de dióxido de carbono. En los alvéolos, el oxígeno es absorbido por los glóbulos rojos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se clasifican las plantas?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "59-71",
+  "referencia": "Las plantas del reino Plantae se dividen en dos grandes grupos: criptógamas y fanerógamas. Las criptógamas no tienen flores, frutos ni semillas y se reproducen por esporas; las fanerógamas tienen flores y semillas. Las fanerógamas se dividen en gimnospermas y angiospermas, y las angiospermas se clasifican en monocotiledóneas y dicotiledóneas según sus cotiledones.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se reproducen las plantas?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "59-71",
+  "referencia": "Las plantas se reproducen de dos formas: sexual y asexual. En la reproducción sexual, la flor se encarga de la reproducción y el polen viaja desde los estambres hasta el ovario para formar semillas y frutos. En la reproducción asexual, de la propia planta madre brota otra planta, por ejemplo, por hojas, tubérculos, rizomas o estolones.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se contamina el agua y el aire?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "85-99",
+  "referencia": "El agua se contamina por desechos petroleros y por la basura, como los plásticos que llegan a mares y océanos. El aire se contamina por el tráfico vehicular. La contaminación ocurre cuando el ambiente natural se modifica por la presencia de basura o elementos que lo dañan.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se previenen las enfermedades causadas por bacterias?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "37-49",
+  "referencia": "Para prevenir enfermedades contagiosas, debes desinfectar con alcohol, cloro o agua hirviendo, lavarte las manos y no usar objetos personales de otras personas. También ayuda nutrirte bien y tener al día tus vacunas. Con las bacterias, no te automediques y usa antibióticos solo con receta médica, porque el mal uso hace que se vuelvan más resistentes.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se produce la energía eléctrica?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "166-180",
+  "referencia": "La energía eléctrica se produce en centrales de generación. Para generarla, el movimiento de una turbina y un alternador convierte la energía mecánica en energía eléctrica. Las materias primas de las fuentes renovables o no renovables liberan la energía contenida para mover la turbina.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo afecta el calentamiento global a la Tierra?",
+  "asignatura_id": 1,
+  "asignatura": "Ciencias Naturales",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "139-147",
+  "referencia": "El calentamiento global hace que los polos se descongelen y aumente el nivel del agua de los mares, poniendo en riesgo las zonas bajas y las islas. También provoca más incendios, sequías e inundaciones, y afecta a animales y plantas porque algunas especies migran o desaparecen. En las personas puede causar deshidratación, alergias y más enfermedades transmitidas por mosquitos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es el valor posicional de un número?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "5-11",
+  "referencia": "El valor posicional es el valor que tiene cada cifra según la posición en la que se encuentra dentro del número. Por ejemplo, en 4 564, el primer 4 vale 4 000 unidades y el último 4 vale 4. Nuestro sistema de numeración es decimal y posicional porque cada valor posicional equivale a 10 unidades del inmediatamente menor.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es la multiplicación y cuáles son sus propiedades?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "24-30",
+  "referencia": "La multiplicación es la operación abreviada de la adición de sumandos iguales. Sus propiedades son la conmutativa, que dice que el orden de los factores no altera el producto; la asociativa, que dice que la manera como se agrupan los factores no afecta el producto; y la del elemento neutro, que dice que el producto de cualquier número por 1 da como resultado el mismo número.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son las fracciones propias e impropias?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "45-55",
+  "referencia": "Las fracciones propias son menores que la unidad, porque el numerador es menor que el denominador. Las fracciones impropias son mayores que la unidad, porque el numerador es mayor que el denominador. Una fracción impropia puede escribirse como número mixto.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es un número mixto?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "45-55",
+  "referencia": "Un número mixto es la forma de escribir una fracción impropia usando un número entero y una fracción. Se obtiene al dividir el numerador entre el denominador: el cociente se coloca como el número entero, el residuo como el numerador y se mantiene el denominador.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son los números decimales?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "65-73",
+  "referencia": "Un número decimal es el número formado por una parte entera y una parte decimal, separadas por el punto decimal. Por ejemplo, 3.5 es un número decimal porque tiene una parte entera y una parte decimal.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es una potencia en matemáticas?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "31-38",
+  "referencia": "Una potencia es una forma abreviada de escribir una multiplicación de factores iguales. En ella, la base es el número que se repite y el exponente indica cuántas veces se repite como factor. Por ejemplo, 4 × 4 se expresa como 4² y da 16.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son los números primos y los números compuestos?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "31-38",
+  "referencia": "Los números primos son aquellos que tienen solamente dos divisores diferentes: el 1 y el mismo número. Los números compuestos son aquellos que tienen más de dos divisores diferentes. Además, el 0 y el 1 no son primos ni compuestos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es una razón y una proporción?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "74-79",
+  "referencia": "Una razón es la comparación de dos cantidades y se representa mediante una fracción o división, como a/b o a:b. Una proporción se forma cuando dos razones equivalentes se igualan, y se representa como a/b = c/d. También puede mostrarse como dos razones equivalentes o como dos fracciones equivalentes.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es un ángulo y cómo se clasifican?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "12-15",
+  "referencia": "Un ángulo está formado por dos semirrectas o rayos que parten de un mismo punto llamado vértice. Según su medida, los ángulos se clasifican en agudo, que mide menos de 90°; recto, que mide 90°, y obtuso, que mide más de 90° y menos de 180°.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "corregida_por": "revisión docente (2026-11-10)"
+ },
+ {
+  "pregunta": "¿Qué es la probabilidad?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "conceptual",
+  "grado": "4to Primaria",
+  "paginas_ref": "80-81",
+  "referencia": "La probabilidad es la medida de la posibilidad de que un evento ocurra. Se expresa por medio de la razón entre el número de casos favorables y el número de casos posibles.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son los criterios de divisibilidad?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "31-38",
+  "referencia": "Los criterios de divisibilidad son reglas para saber si un número se puede dividir exactamente entre otro, sin hacer la división. Un número es divisible entre 2 si termina en cifra par; entre 5 si termina en 0 o 5; entre 10 si termina en 0; entre 3 si la suma de sus cifras es múltiplo de 3; y entre 6 si es divisible entre 2 y 3 a la vez.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son las unidades de medida de longitud?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "56-64",
+  "referencia": "Las unidades de medida de longitud son el metro, que es la unidad principal, y sus múltiplos y submúltiplos. Para longitudes más pequeñas se usan el decímetro, el centímetro y el milímetro; para longitudes más grandes, el decámetro, el hectómetro y el kilómetro.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué tipos de polígonos existen?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "39-44",
+  "referencia": "Los polígonos pueden ser regulares e irregulares. Los regulares tienen todos sus lados de igual longitud y todos sus ángulos de igual medida; los irregulares no cumplen con eso. También se clasifican según el número de lados, por ejemplo: triángulo, pentágono y hexágono.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué tipos de triángulos existen?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "39-44",
+  "referencia": "Los triángulos son polígonos formados por tres lados y se pueden clasificar según la longitud de sus lados y la medida de sus ángulos. Por sus lados están el equilátero, que tiene tres lados iguales, el isósceles y el escaleno. Por sus ángulos, el texto menciona el triángulo rectángulo, que tiene un ángulo recto.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cuáles son los cuerpos geométricos?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "56-64",
+  "referencia": "Los cuerpos geométricos son sólidos como los prismas y las pirámides. También están los cuerpos redondos: el cilindro, el cono y la esfera. El prisma tiene dos bases opuestas iguales y paralelas, y la pirámide tiene una base con caras laterales triangulares. El cilindro tiene dos bases circulares y una superficie curva; el cono tiene una base circular y superficie curva; y la esfera no tiene base y solo tiene una superficie curva.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué es la media aritmética y la moda?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "16-21",
+  "referencia": "La media aritmética o promedio se calcula sumando los valores numéricos y dividiendo la suma entre el número de datos. La moda es el dato que más se repite en un conjunto de datos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Qué son los números romanos?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "factual",
+  "grado": "4to Primaria",
+  "paginas_ref": "22-23",
+  "referencia": "Los números romanos son un sistema de numeración que se escribe utilizando letras mayúsculas. Los romanos usaban siete letras mayúsculas para representar sus cantidades. Para escribir otras cantidades, se siguen reglas de suma y resta según el valor y la posición de las letras.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se suman y restan fracciones con el mismo denominador?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "45-55",
+  "referencia": "Para sumar fracciones con el mismo denominador, se suman los numeradores y se deja el mismo denominador. Para restarlas, se restan los numeradores y se deja el mismo denominador. Si es posible, se simplifica el resultado.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se simplifica una fracción?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "45-55",
+  "referencia": "Para simplificar una fracción, se divide el numerador y el denominador entre el mayor divisor común que tengan. Por ejemplo, 12/18 se simplifica entre 6 y queda 2/3. Si ya no se puede simplificar, la fracción se llama irreducible.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se multiplican y dividen números decimales por 10, 100 y 1000?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "65-73",
+  "referencia": "Para multiplicar un número decimal por 10, 100 o 1000, se corre el punto decimal hacia la derecha uno, dos o tres lugares, respectivamente. Para dividir entre 10, 100 o 1000, se mueve el punto hacia la izquierda tantos espacios como ceros tenga el divisor. Si no hay suficientes cifras, se agregan ceros.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se calcula el mínimo común múltiplo?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "31-38",
+  "referencia": "El mínimo común múltiplo se calcula buscando el menor de los múltiplos comunes, diferente de cero. También puedes descomponer los números al mismo tiempo en factores primos, tomar los factores comunes y no comunes, y multiplicarlos.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se calcula el área de un rectángulo?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "56-64",
+  "referencia": "Para calcular el área de un rectángulo, se multiplica la longitud de su base por la longitud de su altura. También puedes calcularla contando cuántas unidades cuadradas cubren la figura.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se calcula un porcentaje?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "74-79",
+  "referencia": "Un porcentaje es una razón que compara una cantidad con 100 y se representa con el signo %. Para calcularlo, se usa la fracción asociada, por ejemplo, 47 % es 47/100, y se multiplica por la cantidad total. Así, para hallar el 47 % de 50 000, se hace 47/100 × 50 000 = 23 500.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ },
+ {
+  "pregunta": "¿Cómo se comparan dos números en la recta numérica?",
+  "asignatura_id": 2,
+  "asignatura": "Matemáticas",
+  "tipo": "procedimental",
+  "grado": "4to Primaria",
+  "paginas_ref": "5-11",
+  "referencia": "En la recta numérica, los números aumentan de izquierda a derecha. El número mayor es el que se encuentra más a la derecha y el número menor es el que está más a la izquierda. Así puedes comparar dos números observando su posición en la recta.",
+  "modelo_borrador": "deepseek-ai/DeepSeek-V4.1-Flash"
+ }
+]

@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     # --- ChromaDB ---
     CHROMA_HOST: str = "chroma"
     CHROMA_PORT: int = 8000
+    # Colección y modelo de embeddings van juntos: un índice hecho con un modelo
+    # no se puede consultar con otro. Cambiar el modelo exige reindexar
+    # (scripts/reconstruir_chroma.py) en una colección nueva.
+    CHROMA_COLLECTION: str = "libros_texto"
+    EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
 
     # --- Together AI ---
     TOGETHER_API_KEY: str = ""

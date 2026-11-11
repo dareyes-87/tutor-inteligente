@@ -10,7 +10,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "libros_texto"
+COLLECTION_NAME = settings.CHROMA_COLLECTION
 
 _client = None
 

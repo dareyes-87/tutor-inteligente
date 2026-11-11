@@ -5,7 +5,7 @@ para una pregunta del estudiante.
 import logging
 import re
 
-from app.modules.ingesta.embeddings import generate_embeddings
+from app.modules.ingesta.embeddings import ES_E5, generate_embeddings
 from app.modules.ingesta.indexer import get_collection
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,15 @@ MIN_FRAGMENTOS_AMPLIO = 2
 # exacto. No afecta el rechazo de preguntas fuera del libro: esas ni llegan al LLM
 # porque is_context_relevant() ya devolvió False con el umbral de 1.5.
 MAX_DISTANCE = 1.55
+
+# e5 concentra las distancias (≈0.15–0.6): los valores de MiniLM no sirven. Se
+# recalibraron (2026-11) al mismo percentil de la distribución de distancias top-5
+# (50 preguntas del libro + 24 fuera del libro). Ver
+# scripts/evaluacion/comparar_recuperacion.py y docs/tesis/resultados_correcciones_jurado.md.
+if ES_E5:
+    UMBRAL_ESTRICTO = 0.29
+    UMBRAL_AMPLIO = 0.47
+    MAX_DISTANCE = 0.49
 
 # Máximo de fragmentos de una página en los libros indexados (2026-11: 20; p99 = 10).
 # top_k de la búsqueda por rango = esto × nº de páginas, para traerlas completas.
@@ -126,7 +135,7 @@ def search_fragments(
     ni reintento con adyacentes), ordenados por página y orden de lectura.
     """
     # Generar embedding de la pregunta
-    query_embedding = generate_embeddings([query])[0]
+    query_embedding = generate_embeddings([query], es_consulta=True)[0]
 
     collection = get_collection()
 
