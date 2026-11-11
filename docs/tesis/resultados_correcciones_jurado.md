@@ -139,7 +139,7 @@ Salidas: `backend/scripts/evaluacion/referencias_ragas.json` y `referencias_para
 
 Para comparar, el 100 % de las 50 preguntas del libro pasa `is_context_relevant()` con los dos índices. Lectura: el corte por distancia está calibrado para no rechazar preguntas legítimas (un falso negativo es peor que un falso positivo, ver el docstring de `is_context_relevant`). Por eso solo filtra entre una cuarta parte y un tercio de las preguntas ajenas al libro. Para el resto, la barrera es el system prompt del tutor, que le exige responder solo con el contexto del libro. Se reporta como limitación.
 
-## Paso 6 — Preparación (2026-11-10) — NO desplegado, pendiente de aprobación
+## Paso 6 — Preparación (2026-11-10) — desplegado el 2026-11-10, ver «Paso 6 — Despliegue»
 
 - `backend/Dockerfile`: el `RUN` que precarga modelos ahora descarga `paraphrase-multilingual-MiniLM-L12-v2` **y** `intfloat/multilingual-e5-small` antes de `ENV HF_HUB_OFFLINE=1`.
 - Verificado en local: `docker compose build backend` (la capa de descarga tardó 278 s) y luego `docker run --rm` de la imagen con `HF_HUB_OFFLINE=1`. Cargan los dos modelos sin red: MiniLM con ventana de 128 y e5 con 512, ambos de dimensión 384. La imagen pesa 4,45 GB.
@@ -339,3 +339,89 @@ Por grado y asignatura (n = 3 cada celda; solo descriptivo):
 - **Aceptación:** con ambos índices, las 30 preguntas pasan `is_context_relevant` (100 %), y el corte `MAX_DISTANCE` de e5 no elimina ningún acierto (Hit@5 sin corte = 0,967).
 - **Comparación con 4to (n = 49):** la ventaja de e5 es mayor fuera de 4to (+0,233 en Hit@5 y +0,194 en MRR, frente a +0,041 y +0,025 en 4to). Los libros de 5to a 3ro Básico tienen más fragmentos largos que MiniLM trunca a 128 tokens. Esto es coherente con el diagnóstico del paso 1, aunque no se midió por libro.
 - **Limitación:** con n = 3 por celda, las diferencias por grado y asignatura no tienen valor estadístico; la conclusión se apoya en el global y en el sentido consistente de la mejora: e5 es igual o mejor en Hit@5 en las 10 celdas.
+
+## Paso 6 — Despliegue en Railway con e5 y reindexado de producción (2026-11-10, aprobado por Daniel)
+
+Condiciones de Daniel: respaldo previo; el reindexado solo escribe `libros_texto_e5` (no se borra `libros_texto`, sin migraciones que alteren datos); conteos idénticos antes y después; verificación con un estudiante del piloto de 9no; rollback si algo no cuadra. Sin merge a `main`.
+
+1. **Respaldo** (19:15 CST): `pg_dump -Fc` de la BD de producción → `datos/respaldos/prod_antes_e5_20261110_191548.dump` (2,2 MB, 13 tablas con datos; `datos/` no va a git).
+2. **Despliegue del código** (`railway up`, deploy `5d1d4974`): commit `56d8ba1` de `correcciones-jurado`, subido desde un *worktree* limpio (solo archivos versionados), sin pasar por `main`. Build: 8,5 min (precarga de MiniLM y e5). Alembic: la BD ya estaba en el head (`a2a93c93a5e9`) y la rama no trae migraciones, así que el arranque no aplicó ninguna. Sin las variables nuevas siguió con MiniLM / `libros_texto`.
+3. **Reindexado** (`railway ssh`, en el contenedor del backend):
+   ```bash
+   EMBEDDING_MODEL=intfloat/multilingual-e5-small CHROMA_COLLECTION=libros_texto_e5 OMP_NUM_THREADS=8 \
+       python scripts/reconstruir_chroma.py --vaciar
+   ```
+   - Resultado: «Chroma: 8882 vectores (Postgres: 8882) en 324 s». `libros_texto` sigue intacta (8.882).
+   - Incidencia: el primer intento, sin `OMP_NUM_THREADS`, abrió 153 hilos sobre una cuota de 8 vCPU. El 42 % de los periodos quedaban estrangulados y avanzaba a unos 250 s por lote, lo que proyectaba unas 2,4 h. Se detuvo y se relanzó con 8 hilos.
+   - El relanzamiento usó `--vaciar` sobre la colección nueva, que tenía 768 vectores parciales. Antes se comprobó que la colección resuelta era `libros_texto_e5`, y si no lo era el comando abortaba.
+   - Un proceso del primer intento seguía vivo y escribía en el mismo log. Falló con «Collection does not exist» al borrarse la colección parcial, así que no escribió en la definitiva.
+4. **Validación del índice de producción** antes de activarlo: las 49 preguntas del paso 3 contra `libros_texto_e5` de producción dan el mismo top-5 que el índice local en las 49 (diferencia máxima de distancia 0,0). Hit@5 1,000, MRR 0,923 y rechazo fuera del libro 29,2 %, idénticos al paso 3. Salida: `recuperacion_e5_prod.json`.
+5. **Activación** (20:40 CST): variables de Railway `EMBEDDING_MODEL=intfloat/multilingual-e5-small` y `CHROMA_COLLECTION=libros_texto_e5` → redeploy `489dcd49`, activo a las 20:42. Se verificó en el entorno del proceso (PID 1) que las dos variables están definidas. `/health`: ok en API, Postgres y Chroma.
+6. **Conteos** (`datos/respaldos/conteos_*.txt`):
+
+   | Tabla | Antes | Tras el deploy | Tras activar e5 | Final (tras la consulta de verificación) |
+   |---|---|---|---|---|
+   | usuarios | 94 | 94 | 94 | 94 |
+   | estudiantes | 87 | 87 | 87 | 87 |
+   | actividades | 1.906 | 1.906 | 1.906 | 1.906 |
+   | progreso_leccion | 5.953 | 5.953 | 5.953 | 5.953 |
+   | conversaciones | 577 | 577 | 577 | 578 (+1, la consulta de verificación) |
+   | mensajes | 2.496 | 2.496 | 2.496 | 2.498 (+2, pregunta y respuesta) |
+   | fragmentos | 8.882 | 8.882 | 8.882 | 8.882 |
+   | libros | 12 | 12 | 12 | 12 |
+
+7. **Verificación como estudiante del piloto** (jgarcia, 9no Básico), contra https://tutor-inteligente-production.up.railway.app. El frontend es https://just-blessing-production-6164.up.railway.app.
+   - **Login:** 200.
+   - **Ruta:** 88 lecciones (39 de Matemáticas y 49 de Ciencias Naturales), que coinciden con sus 88 filas de `progreso_leccion`. Nivel completado total 3 (1 + 2), igual que en la BD. Una lección en progreso por asignatura.
+   - **Perfil de comprensión:** su historial está intacto; por ejemplo, «funciones vitales» con 25 actividades y promedio 52,3.
+   - **Conversaciones:** 29, igual que en la BD.
+   - **Chat real (Ciencias Naturales):** «¿Qué cosas no se deben hacer nunca dentro del laboratorio?» → HTTP 200. Referencias: págs. 67 y 65; la 67 es la `paginas_ref` de esa pregunta en el paso 3b. La respuesta enumera las reglas del libro citando la página y termina con «📖 Basado en tu libro de Ciencias Naturales, páginas 65, 67». Tardó 184,6 s porque el modelo ajustado de Modal arrancó en frío (keep-warm desactivado).
+   - No se llamó a `/actividades/responder`, para no alterar su progreso.
+8. **Consumo de Railway** (`railway metrics`, servicio `tutor-inteligente`, 01:10–02:47 UTC = 97 min, cubre build, deploys, reindexado y verificación):
+   - CPU: promedio 1,57 vCPU, máximo 10,9 vCPU.
+   - Memoria: promedio 1,59 GB, máximo 3,85 GB (límite 8 GB).
+   - Costo estimado con las tarifas de uso de Railway (US$20 por vCPU-mes y US$10 por GB-mes): ≈ 152 vCPU-min ≈ US$0,07 más ≈ 154 GB-min ≈ US$0,04, unos **US$0,11**. Incluye el consumo base del servicio en ese intervalo.
+   - Cuenta (`railway usage`, periodo 29/10–29/11): consumo acumulado US$4,56, estimado del mes US$8,48, límite US$15.
+9. **Rollback** (no fue necesario): borrar `EMBEDDING_MODEL` y `CHROMA_COLLECTION` en Railway para volver a MiniLM / `libros_texto`, que sigue intacta. El respaldo de Postgres queda disponible. Advertencia: un `git push origin main` redesplegaría el código de `main`, que ignora estas variables y usa MiniLM / `libros_texto`; seguiría funcionando, pero sin e5, hasta hacer el merge de `correcciones-jurado`.
+
+## Paso 7 — Configuración de producción para la tesis (2026-11-10)
+
+Fuente: `backend/app/config.py`, `app/modules/rag/search.py`, `app/modules/ingesta/chunking.py`, `scripts/modal_finetuned/serve.py`, variables de Railway (sin secretos) y la BD de producción.
+
+**Modelos por rol**
+
+| Rol | Modelo | Respaldo |
+|---|---|---|
+| Chat (tutor), los 7 grados (`MODAL_FINETUNED_GRADOS=1,…,7`) | Modelo ajustado v1 `tutor-finetuned` (Qwen2.5-7B + LoRA) servido con vLLM en Modal | Si Modal falla o pasa del tiempo límite (`MODAL_FINETUNED_TIMEOUT_SEGUNDOS=200`), Together: `deepseek-ai/DeepSeek-V4.1-Flash` → `openai/gpt-oss-120b` |
+| Micro-lecciones, actividades y ruta (`LLM_MODEL`, `LLM_MODEL_MATEMATICAS`, `LLM_MODEL_RUTA`) | `deepseek-ai/DeepSeek-V4.1-Flash` (Together) | `openai/gpt-oss-120b` |
+| Embeddings | `intfloat/multilingual-e5-small` (CPU, sentence-transformers), colección `libros_texto_e5` | Rollback: `paraphrase-multilingual-MiniLM-L12-v2` / `libros_texto` |
+
+**Modal** (`serve.py`):
+- GPU: A10G.
+- `scaledown_window`: 5 min (scale-to-zero).
+- `startup_timeout`: 10 min.
+- Arranque en frío observado: unos 185–200 s.
+- Keep-warm: implementado (`app/workers/modal_keepwarm.py`, ping cada 180 s en una ventana horaria), pero **desactivado** en producción (`MODAL_KEEPWARM_ENABLED` vacío = false).
+
+**RAG**
+
+| Parámetro | Valor |
+|---|---|
+| Chunk / solapamiento | 800 caracteres / 150 caracteres, con corte en límite de oración |
+| TOP_K | 5 |
+| Modelo de embeddings | `intfloat/multilingual-e5-small`, prefijos `passage: ` / `query: ` |
+| Ventana del modelo | 512 tokens (0 fragmentos la exceden) |
+| Dimensión | 384, vectores normalizados, distancia L2 |
+| Umbrales (e5) | `UMBRAL_ESTRICTO` 0,29 · `UMBRAL_AMPLIO` 0,47 (≥ 2 fragmentos) · `MAX_DISTANCE` 0,49 |
+
+**Libros y fragmentos indexados (producción)**: 12 libros (1 por grado y asignatura) y 8.882 fragmentos.
+
+| Grado (tesis) | Ciencias Naturales | Matemáticas | Total |
+|---|---|---|---|
+| 4to Primaria | 321 | 248 | 569 |
+| 5to Primaria | 385 | 243 | 628 |
+| 6to Primaria | 577 | 277 | 854 |
+| 1ro Básico (7mo) | 1.320 | 878 | 2.198 |
+| 2do Básico (8vo) | 1.266 | 911 | 2.177 |
+| 3ro Básico (9no) | 1.561 | 895 | 2.456 |
+| **Total** | **5.430** | **3.452** | **8.882** |
