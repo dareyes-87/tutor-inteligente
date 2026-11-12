@@ -1,0 +1,75 @@
+{
+ "fecha": "2026-11-10",
+ "ragas": "0.4.3",
+ "evaluador": "openai/gpt-oss-120b",
+ "reasoning_effort": "low",
+ "embeddings_metricas": "intfloat/multilingual-e5-small",
+ "entrada": "respuestas_produccion_e5.json",
+ "evaluadas": 49,
+ "status": {
+  "OK": 49
+ },
+ "nan_por_metrica": {
+  "faithfulness": 0,
+  "answer_relevancy": 0,
+  "llm_context_precision_with_reference": 0,
+  "answer_correctness": 0
+ },
+ "global": {
+  "faithfulness": 0.8196,
+  "answer_relevancy": 0.8974,
+  "llm_context_precision_with_reference": 0.8263,
+  "answer_correctness": 0.6167,
+  "n": 49
+ },
+ "por_asignatura": {
+  "Ciencias Naturales": {
+   "faithfulness": 0.8855,
+   "answer_relevancy": 0.9002,
+   "llm_context_precision_with_reference": 0.7457,
+   "answer_correctness": 0.632,
+   "n": 25
+  },
+  "Matemáticas": {
+   "faithfulness": 0.751,
+   "answer_relevancy": 0.8944,
+   "llm_context_precision_with_reference": 0.9102,
+   "answer_correctness": 0.6008,
+   "n": 24
+  }
+ },
+ "por_tipo": {
+  "conceptual": {
+   "faithfulness": 0.8379,
+   "answer_relevancy": 0.899,
+   "llm_context_precision_with_reference": 0.8488,
+   "answer_correctness": 0.6138,
+   "n": 20
+  },
+  "factual": {
+   "faithfulness": 0.7789,
+   "answer_relevancy": 0.8791,
+   "llm_context_precision_with_reference": 0.7859,
+   "answer_correctness": 0.5937,
+   "n": 15
+  },
+  "procedimental": {
+   "faithfulness": 0.8372,
+   "answer_relevancy": 0.9145,
+   "llm_context_precision_with_reference": 0.8373,
+   "answer_correctness": 0.6456,
+   "n": 14
+  }
+ },
+ "faithfulness_sobre_umbral": 31,
+ "umbral_faithfulness": 0.8,
+ "costo_usd": 0.2326,
+ "costo_por_modelo": {
+  "openai/gpt-oss-120b": {
+   "llamadas": 539,
+   "entrada": 654635,
+   "salida": 223989,
+   "usd": 0.23258864999999992
+  }
+ }
+}

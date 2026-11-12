@@ -1,0 +1,156 @@
+{
+ "corridas": [
+  "backend/scripts/evaluacion/ragas_2026-11_produccion_e5/corrida_1",
+  "backend/scripts/evaluacion/ragas_2026-11_produccion_e5/corrida_2",
+  "backend/scripts/evaluacion/ragas_2026-11_produccion_e5/corrida_3"
+ ],
+ "ragas": "0.4.3",
+ "evaluador": "openai/gpt-oss-120b",
+ "costo_total_usd": 0.7055,
+ "costo_por_corrida_usd": [
+  0.2405,
+  0.2326,
+  0.2324
+ ],
+ "nan_por_corrida": [
+  {
+   "faithfulness": 0,
+   "answer_relevancy": 0,
+   "llm_context_precision_with_reference": 0,
+   "answer_correctness": 0
+  },
+  {
+   "faithfulness": 0,
+   "answer_relevancy": 0,
+   "llm_context_precision_with_reference": 0,
+   "answer_correctness": 0
+  },
+  {
+   "faithfulness": 0,
+   "answer_relevancy": 0,
+   "llm_context_precision_with_reference": 0,
+   "answer_correctness": 0
+  }
+ ],
+ "faithfulness_sobre_umbral_por_corrida": [
+  32,
+  31,
+  31
+ ],
+ "grupos": {
+  "Global": {
+   "n": 49,
+   "faithfulness": {
+    "media": 0.8042,
+    "de": 0.0138
+   },
+   "answer_relevancy": {
+    "media": 0.8944,
+    "de": 0.003
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.8238,
+    "de": 0.0038
+   },
+   "answer_correctness": {
+    "media": 0.6105,
+    "de": 0.0054
+   }
+  },
+  "Ciencias Naturales": {
+   "n": 25,
+   "faithfulness": {
+    "media": 0.8584,
+    "de": 0.0274
+   },
+   "answer_relevancy": {
+    "media": 0.8947,
+    "de": 0.0055
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.7368,
+    "de": 0.0102
+   },
+   "answer_correctness": {
+    "media": 0.6199,
+    "de": 0.0124
+   }
+  },
+  "Matemáticas": {
+   "n": 24,
+   "faithfulness": {
+    "media": 0.7478,
+    "de": 0.0079
+   },
+   "answer_relevancy": {
+    "media": 0.8939,
+    "de": 0.0004
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.9144,
+    "de": 0.0037
+   },
+   "answer_correctness": {
+    "media": 0.6007,
+    "de": 0.0079
+   }
+  },
+  "Conceptual": {
+   "n": 20,
+   "faithfulness": {
+    "media": 0.8058,
+    "de": 0.028
+   },
+   "answer_relevancy": {
+    "media": 0.8966,
+    "de": 0.0024
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.8432,
+    "de": 0.0096
+   },
+   "answer_correctness": {
+    "media": 0.6241,
+    "de": 0.0099
+   }
+  },
+  "Factual": {
+   "n": 15,
+   "faithfulness": {
+    "media": 0.7823,
+    "de": 0.0266
+   },
+   "answer_relevancy": {
+    "media": 0.8709,
+    "de": 0.0075
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.7853,
+    "de": 0.0011
+   },
+   "answer_correctness": {
+    "media": 0.592,
+    "de": 0.0031
+   }
+  },
+  "Procedimental": {
+   "n": 14,
+   "faithfulness": {
+    "media": 0.8255,
+    "de": 0.0154
+   },
+   "answer_relevancy": {
+    "media": 0.9162,
+    "de": 0.0016
+   },
+   "llm_context_precision_with_reference": {
+    "media": 0.8373,
+    "de": 0.0
+   },
+   "answer_correctness": {
+    "media": 0.6108,
+    "de": 0.0301
+   }
+  }
+ }
+}

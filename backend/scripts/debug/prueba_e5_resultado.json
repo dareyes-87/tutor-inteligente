@@ -1,0 +1,296 @@
+{
+ "estudiante_temporal": "prueba_e5_104232",
+ "grado": "4to Primaria",
+ "leccion": {
+  "id": 179,
+  "nombre": "El Cuerpo Humano",
+  "paginas": "13-17"
+ },
+ "micro_leccion": {
+  "segundos": 5.2,
+  "titulo": "El increíble sistema muscular",
+  "n_tarjetas": 10,
+  "fragment_ids": [
+   69,
+   70,
+   71,
+   72,
+   73
+  ],
+  "tarjetas": [
+   {
+    "tipo": "introduccion",
+    "contenido": "¡Hola! Hoy vamos a aprender sobre los músculos, esas partes de tu cuerpo que te permiten moverte, saltar y hasta sonreír. Los músculos trabajan junto con tus huesos y tu sistema nervioso para que puedas hacer todas tus actividades diarias.",
+    "emoji": "🫀",
+    "titulo_concepto": null,
+    "dato_curioso": null,
+    "pregunta": null
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "Un músculo es un tejido formado por fibras que se estiran y se contraen. Tu cuerpo tiene más de seiscientos músculos. Aunque no lo creas, no tienes control sobre la mayoría de ellos, y eso es bueno porque tu cuerpo hace muchas cosas sin que tengas que ordenarlas.",
+    "emoji": "🔬",
+    "titulo_concepto": "¿Qué es un músculo?",
+    "dato_curioso": "Los músculos también ayudan a respirar, hacer la digestión y que la sangre circule.",
+    "pregunta": {
+     "texto": "Un músculo es un tejido compuesto por fibras que se estiran y se contraen.",
+     "tipo": "verdadero_falso",
+     "opciones": [
+      "Verdadero",
+      "Falso"
+     ],
+     "respuesta_correcta": "Verdadero",
+     "explicacion": "El libro dice que un músculo es un tejido compuesto por fibras contráctiles, es decir, que se estiran y se contraen."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "Los músculos involuntarios se mueven aunque tú no quieras. Por ejemplo, los músculos del estómago y los intestinos. También se les llama músculos lisos porque están formados por tejidos lisos.",
+    "emoji": "🔬",
+    "titulo_concepto": "Músculos que no controlas: los involuntarios",
+    "dato_curioso": "Estos músculos trabajan todo el tiempo, incluso cuando duermes.",
+    "pregunta": {
+     "texto": "¿Cuáles son ejemplos de músculos involuntarios?",
+     "tipo": "opcion_multiple",
+     "opciones": [
+      "El estómago y los intestinos",
+      "El corazón",
+      "Los músculos de la cara",
+      "Los brazos y las piernas"
+     ],
+     "respuesta_correcta": "El estómago y los intestinos",
+     "explicacion": "El libro menciona que los músculos involuntarios incluyen el estómago y los intestinos."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "Los músculos voluntarios se mueven cuando tú quieres, como los músculos de los brazos y las piernas. Estos músculos necesitan estar conectados a los huesos y se unen por medio de los tendones. Están formados por tejido muscular estriado, que tiene células alargadas y se contraen con rapidez.",
+    "emoji": "🔬",
+    "titulo_concepto": "Músculos que sí controlas: los voluntarios",
+    "dato_curioso": "Cuando flexionas el brazo, se contrae el bíceps; cuando lo estiras, se contrae el tríceps.",
+    "pregunta": {
+     "texto": "Los músculos voluntarios se mueven cuando nosotros queremos.",
+     "tipo": "verdadero_falso",
+     "opciones": [
+      "Verdadero",
+      "Falso"
+     ],
+     "respuesta_correcta": "Verdadero",
+     "explicacion": "El libro dice que los músculos voluntarios son los que se mueven cuando nosotros queremos, como los de los brazos y las piernas."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "El músculo cardíaco es el del corazón y funciona de manera involuntaria. Está formado por tejido estriado cardíaco, que funciona de forma autónoma. Esto significa que late sin que tengas que pensar en ello.",
+    "emoji": "🔬",
+    "titulo_concepto": "El músculo del corazón",
+    "dato_curioso": "Tu corazón late alrededor de 100,000 veces al día.",
+    "pregunta": {
+     "texto": "¿Cómo funciona el músculo cardíaco?",
+     "tipo": "opcion_multiple",
+     "opciones": [
+      "Solo cuando hacemos ejercicio",
+      "De manera voluntaria",
+      "Solo cuando dormimos",
+      "De manera involuntaria"
+     ],
+     "respuesta_correcta": "De manera involuntaria",
+     "explicacion": "El libro explica que el músculo cardíaco funciona de manera involuntaria y autónoma."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "Un desgarre ocurre por un sobreesfuerzo con el músculo o un movimiento brusco. Es importante calentar antes de hacer ejercicio para evitar lesiones.",
+    "emoji": "🔬",
+    "titulo_concepto": "Cuidado con las lesiones: desgarre",
+    "dato_curioso": "Los deportistas suelen hacer estiramientos para prevenir desgarres.",
+    "pregunta": {
+     "texto": "Un desgarre se produce por un sobreesfuerzo con el músculo o un movimiento brusco.",
+     "tipo": "verdadero_falso",
+     "opciones": [
+      "Verdadero",
+      "Falso"
+     ],
+     "respuesta_correcta": "Verdadero",
+     "explicacion": "El libro indica que el desgarre se produce por un sobreesfuerzo con el músculo o un movimiento brusco."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "La distrofia muscular es una enfermedad hereditaria que produce debilidad y falta de movilidad en los músculos. Esto significa que los músculos no funcionan bien y la persona puede tener dificultades para moverse.",
+    "emoji": "🩺",
+    "titulo_concepto": "Enfermedad hereditaria: distrofia muscular",
+    "dato_curioso": "La distrofia muscular se transmite de padres a hijos.",
+    "pregunta": {
+     "texto": "¿Qué enfermedad hereditaria produce debilidad y falta de movilidad en los músculos?",
+     "tipo": "opcion_multiple",
+     "opciones": [
+      "Gripe",
+      "Distrofia muscular",
+      "Sarampión",
+      "Desgarre"
+     ],
+     "respuesta_correcta": "Distrofia muscular",
+     "explicacion": "El libro menciona que la distrofia muscular es una enfermedad hereditaria que produce debilidad y falta de movilidad en los músculos."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "El sistema digestivo procesa los alimentos y los transforma en energía. La digestión ocurre en dos fases: en la boca, el alimento es masticado, molido y triturado; en el estómago, el movimiento muscular muele y mezcla con jugos. Las glándulas digestivas ayudan a descomponer las moléculas grandes en unidades pequeñas.",
+    "emoji": "🍽️",
+    "titulo_concepto": "El sistema digestivo: una máquina trituradora",
+    "dato_curioso": "Las glándulas salivales producen saliva y las gástricas producen jugo intestinal.",
+    "pregunta": {
+     "texto": "¿Dónde ocurre la primera fase de la digestión?",
+     "tipo": "opcion_multiple",
+     "opciones": [
+      "En el intestino delgado",
+      "En el estómago",
+      "En la boca",
+      "En el intestino grueso"
+     ],
+     "respuesta_correcta": "En la boca",
+     "explicacion": "El libro dice que en la boca el alimento es masticado, molido y triturado, lo que corresponde a la primera fase de la digestión."
+    }
+   },
+   {
+    "tipo": "concepto",
+    "contenido": "Cuando el alimento llega al intestino delgado y ya está dividido en moléculas muy pequeñas, empieza la absorción de nutrientes. Las moléculas de nutrientes y un poco de agua son absorbidas por la pared del intestino delgado hacia los vasos sanguíneos. Las sustancias que no son absorbidas pasan al intestino grueso y son expulsadas en forma de heces fecales.",
+    "emoji": "🔬",
+    "titulo_concepto": "La absorción de nutrientes",
+    "dato_curioso": "El intestino delgado tiene vellosidades que aumentan la superficie de absorción.",
+    "pregunta": {
+     "texto": "¿Qué ocurre con las sustancias que no son absorbidas en el intestino delgado?",
+     "tipo": "opcion_multiple",
+     "opciones": [
+      "Se convierten en energía",
+      "Vuelven a la boca",
+      "Se quedan en el estómago",
+      "Pasan al intestino grueso y son expulsadas como heces fecales"
+     ],
+     "respuesta_correcta": "Pasan al intestino grueso y son expulsadas como heces fecales",
+     "explicacion": "El libro explica que las sustancias que no son absorbidas pasan al intestino grueso y son expulsadas en forma de heces fecales."
+    }
+   },
+   {
+    "tipo": "resumen",
+    "contenido": "Hoy aprendimos que los músculos son tejidos que se estiran y se contraen, y que tenemos más de seiscientos. Hay músculos voluntarios, como los de los brazos, e involuntarios, como los del estómago. El músculo cardíaco es especial porque late solo. También vimos que podemos lesionarnos o enfermarnos, y que el sistema digestivo transforma los alimentos en energía. ¡Cuida tu cuerpo y mantente activo!",
+    "emoji": "🫀",
+    "titulo_concepto": null,
+    "dato_curioso": null,
+    "pregunta": null
+   }
+  ]
+ },
+ "actividades": [
+  {
+   "tipo": "opcion_multiple",
+   "con_fragment_ids": true,
+   "status": 200,
+   "segundos": 0.6,
+   "respuesta": {
+    "id": 1886,
+    "tipo": "opcion_multiple",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "opciones": [
+      "Músculos voluntarios",
+      "Músculos lisos",
+      "Músculo cardíaco",
+      "Músculos involuntarios"
+     ],
+     "pregunta": "¿Qué tipo de músculos son aquellos que se mueven cuando nosotros queremos, como los músculos de los brazos y las piernas?"
+    },
+    "fecha_creacion": "2026-11-10T22:48:36.710122Z"
+   }
+  },
+  {
+   "tipo": "verdadero_falso",
+   "con_fragment_ids": true,
+   "status": 200,
+   "segundos": 0.9,
+   "respuesta": {
+    "id": 1887,
+    "tipo": "verdadero_falso",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "afirmacion": "Los músculos voluntarios se mueven cuando nosotros queremos y necesitan estar conectados a los huesos mediante los tendones."
+    },
+    "fecha_creacion": "2026-11-10T22:48:37.606566Z"
+   }
+  },
+  {
+   "tipo": "completar",
+   "con_fragment_ids": true,
+   "status": 200,
+   "segundos": 0.7,
+   "respuesta": {
+    "id": 1888,
+    "tipo": "completar",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "pista": "Es el sistema encargado de procesar los alimentos que las personas comen.",
+     "oracion": "El sistema ___ procesa los alimentos y los transforma en energía."
+    },
+    "fecha_creacion": "2026-11-10T22:48:38.355690Z"
+   }
+  },
+  {
+   "tipo": "ordenar",
+   "con_fragment_ids": true,
+   "status": 200,
+   "segundos": 4.5,
+   "respuesta": {
+    "id": 1889,
+    "tipo": "ordenar",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "instruccion": "Ordena los pasos del proceso de digestión según lo describe el libro, desde que el alimento entra a la boca hasta que las sustancias no absorbidas son expulsadas.",
+     "elementos_desordenados": [
+      "Las sustancias que no son absorbidas pasan al intestino grueso y son expulsadas en forma de heces fecales.",
+      "En la boca, el alimento es masticado, molido y triturado.",
+      "En el intestino delgado, las moléculas de nutrientes y un poco de agua son absorbidas por la pared del intestino hacia los vasos sanguíneos.",
+      "En el estómago, el movimiento muscular de la pared estomacal muele y mezcla el alimento con varios jugos."
+     ]
+    },
+    "fecha_creacion": "2026-11-10T22:48:42.874571Z"
+   }
+  },
+  {
+   "tipo": "respuesta_corta",
+   "con_fragment_ids": true,
+   "status": 200,
+   "segundos": 0.6,
+   "respuesta": {
+    "id": 1890,
+    "tipo": "respuesta_corta",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "pregunta": "¿Cómo se llama el tipo de músculo que se mueve cuando nosotros queremos, como los músculos de los brazos y las piernas?"
+    },
+    "fecha_creacion": "2026-11-10T22:48:43.443286Z"
+   }
+  },
+  {
+   "tipo": "opcion_multiple",
+   "con_fragment_ids": false,
+   "status": 200,
+   "segundos": 0.8,
+   "respuesta": {
+    "id": 1891,
+    "tipo": "opcion_multiple",
+    "tema": "Cuerpo Humano",
+    "contenido": {
+     "opciones": [
+      "Saca del organismo todo aquello que el cuerpo no va a utilizar por medio de la orina.",
+      "Lleva la sangre con nutrientes a todo el cuerpo y recoge los desechos.",
+      "Realiza el proceso de la digestión de los alimentos.",
+      "Lleva el oxígeno a los pulmones y luego a la sangre, y expulsa el dióxido de carbono."
+     ],
+     "pregunta": "¿Qué función cumple el sistema circulatorio en el cuerpo humano?"
+    },
+    "fecha_creacion": "2026-11-10T22:48:44.212449Z"
+   }
+  }
+ ]
+}

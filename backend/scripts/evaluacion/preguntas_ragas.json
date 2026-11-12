@@ -6,7 +6,7 @@
   {"pregunta": "¿Qué es el sistema circulatorio?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "17-25"},
   {"pregunta": "¿Qué es el sistema nervioso?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "26-29"},
   {"pregunta": "¿Qué son los nutrientes y para qué sirven?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "30-36"},
-  {"pregunta": "¿Qué son las bacterias?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "37-49"},
+  {"pregunta": "¿Qué son las bacterias?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "53"},
   {"pregunta": "¿Qué es la fotosíntesis?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "59-71"},
   {"pregunta": "¿Qué es un ecosistema?", "asignatura_id": 1, "asignatura": "Ciencias Naturales", "tipo": "conceptual", "grado": "4to Primaria", "paginas_ref": "85-99"},
 
@@ -43,7 +43,6 @@
   {"pregunta": "¿Qué tipos de polígonos existen?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "39-44"},
   {"pregunta": "¿Qué tipos de triángulos existen?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "39-44"},
   {"pregunta": "¿Cuáles son los cuerpos geométricos?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "56-64"},
-  {"pregunta": "¿Cuáles son las propiedades de la división?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "24-30"},
   {"pregunta": "¿Qué es la media aritmética y la moda?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "16-21"},
   {"pregunta": "¿Qué son los números romanos?", "asignatura_id": 2, "asignatura": "Matemáticas", "tipo": "factual", "grado": "4to Primaria", "paginas_ref": "22-23"},
 

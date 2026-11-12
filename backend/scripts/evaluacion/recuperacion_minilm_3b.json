@@ -1,0 +1,1659 @@
+{
+ "modelo": "paraphrase-multilingual-MiniLM-L12-v2",
+ "coleccion": "libros_texto",
+ "top_k": 5,
+ "en_libro": [
+  {
+   "pregunta": "¿Por qué para juntar o quitar cantidades con enteros y fracciones primero hay que cambiarlas a fracciones impropias?",
+   "asignatura": "Matemáticas",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "conceptual",
+   "libro_id": 5,
+   "pagina_elegida": 34,
+   "paginas_ref": "34",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "A Inicio. Escriba en el pizarrón dos números mixtos, como 1 y 2 tarlos tal como están. Promueva un diálogo para que, con su orien Ayúdelos a recordar cómo se realiza esta conversión paso a paso. Adición y sustracción de números mixtos ¡Mesa lista! ¿Cuál es el resultado + - 18 418 Simplifica o escribe estos resultados como números mixtos, si es posi",
+   "top": [
+    {
+     "page_num": 29,
+     "distance": 0.4992
+    },
+    {
+     "page_num": 30,
+     "distance": 0.5901
+    },
+    {
+     "page_num": 31,
+     "distance": 0.6136
+    },
+    {
+     "page_num": 27,
+     "distance": 0.6556
+    },
+    {
+     "page_num": 45,
+     "distance": 0.6589
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se llaman los triángulos que tienen todos sus lados iguales, dos iguales y ninguno igual?",
+   "asignatura": "Matemáticas",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "factual",
+   "libro_id": 5,
+   "pagina_elegida": 39,
+   "paginas_ref": "39",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Inicio. Muestre a los niños y las niñas imá iferencian? Anímelos a mencionar el número de lados y características visibles. Triángulos y cuadriláteros DN Olga dibujó una palmera utilizando cuadriláteros. ¡Mesa lista! Cuadriláteros: cuadrado, rombo, trapecio, rectángulo. Ejemplo 1 Identificamos los elementos de los triángulos y su clasificación. Equ",
+   "reemplazo": "reemplaza p58 «¿Cuántos metros cuadrados tiene el baño uno?» (página de problema/actividad, no de teoría)",
+   "top": [
+    {
+     "page_num": 75,
+     "distance": 0.5465
+    },
+    {
+     "page_num": 39,
+     "distance": 0.548
+    },
+    {
+     "page_num": 38,
+     "distance": 0.6841
+    },
+    {
+     "page_num": 75,
+     "distance": 0.7082
+    },
+    {
+     "page_num": 39,
+     "distance": 0.7258
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo puedo dividir un número entre los primos más pequeños, empezando por 2, hasta que quede 1 y así saber de qué primos está formado?",
+   "asignatura": "Matemáticas",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "procedimental",
+   "libro_id": 5,
+   "pagina_elegida": 24,
+   "paginas_ref": "24-25",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "llos que solo tienen aos aque los números del 1 al 30 y marquen ad AN Inicio. Solicite a los alumnos y las alumnas que escriban todos compuestos. osición Descomp divisores, con el fin de comenzar a diferenciar entre números Números primos y compuestos. en factores primos ¡Mesa lista! los números OS Halla el conjunto de de 5 D, 3,4, 5,7,10y Un gener",
+   "top": [
+    {
+     "page_num": 35,
+     "distance": 0.8137
+    },
+    {
+     "page_num": 25,
+     "distance": 0.8466
+    },
+    {
+     "page_num": 29,
+     "distance": 0.8595
+    },
+    {
+     "page_num": 46,
+     "distance": 0.8606
+    },
+    {
+     "page_num": 51,
+     "distance": 0.8614
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué el colorante azul desaparece cuando lo revolvemos con agua y queda todo del mismo color?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "conceptual",
+   "libro_id": 6,
+   "pagina_elegida": 155,
+   "paginas_ref": "155",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Materia Y ahora, un tipo especial de mezclas Disoluciones En química, una disolución es una mezcla homogénea que se al disolver dos o más sustancias en otra. Se forma con un solvente, sustancia que está en mayor cantidad y uno o varios solutos, que son las sustancias que se disolverán. Algunas características de las disoluciones son: e mezclas homo",
+   "top": [
+    {
+     "page_num": 155,
+     "distance": 0.8751
+    },
+    {
+     "page_num": 142,
+     "distance": 1.0578
+    },
+    {
+     "page_num": 141,
+     "distance": 1.1835
+    },
+    {
+     "page_num": 92,
+     "distance": 1.2097
+    },
+    {
+     "page_num": 159,
+     "distance": 1.2238
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué gases salen de los volcanes cuando hacen erupción y contaminan el aire?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "factual",
+   "libro_id": 6,
+   "pagina_elegida": 125,
+   "paginas_ref": "125",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Y el hombre htales. Un ejemplo es la ¿De qué manera? Lo hace Mos las más importantes. contaminación del aire de muchas formas. Vere La principal fuente de contaminación del aire son los volcanes, Sus erupciones expulsan gases como el hidrógeno, dióxido de carbono, metano cloro y flúor. Estos, al con la ceniza y el vapor de agua, causan lluvia conta",
+   "top": [
+    {
+     "page_num": 125,
+     "distance": 0.5492
+    },
+    {
+     "page_num": 125,
+     "distance": 0.5843
+    },
+    {
+     "page_num": 124,
+     "distance": 0.8347
+    },
+    {
+     "page_num": 129,
+     "distance": 0.8563
+    },
+    {
+     "page_num": 137,
+     "distance": 0.9055
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo hace la gravedad para que los planetas no se caigan al Sol y se mantengan girando alrededor?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "5to Primaria",
+   "grado_tesis": "5to Primaria",
+   "tipo": "procedimental",
+   "libro_id": 6,
+   "pagina_elegida": 106,
+   "paginas_ref": "106",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Una gran curva La gravedad provoca los movimientos del Universo. Por ejemplo, la órbita de la Luna alrededor de la Tierra y las órbitas de los planetas alre- dedor del Sol. Esto es porque la masa de los objetos del Universo emite gravedad y se atraen unos con otrós. Cuanta más masa tienen y más próxi- mos están, mayor es la atrac- ción entre ellos.",
+   "top": [
+    {
+     "page_num": 106,
+     "distance": 0.5575
+    },
+    {
+     "page_num": 106,
+     "distance": 0.6294
+    },
+    {
+     "page_num": 92,
+     "distance": 0.7873
+    },
+    {
+     "page_num": 105,
+     "distance": 0.7978
+    },
+    {
+     "page_num": 105,
+     "distance": 0.889
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué no puedo sacar el mayor divisor en común si solo tengo un número?",
+   "asignatura": "Matemáticas",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "conceptual",
+   "libro_id": 7,
+   "pagina_elegida": 30,
+   "paginas_ref": "30-31",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "las alumnas y los alumnos el siguiente Máximo común divisor guales que pue nada? ¡Mesa lista! Ningún número natural. O a. ¿Qué número natural es múltiplo de todos dos los números! —=- b. ¿Qué número natural es divisof de to En un grupo de estudiantes de sexto grado hay 30 niños y 24 niñas. Ellos deben formar grupos con el mayor número de integrante",
+   "top": [
+    {
+     "page_num": 29,
+     "distance": 0.724
+    },
+    {
+     "page_num": 43,
+     "distance": 0.7322
+    },
+    {
+     "page_num": 29,
+     "distance": 0.7378
+    },
+    {
+     "page_num": 25,
+     "distance": 0.7491
+    },
+    {
+     "page_num": 25,
+     "distance": 0.7588
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se le llama a una figura cerrada de cuatro lados?",
+   "asignatura": "Matemáticas",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "factual",
+   "libro_id": 7,
+   "pagina_elegida": 35,
+   "paginas_ref": "35-36",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "“Cuadriláteros D ¡Mesa lista! se clasi Muchos deportes se practican en escenarios deportivos con forma de polígono. Por ejemplo, el futbol, el tenis, el baloncesto y el pimpón se practican en polígonos que tienen cuatro lados. ¿Qué son los polígonos? ¿Cómo puedes clasificarlos? Los polígonos son figuras planas cerradas, formadas por segmentos n por",
+   "reemplazo": "reemplaza p83 «¿Cuántos quetzales te dan más o menos por un euro?» (problema, no teoría). Se descartó antes p74 (orden de la semilla): mezcla la regla de volumen con problemas resueltos; las 2 preguntas generadas salían de los ejemplos.",
+   "top": [
+    {
+     "page_num": 70,
+     "distance": 0.8164
+    },
+    {
+     "page_num": 35,
+     "distance": 0.8477
+    },
+    {
+     "page_num": 18,
+     "distance": 0.8824
+    },
+    {
+     "page_num": 16,
+     "distance": 0.9017
+    },
+    {
+     "page_num": 34,
+     "distance": 0.9282
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo paso una fracción que tiene 100 abajo a un número con punto decimal?",
+   "asignatura": "Matemáticas",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "procedimental",
+   "libro_id": 7,
+   "pagina_elegida": 51,
+   "paginas_ref": "51-52",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Pregúnteles a los y las estudiantes si han visto Ini senta el número despué precios como Q3.50 o Q2.75 en una tienda. Pídales que expliquen que s del punto y relaciónelo con fracciones como 50/100 o 75/100 para activar conocimientos previos. Fracciones decimales ¡Mesa lista! 'ON ¿Qué tienen en común las fracciones y Analiza sus denominadores. Los d",
+   "top": [
+    {
+     "page_num": 52,
+     "distance": 0.3168
+    },
+    {
+     "page_num": 51,
+     "distance": 0.4084
+    },
+    {
+     "page_num": 56,
+     "distance": 0.6101
+    },
+    {
+     "page_num": 58,
+     "distance": 0.6197
+    },
+    {
+     "page_num": 43,
+     "distance": 0.6705
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué el musgo puede guardar mucha agua y ayudar a otros seres vivos?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "conceptual",
+   "libro_id": 8,
+   "pagina_elegida": 84,
+   "paginas_ref": "84",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Unas plantas muy especiales Plantas no vasculares Los botánicos también han clasificado las plantas por el sistema que utilizan para aprove- char el agua, minerales y otros nutrientes (siste- ma vascular). De acuerdo con esto, las han clasi- ficado en vasculares y no vasculares. ¿Has notado alguna vez cómo se forman plan- titas verdes en las piedra",
+   "top": [
+    {
+     "page_num": 115,
+     "distance": 0.7413
+    },
+    {
+     "page_num": 116,
+     "distance": 0.758
+    },
+    {
+     "page_num": 131,
+     "distance": 0.7907
+    },
+    {
+     "page_num": 222,
+     "distance": 0.8128
+    },
+    {
+     "page_num": 92,
+     "distance": 0.825
+    }
+   ]
+  },
+  {
+   "pregunta": "¿A cuántos metros de profundidad llega la parte iluminada por el sol en un ecosistema acuático?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "factual",
+   "libro_id": 8,
+   "pagina_elegida": 115,
+   "paginas_ref": "115-116",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Ecosistemas que debemos cuidar Ecosistemas acuáticos Hasta ahora se han analizado los biomas terrestres pero, ¿cómo se dividen los ecosistemas que se encuentran en los ríos, lagos o incluso en el mar? De igual manera que en los ecosistemas terrestres, los organis- mos en ecosistemas acuáticos se ven afectados por la profundidad, la temperatura, la ",
+   "top": [
+    {
+     "page_num": 117,
+     "distance": 0.6366
+    },
+    {
+     "page_num": 102,
+     "distance": 0.7656
+    },
+    {
+     "page_num": 115,
+     "distance": 0.8977
+    },
+    {
+     "page_num": 150,
+     "distance": 0.9108
+    },
+    {
+     "page_num": 115,
+     "distance": 0.9677
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo podemos saber más sobre los asteroides usando telescopios, satélites y naves que viajan al espacio?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "6to Primaria",
+   "grado_tesis": "6to Primaria",
+   "tipo": "procedimental",
+   "libro_id": 8,
+   "pagina_elegida": 178,
+   "paginas_ref": "178-179",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Un asteroide es un cuerpo rocoso o metálico, más pequeño que un planeta y mayor que un meteoroide, que gira alrededor del Sol. La mayoría está entre Marte y Júpiter en el cinturón de asteroides; otros cruzan las órbitas de los planetas. Sus formas son irregulares y gene- ralmente son pequeños. Asteroide viene del griego y significa “de figura estel",
+   "top": [
+    {
+     "page_num": 178,
+     "distance": 0.5182
+    },
+    {
+     "page_num": 172,
+     "distance": 0.7263
+    },
+    {
+     "page_num": 173,
+     "distance": 0.7572
+    },
+    {
+     "page_num": 176,
+     "distance": 0.7576
+    },
+    {
+     "page_num": 178,
+     "distance": 0.8037
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué cuando una línea recta atraviesa dos paralelas, los ángulos de adentro en lados opuestos miden lo mismo?",
+   "asignatura": "Matemáticas",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "conceptual",
+   "libro_id": 9,
+   "pagina_elegida": 154,
+   "paginas_ref": "154",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Sección 4 Ángulos y líneas paralelas Clase 4 Ángulos alternos y líneas paralelas Si , y m son rectas paralelas: b c 1 a. Identifique el ángulo alterno interno del ",
+   "top": [
+    {
+     "page_num": 153,
+     "distance": 0.5058
+    },
+    {
+     "page_num": 155,
+     "distance": 0.5366
+    },
+    {
+     "page_num": 152,
+     "distance": 0.6243
+    },
+    {
+     "page_num": 154,
+     "distance": 0.6298
+    },
+    {
+     "page_num": 148,
+     "distance": 0.6454
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué término usamos para un enunciado que puede ser cierto o falso, pero no los dos?",
+   "asignatura": "Matemáticas",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "factual",
+   "libro_id": 9,
+   "pagina_elegida": 197,
+   "paginas_ref": "197-198",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Sección 1 Lógica Clase 1 Proposiciones y valores de verdad ¿Cuáles de los siguientes enunciados pueden determinarse como verdaderos o falsos? a. Un triángulo tiene tres lados. b. 3 × 5 = 15 c. 10 es múltiplo de 3. d. 5 + 3 ",
+   "top": [
+    {
+     "page_num": 197,
+     "distance": 0.6107
+    },
+    {
+     "page_num": 198,
+     "distance": 1.0878
+    },
+    {
+     "page_num": 200,
+     "distance": 1.1412
+    },
+    {
+     "page_num": 197,
+     "distance": 1.1767
+    },
+    {
+     "page_num": 200,
+     "distance": 1.2135
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo hago para saber qué operación resolver primero cuando hay paréntesis, corchetes, multiplicación, división, suma y resta en un mismo ejercicio?",
+   "asignatura": "Matemáticas",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "procedimental",
+   "libro_id": 9,
+   "pagina_elegida": 51,
+   "paginas_ref": "51",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Sección 7 Operaciones combinadas de números positivos y negativos 1 Clase 4 Orden de operaciones (2) Calcule las siguientes expresiones.UnidadAritmética a. (- 4) × (- 7 + 9) + 19 b. 8 + [12 ÷ (- 2 × 3 )] - 5 a. = (- 4) × (- 7 + 9) + 19 ",
+   "top": [
+    {
+     "page_num": 51,
+     "distance": 0.7277
+    },
+    {
+     "page_num": 14,
+     "distance": 0.747
+    },
+    {
+     "page_num": 11,
+     "distance": 0.7484
+    },
+    {
+     "page_num": 14,
+     "distance": 0.7514
+    },
+    {
+     "page_num": 13,
+     "distance": 0.7547
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué se necesita para que en una comunidad las personas puedan tener una vida saludable?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "conceptual",
+   "libro_id": 10,
+   "pagina_elegida": 118,
+   "paginas_ref": "118-119",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "SESIÓN 14 UNIDAD 5 ActividadActividad 1414 Proyecto 5 Feria ¡Viva la salud! Fase I Con mi comunidad Nivel Aula: VCC Análisis y reflexión ",
+   "top": [
+    {
+     "page_num": 118,
+     "distance": 0.6321
+    },
+    {
+     "page_num": 118,
+     "distance": 0.6695
+    },
+    {
+     "page_num": 36,
+     "distance": 0.7021
+    },
+    {
+     "page_num": 118,
+     "distance": 0.7206
+    },
+    {
+     "page_num": 36,
+     "distance": 0.7232
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué efectos suelen causar la marihuana, la cocaína y la heroína?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "factual",
+   "libro_id": 10,
+   "pagina_elegida": 68,
+   "paginas_ref": "68-69",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Continúa UNIDAD Paso 4 3 ¿Qué necesitamos saber? Una bebida mortal El alcoholismo es una enfermedad que se manifiesta por la necesidad de ingerir alcohol; provocando una depend",
+   "reemplazo": "reemplaza p242 «¿Cuántos minutos se destinan a dejar listo todo antes de que inicie el festival?» (página de problema/actividad, no de teoría)",
+   "top": [
+    {
+     "page_num": 68,
+     "distance": 0.5544
+    },
+    {
+     "page_num": 67,
+     "distance": 0.5558
+    },
+    {
+     "page_num": 69,
+     "distance": 0.6172
+    },
+    {
+     "page_num": 68,
+     "distance": 0.6178
+    },
+    {
+     "page_num": 69,
+     "distance": 0.6347
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo puedo calcular la aceleración de algo que va en línea recta si sé su velocidad al empezar, su velocidad al final y el tiempo que pasó?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "7mo Básico",
+   "grado_tesis": "1ro Básico",
+   "tipo": "procedimental",
+   "libro_id": 10,
+   "pagina_elegida": 194,
+   "paginas_ref": "194-195",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "SESIÓN 8 UNIDAD 9 MRU Y MRUV ActividadActividad 88 Paso 1 Explicamos la diferencia entre el movimiento que realiza el mercurio dentro de un termómetro y el movimiento de las aspas de un ventilador. Paso 2 Leemos y comentamos el texto. ",
+   "reemplazo": "reemplaza p207 «¿Cómo hago para llenar el cuadro donde debo poner qué estudia cada división de ciencias naturales?» (página de problema/actividad, no de teoría)",
+   "top": [
+    {
+     "page_num": 194,
+     "distance": 0.9265
+    },
+    {
+     "page_num": 194,
+     "distance": 0.9339
+    },
+    {
+     "page_num": 188,
+     "distance": 0.9362
+    },
+    {
+     "page_num": 194,
+     "distance": 0.9584
+    },
+    {
+     "page_num": 188,
+     "distance": 0.9606
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué cuando quiero encontrar un cateto tengo que restarle al cuadrado de la hipotenusa el cuadrado del otro cateto?",
+   "asignatura": "Matemáticas",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "conceptual",
+   "libro_id": 11,
+   "pagina_elegida": 156,
+   "paginas_ref": "156",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Sección 7 Teorema de Pitágoras Clase 3 Cálculo de la longitud de catetos En el siguiente triángulo rectángulo ABC, encuentre la medida del cateto BC, es decir, el valor de .x A 7 3 B ",
+   "top": [
+    {
+     "page_num": 155,
+     "distance": 0.8582
+    },
+    {
+     "page_num": 154,
+     "distance": 0.9681
+    },
+    {
+     "page_num": 141,
+     "distance": 0.983
+    },
+    {
+     "page_num": 158,
+     "distance": 0.9832
+    },
+    {
+     "page_num": 99,
+     "distance": 0.9986
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se llama la razón que se forma al comparar los lados que se corresponden en dos polígonos semejantes?",
+   "asignatura": "Matemáticas",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "factual",
+   "libro_id": 11,
+   "pagina_elegida": 144,
+   "paginas_ref": "144-145",
+   "solapamiento_max_palabras": 4,
+   "extracto_pagina": "Sección 4 Semejantes Clase 3 Características de figuras semejantes (2) Los cuadriláteros ABCD y PQRS son semejantes. ¿Cuál es la relación entre las razones de los lados correspondientes de ambos cuadriláteros? S P A los lados correspondientes se les",
+   "top": [
+    {
+     "page_num": 143,
+     "distance": 0.6008
+    },
+    {
+     "page_num": 145,
+     "distance": 0.6077
+    },
+    {
+     "page_num": 124,
+     "distance": 0.6509
+    },
+    {
+     "page_num": 121,
+     "distance": 0.6535
+    },
+    {
+     "page_num": 123,
+     "distance": 0.6571
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se acomodan las figuras geométricas una tras otra para que se forme un patrón en un diseño maya?",
+   "asignatura": "Matemáticas",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "procedimental",
+   "libro_id": 11,
+   "pagina_elegida": 88,
+   "paginas_ref": "88",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Sección 3 Patrones y su significación en el pensamiento maya Clase 2 Patrones en la cerámica maya ¿Qué figuras geométricas observa en las siguientes imágenes? Imagen 1 Imagen 2 La cerámica maya fue muy valorada en la época precolombina. Fabricaron objetos de uso cotidia",
+   "top": [
+    {
+     "page_num": 88,
+     "distance": 0.3845
+    },
+    {
+     "page_num": 88,
+     "distance": 0.5589
+    },
+    {
+     "page_num": 88,
+     "distance": 0.5594
+    },
+    {
+     "page_num": 88,
+     "distance": 0.6572
+    },
+    {
+     "page_num": 88,
+     "distance": 0.6787
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué clases de cosas debe llevar un botiquín para primeros auxilios?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "conceptual",
+   "libro_id": 12,
+   "pagina_elegida": 83,
+   "paginas_ref": "83",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "SESIÓN 16 UNIDAD 3 Problema 3 En el cuaderno completo la información del esquema utilizado el formato propuesto a continuación. Consecuencias de su consumo Marihuana ",
+   "top": [
+    {
+     "page_num": 78,
+     "distance": 0.7191
+    },
+    {
+     "page_num": 79,
+     "distance": 0.7749
+    },
+    {
+     "page_num": 78,
+     "distance": 0.808
+    },
+    {
+     "page_num": 79,
+     "distance": 0.8407
+    },
+    {
+     "page_num": 72,
+     "distance": 0.892
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué número se usa como constante para calcular la fuerza de atracción entre dos masas?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "factual",
+   "libro_id": 12,
+   "pagina_elegida": 223,
+   "paginas_ref": "223",
+   "solapamiento_max_palabras": 4,
+   "extracto_pagina": "SESIÓN 13 UNIDAD 9 Continúa Paso 4 ¿Qué necesitamos saber? Dedujo que la fuerza con que se atraen dos cuerpos de masa distinta depende solamente del valor de sus masas y el cuadrado de la distancia ",
+   "top": [
+    {
+     "page_num": 223,
+     "distance": 0.4221
+    },
+    {
+     "page_num": 223,
+     "distance": 0.5114
+    },
+    {
+     "page_num": 223,
+     "distance": 0.5572
+    },
+    {
+     "page_num": 223,
+     "distance": 0.5966
+    },
+    {
+     "page_num": 223,
+     "distance": 0.7189
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se analizan los datos después de recogerlos en una investigación?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "8vo Básico",
+   "grado_tesis": "2do Básico",
+   "tipo": "procedimental",
+   "libro_id": 12,
+   "pagina_elegida": 255,
+   "paginas_ref": "255-256",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "SESIÓN 2 UNIDAD 11 Continúa Paso 4 ¿Qué más necesitamos saber? Los requisitos que deben de cumplir los instrumentos utilizados en una investigación científica son: confiabilidad, validez y objetiv",
+   "reemplazo": "reemplaza p272 «¿Cómo armamos el periódico y organizamos las actividades para mostrarlo a los demás?» (página de problema/actividad, no de teoría)",
+   "top": [
+    {
+     "page_num": 254,
+     "distance": 0.5674
+    },
+    {
+     "page_num": 257,
+     "distance": 0.5793
+    },
+    {
+     "page_num": 280,
+     "distance": 0.6107
+    },
+    {
+     "page_num": 258,
+     "distance": 0.6156
+    },
+    {
+     "page_num": 275,
+     "distance": 0.6175
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué cuando factorizo una suma de cubos el segundo paréntesis lleva signos menos y más, y cuando es resta se cambian?",
+   "asignatura": "Matemáticas",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "conceptual",
+   "libro_id": 13,
+   "pagina_elegida": 187,
+   "paginas_ref": "187",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Sección 2 Factorización Clase 1 Factorización de binomios de la forma a 3 + b 3 y a 3 - b 3 Factorice las siguientes expresiones. 3 + 27 x + a x - ",
+   "top": [
+    {
+     "page_num": 187,
+     "distance": 0.7132
+    },
+    {
+     "page_num": 104,
+     "distance": 0.7217
+    },
+    {
+     "page_num": 32,
+     "distance": 0.7258
+    },
+    {
+     "page_num": 57,
+     "distance": 0.7858
+    },
+    {
+     "page_num": 183,
+     "distance": 0.7991
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué tres valores de posición se suman para escribir el 7 como número binario?",
+   "asignatura": "Matemáticas",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "factual",
+   "libro_id": 13,
+   "pagina_elegida": 89,
+   "paginas_ref": "89",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Sección 4 Sistemas numéricos Clase 3 Conversión del sistema binario al sistema decimal y viceversa a. Escriba el 7 en sistema de numeración binario. b. Escriba 10102 en sistema de numeración decimal. Para escribir un número del sistema decimal al sistema binar",
+   "top": [
+    {
+     "page_num": 88,
+     "distance": 0.3543
+    },
+    {
+     "page_num": 88,
+     "distance": 0.4791
+    },
+    {
+     "page_num": 89,
+     "distance": 0.5003
+    },
+    {
+     "page_num": 89,
+     "distance": 0.5069
+    },
+    {
+     "page_num": 89,
+     "distance": 0.5464
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo le hago para revisar si cada número que puede salir en el contradominio sí tiene al menos un valor de entrada que lo produzca?",
+   "asignatura": "Matemáticas",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "procedimental",
+   "libro_id": 13,
+   "pagina_elegida": 72,
+   "paginas_ref": "72-73",
+   "solapamiento_max_palabras": 3,
+   "extracto_pagina": "Sección 2 Función inyectiva, sobreyectiva, biyectiva e inversa Clase 2 Función sobreyectiva Complete los valores de y en las siguientes tablas. El dominio y el contradominio están definidos en 1 los números enteros. ",
+   "top": [
+    {
+     "page_num": 145,
+     "distance": 0.8051
+    },
+    {
+     "page_num": 131,
+     "distance": 0.8196
+    },
+    {
+     "page_num": 158,
+     "distance": 0.8345
+    },
+    {
+     "page_num": 19,
+     "distance": 0.8528
+    },
+    {
+     "page_num": 164,
+     "distance": 0.8563
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Por qué para resolver un problema de la comunidad primero hay que identificar qué lo provoca y qué consecuencias tiene?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "conceptual",
+   "libro_id": 14,
+   "pagina_elegida": 81,
+   "paginas_ref": "81",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "Actividad 15 SESIÓN 15 UNIDAD 3 Entre nosotros Nivel Aula: Demostración Pública de lo Aprendido -DPA- Ruta de la salud Árbol de problemas ",
+   "top": [
+    {
+     "page_num": 279,
+     "distance": 0.5767
+    },
+    {
+     "page_num": 80,
+     "distance": 0.6368
+    },
+    {
+     "page_num": 104,
+     "distance": 0.6378
+    },
+    {
+     "page_num": 80,
+     "distance": 0.6692
+    },
+    {
+     "page_num": 279,
+     "distance": 0.6971
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué cosas no se deben hacer nunca dentro del laboratorio?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "factual",
+   "libro_id": 14,
+   "pagina_elegida": 67,
+   "paginas_ref": "67",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "SESIÓN 5 UNIDAD 3 Paso 4 Leemos y comentamos el texto. ¿Qué necesitamos saber? Seguimos las reglas El laboratorio de química es un lu",
+   "reemplazo": "reemplaza p106 «¿Qué tema de salud se compara con la mitosis en los cuadros?» (página de problema/actividad, no de teoría)",
+   "top": [
+    {
+     "page_num": 67,
+     "distance": 0.6554
+    },
+    {
+     "page_num": 65,
+     "distance": 0.6675
+    },
+    {
+     "page_num": 67,
+     "distance": 0.7308
+    },
+    {
+     "page_num": 67,
+     "distance": 0.7461
+    },
+    {
+     "page_num": 77,
+     "distance": 0.7504
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo debo poner el vaso, la taparrosca y la pajilla para que al echar vinagre se vea la reacción?",
+   "asignatura": "Ciencias Naturales",
+   "grado": "9no Básico",
+   "grado_tesis": "3ro Básico",
+   "tipo": "procedimental",
+   "libro_id": 14,
+   "pagina_elegida": 133,
+   "paginas_ref": "133",
+   "solapamiento_max_palabras": 2,
+   "extracto_pagina": "UNIDAD 6 Paso 2 Experimentamos y escogemos alguna de las siguientes opciones. Opción 1 Materiales a. El día anterior conseguimos los materiales - Vasos desechables ",
+   "top": [
+    {
+     "page_num": 133,
+     "distance": 0.4601
+    },
+    {
+     "page_num": 220,
+     "distance": 0.71
+    },
+    {
+     "page_num": 124,
+     "distance": 0.767
+    },
+    {
+     "page_num": 133,
+     "distance": 0.8314
+    },
+    {
+     "page_num": 164,
+     "distance": 0.8643
+    }
+   ]
+  }
+ ],
+ "fuera": [
+  {
+   "pregunta": "¿Quién ganó el mundial de fútbol de 2022?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 136,
+     "distance": 1.5212
+    },
+    {
+     "page_num": 111,
+     "distance": 1.5661
+    },
+    {
+     "page_num": 37,
+     "distance": 1.5746
+    },
+    {
+     "page_num": 119,
+     "distance": 1.5997
+    },
+    {
+     "page_num": 173,
+     "distance": 1.6043
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Quién ganó el mundial de fútbol de 2022?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 20,
+     "distance": 1.3068
+    },
+    {
+     "page_num": 25,
+     "distance": 1.3135
+    },
+    {
+     "page_num": 80,
+     "distance": 1.3369
+    },
+    {
+     "page_num": 5,
+     "distance": 1.4124
+    },
+    {
+     "page_num": 27,
+     "distance": 1.4474
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se programa en Python?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 68,
+     "distance": 1.5142
+    },
+    {
+     "page_num": 165,
+     "distance": 1.554
+    },
+    {
+     "page_num": 18,
+     "distance": 1.5554
+    },
+    {
+     "page_num": 164,
+     "distance": 1.5625
+    },
+    {
+     "page_num": 17,
+     "distance": 1.5832
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se programa en Python?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 31,
+     "distance": 1.4446
+    },
+    {
+     "page_num": 70,
+     "distance": 1.4877
+    },
+    {
+     "page_num": 30,
+     "distance": 1.4968
+    },
+    {
+     "page_num": 73,
+     "distance": 1.497
+    },
+    {
+     "page_num": 47,
+     "distance": 1.5114
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la inflación económica?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 162,
+     "distance": 1.371
+    },
+    {
+     "page_num": 169,
+     "distance": 1.4397
+    },
+    {
+     "page_num": 174,
+     "distance": 1.4496
+    },
+    {
+     "page_num": 146,
+     "distance": 1.4511
+    },
+    {
+     "page_num": 161,
+     "distance": 1.4572
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la inflación económica?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 62,
+     "distance": 1.2882
+    },
+    {
+     "page_num": 65,
+     "distance": 1.3477
+    },
+    {
+     "page_num": 19,
+     "distance": 1.3589
+    },
+    {
+     "page_num": 31,
+     "distance": 1.3852
+    },
+    {
+     "page_num": 72,
+     "distance": 1.3893
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuál es la capital de Francia?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 117,
+     "distance": 1.5089
+    },
+    {
+     "page_num": 118,
+     "distance": 1.5538
+    },
+    {
+     "page_num": 129,
+     "distance": 1.5892
+    },
+    {
+     "page_num": 120,
+     "distance": 1.6092
+    },
+    {
+     "page_num": 104,
+     "distance": 1.6171
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuál es la capital de Francia?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 7,
+     "distance": 1.3782
+    },
+    {
+     "page_num": 22,
+     "distance": 1.4887
+    },
+    {
+     "page_num": 69,
+     "distance": 1.5462
+    },
+    {
+     "page_num": 62,
+     "distance": 1.584
+    },
+    {
+     "page_num": 22,
+     "distance": 1.5924
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Quién escribió Don Quijote de la Mancha?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 188,
+     "distance": 1.344
+    },
+    {
+     "page_num": 37,
+     "distance": 1.3954
+    },
+    {
+     "page_num": 151,
+     "distance": 1.4134
+    },
+    {
+     "page_num": 37,
+     "distance": 1.4715
+    },
+    {
+     "page_num": 140,
+     "distance": 1.4916
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Quién escribió Don Quijote de la Mancha?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 43,
+     "distance": 1.2283
+    },
+    {
+     "page_num": 7,
+     "distance": 1.2862
+    },
+    {
+     "page_num": 23,
+     "distance": 1.2988
+    },
+    {
+     "page_num": 5,
+     "distance": 1.3128
+    },
+    {
+     "page_num": 11,
+     "distance": 1.429
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se juega al ajedrez?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 14,
+     "distance": 1.3887
+    },
+    {
+     "page_num": 7,
+     "distance": 1.4117
+    },
+    {
+     "page_num": 137,
+     "distance": 1.4207
+    },
+    {
+     "page_num": 5,
+     "distance": 1.4547
+    },
+    {
+     "page_num": 11,
+     "distance": 1.4618
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo se juega al ajedrez?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 80,
+     "distance": 1.2485
+    },
+    {
+     "page_num": 12,
+     "distance": 1.3492
+    },
+    {
+     "page_num": 25,
+     "distance": 1.3537
+    },
+    {
+     "page_num": 61,
+     "distance": 1.3601
+    },
+    {
+     "page_num": 42,
+     "distance": 1.3606
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la criptomoneda bitcoin?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 5,
+     "distance": 1.3212
+    },
+    {
+     "page_num": 18,
+     "distance": 1.4471
+    },
+    {
+     "page_num": 192,
+     "distance": 1.4723
+    },
+    {
+     "page_num": 131,
+     "distance": 1.4853
+    },
+    {
+     "page_num": 150,
+     "distance": 1.4877
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la criptomoneda bitcoin?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 62,
+     "distance": 1.4587
+    },
+    {
+     "page_num": 72,
+     "distance": 1.543
+    },
+    {
+     "page_num": 6,
+     "distance": 1.5502
+    },
+    {
+     "page_num": 23,
+     "distance": 1.6484
+    },
+    {
+     "page_num": 65,
+     "distance": 1.6873
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuántos jugadores tiene un equipo de baloncesto?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 127,
+     "distance": 1.5352
+    },
+    {
+     "page_num": 87,
+     "distance": 1.5446
+    },
+    {
+     "page_num": 10,
+     "distance": 1.5604
+    },
+    {
+     "page_num": 15,
+     "distance": 1.5714
+    },
+    {
+     "page_num": 57,
+     "distance": 1.5766
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuántos jugadores tiene un equipo de baloncesto?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 20,
+     "distance": 1.105
+    },
+    {
+     "page_num": 5,
+     "distance": 1.2292
+    },
+    {
+     "page_num": 17,
+     "distance": 1.265
+    },
+    {
+     "page_num": 5,
+     "distance": 1.2762
+    },
+    {
+     "page_num": 74,
+     "distance": 1.2898
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la diabetes?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 22,
+     "distance": 1.3246
+    },
+    {
+     "page_num": 186,
+     "distance": 1.331
+    },
+    {
+     "page_num": 44,
+     "distance": 1.4186
+    },
+    {
+     "page_num": 104,
+     "distance": 1.4249
+    },
+    {
+     "page_num": 37,
+     "distance": 1.4313
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Qué es la diabetes?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 34,
+     "distance": 1.5289
+    },
+    {
+     "page_num": 73,
+     "distance": 1.5897
+    },
+    {
+     "page_num": 34,
+     "distance": 1.5954
+    },
+    {
+     "page_num": 31,
+     "distance": 1.6009
+    },
+    {
+     "page_num": 7,
+     "distance": 1.6201
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo funciona un motor de automóvil?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 180,
+     "distance": 0.9753
+    },
+    {
+     "page_num": 179,
+     "distance": 1.1305
+    },
+    {
+     "page_num": 179,
+     "distance": 1.1711
+    },
+    {
+     "page_num": 172,
+     "distance": 1.1711
+    },
+    {
+     "page_num": 176,
+     "distance": 1.2351
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cómo funciona un motor de automóvil?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 53,
+     "distance": 1.4326
+    },
+    {
+     "page_num": 78,
+     "distance": 1.4522
+    },
+    {
+     "page_num": 61,
+     "distance": 1.4529
+    },
+    {
+     "page_num": 2,
+     "distance": 1.4713
+    },
+    {
+     "page_num": 78,
+     "distance": 1.4867
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuál es la receta de los tamales?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 31,
+     "distance": 1.1814
+    },
+    {
+     "page_num": 18,
+     "distance": 1.2329
+    },
+    {
+     "page_num": 164,
+     "distance": 1.2865
+    },
+    {
+     "page_num": 19,
+     "distance": 1.3331
+    },
+    {
+     "page_num": 147,
+     "distance": 1.3355
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Cuál es la receta de los tamales?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 28,
+     "distance": 1.3549
+    },
+    {
+     "page_num": 31,
+     "distance": 1.4029
+    },
+    {
+     "page_num": 77,
+     "distance": 1.4394
+    },
+    {
+     "page_num": 54,
+     "distance": 1.4794
+    },
+    {
+     "page_num": 23,
+     "distance": 1.5168
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Quién fue el primer presidente de Guatemala?",
+   "asignatura": "Ciencias Naturales",
+   "top": [
+    {
+     "page_num": 146,
+     "distance": 1.0512
+    },
+    {
+     "page_num": 99,
+     "distance": 1.0688
+    },
+    {
+     "page_num": 188,
+     "distance": 1.1203
+    },
+    {
+     "page_num": 30,
+     "distance": 1.1366
+    },
+    {
+     "page_num": 143,
+     "distance": 1.1702
+    }
+   ]
+  },
+  {
+   "pregunta": "¿Quién fue el primer presidente de Guatemala?",
+   "asignatura": "Matemáticas",
+   "top": [
+    {
+     "page_num": 16,
+     "distance": 1.1322
+    },
+    {
+     "page_num": 62,
+     "distance": 1.1524
+    },
+    {
+     "page_num": 23,
+     "distance": 1.2037
+    },
+    {
+     "page_num": 7,
+     "distance": 1.2812
+    },
+    {
+     "page_num": 20,
+     "distance": 1.3172
+    }
+   ]
+  }
+ ]
+}
